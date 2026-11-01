@@ -97,6 +97,8 @@ Source audio, derivatives, transcripts, notes, audit and manifests remain local.
 
 The tested path uses open-source local speech and no paid speech API. Workflows use standard public-repository runners; [GitHub documents these as free](https://docs.github.com/en/billing/concepts/product-billing/github-actions), with separate artifact/cache limits. No paid service, larger runner, billing change or domain registration was performed. Existing hosting/account quotas and ongoing operational support are not guaranteed by a free tier. [GitHub Pages usage limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) do not permit commercial SaaS hosting.
 
+The existing companion is published through Sites with its existing owner-private audience. The public repository does not change that audience. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
+
 ## Project map and licensing
 
 [Architecture](docs/architecture.md) · [File map](docs/FILE-TREE.md) · [Provider qualification](docs/providers/local-vosk.md) · [Security](SECURITY.md) · [Implementation record](docs/IMPLEMENTATION.md)

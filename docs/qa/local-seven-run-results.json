@@ -6,149 +6,149 @@
       "run": 1,
       "result": "PASS",
       "consecutive": 1,
-      "durationMs": 3303,
+      "durationMs": 3400,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "87d0300053ce356c45eff2f848cd0e60e8100a810fe2b2e618f4b65a9417355a",
+      "packageHash": "7ecbfb80f5b6cb6d7518071988b2f2e62baa49ea61c5790b17fc861f8a07529f",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 195538944
+      "rssBytes": 197918720
     },
     {
       "run": 2,
       "result": "PASS",
       "consecutive": 2,
-      "durationMs": 3055,
+      "durationMs": 3279,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "df0eadf95217c78433ad2cb212d499e215cd1127f2ae7685087007df20c69e48",
+      "packageHash": "02fa1035746606ab04bcc4d48ebf3be1efe78b44315e0fc173b391e8631fd269",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 233103360
+      "rssBytes": 225906688
     },
     {
       "run": 3,
       "result": "PASS",
       "consecutive": 3,
-      "durationMs": 3097,
+      "durationMs": 3001,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "9f92d118bd456dce7a7b7de76092362501fb3f0ab230d328a8d9af1414843edb",
+      "packageHash": "dcea3c7fd3ddf19314ac502579fa83cbb9ded781a920b3ef8c27eb9e007cf899",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 237424640
+      "rssBytes": 235524096
     },
     {
       "run": 4,
       "result": "PASS",
       "consecutive": 4,
-      "durationMs": 2949,
+      "durationMs": 3211,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "6f91305608ab7771782bb210d7814f864e831a5863424c0b697ca3c07bb3defc",
+      "packageHash": "ca37cb5645bc95cc32492d9498f35e244dbac4596d612a0ba76871b2a94c5167",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 235302912
+      "rssBytes": 237453312
     },
     {
       "run": 5,
       "result": "PASS",
       "consecutive": 5,
-      "durationMs": 2998,
+      "durationMs": 3256,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "f573e2d4c8ba86b06f3b1e819e0cde7dc8e5bd6211bf6dac63874d7c1cb48e86",
+      "packageHash": "874b64cd8272e3f6caa92f354290b148a32f06b0ddd071fc39dee3ff5cd3ff06",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 234713088
+      "rssBytes": 246992896
     },
     {
       "run": 6,
       "result": "PASS",
       "consecutive": 6,
-      "durationMs": 2953,
+      "durationMs": 3211,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "2336aad8184b67046d603db297b3d8a281e6aba7aecf49303efee9269d685aa4",
+      "packageHash": "b67835d88d48acbef0d561b1bb1a3d6d4fe2586480b60c0348dd1f5cd85b105c",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 258916352
+      "rssBytes": 268328960
     },
     {
       "run": 7,
       "result": "PASS",
       "consecutive": 7,
-      "durationMs": 3341,
+      "durationMs": 3149,
       "wordErrorRate": 0,
       "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
       "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
-      "packageHash": "9470323ebf91daeb4d8e2625b2c79aa577b324da5e81d2c441fb575e33d063dd",
+      "packageHash": "e117f9650b98c924878b7ff979751584f6cd13a18fe61b63f69892ae8cd500ff",
       "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
       "transport": "REAL_LOOPBACK_HTTP",
       "diarization": "NOT_IMPLEMENTED",
       "androidDeviceWorkflow": "NOT_EXECUTED",
-      "rssBytes": 277286912
+      "rssBytes": 293146624
     }
   ],
   "resourceSamples": [
     {
       "run": 1,
-      "heapUsed": 16919240,
-      "rss": 184815616,
+      "heapUsed": 16948120,
+      "rss": 185020416,
       "descriptors": 24
     },
     {
       "run": 2,
-      "heapUsed": 17125864,
-      "rss": 222597120,
+      "heapUsed": 17163528,
+      "rss": 214523904,
       "descriptors": 24
     },
     {
       "run": 3,
-      "heapUsed": 17306472,
-      "rss": 226869248,
+      "heapUsed": 17345176,
+      "rss": 224874496,
       "descriptors": 24
     },
     {
       "run": 4,
-      "heapUsed": 17387720,
-      "rss": 223711232,
+      "heapUsed": 17426152,
+      "rss": 227459072,
       "descriptors": 24
     },
     {
       "run": 5,
-      "heapUsed": 18141184,
-      "rss": 226111488,
+      "heapUsed": 18084848,
+      "rss": 238186496,
       "descriptors": 24
     },
     {
       "run": 6,
-      "heapUsed": 17973784,
-      "rss": 248324096,
+      "heapUsed": 18011272,
+      "rss": 257474560,
       "descriptors": 24
     },
     {
       "run": 7,
-      "heapUsed": 18012792,
-      "rss": 266661888,
+      "heapUsed": 18049808,
+      "rss": 282443776,
       "descriptors": 24
     }
   ],

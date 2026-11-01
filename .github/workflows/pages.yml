@@ -12,6 +12,9 @@ concurrency:
   cancel-in-progress: false
 jobs:
   build:
+    # Existing hosting is Sites. Enable this optional public demo only after
+    # enabling Pages in repository settings and setting this non-secret variable.
+    if: vars.GITHUB_PAGES_ENABLED == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 10
     steps:

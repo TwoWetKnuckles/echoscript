@@ -11,7 +11,9 @@ let counter = 0,
   profile = null,
   objectUrl = null,
   requestAbort = null,
-  pendingTransmission = null;
+  pendingTransmission = null,
+  lastExport = null,
+  exportObjectUrl = null;
 function message(text, error = false) {
   $("global-status").textContent = text;
   $("global-status").className = error ? "error" : "";
@@ -104,6 +106,11 @@ async function refresh(next, replaceAudio = true) {
     regions = [];
     profile = null;
     pendingTransmission = null;
+    lastExport = null;
+    if (exportObjectUrl) URL.revokeObjectURL(exportObjectUrl);
+    exportObjectUrl = null;
+    $("save-export").hidden = true;
+    $("save-export").removeAttribute("href");
     requestAbort?.abort();
     $("regions").textContent =
       "No regions selected: processing applies to the whole recording.";
@@ -743,23 +750,30 @@ action("download", async () => {
     format,
     passphrase: format === "case" ? $("export-password").value : "",
     fontBase64,
+    bundle: $("export-bundle").checked,
   });
-  save(file.bytes, file.name, file.mime);
-  save(
-    new TextEncoder().encode(`${file.sha256}  ${file.name}\n`),
-    file.name + ".sha256.txt",
-    "text/plain",
+  if (exportObjectUrl) URL.revokeObjectURL(exportObjectUrl);
+  exportObjectUrl = URL.createObjectURL(
+    new Blob([file.bytes], { type: file.mime }),
   );
-  if (format === "wav") {
-    const sidecar = await call("export", { format: "history" });
-    save(sidecar.bytes, sidecar.name, "text/plain");
-  }
+  $("save-export").href = exportObjectUrl;
+  $("save-export").download = file.name;
+  $("save-export").hidden = false;
+  lastExport = { name: file.name, sha256: file.sha256 };
   state = await call("snapshot");
   $("audit-log").textContent = processingHistory(state.manifest);
   $("export-result").textContent =
     `${file.name} · ${file.bytes.length} bytes · SHA-256 ${file.sha256}`;
   message(
-    "Export generated. Save both the artifact and its verification/history sidecars.",
+    "Export ready. Review its details and choose Save generated export. Retain the SHA-256 checkpoint independently.",
+  );
+});
+action("download-hash", async () => {
+  if (!lastExport) throw Error("Generate an export first");
+  save(
+    new TextEncoder().encode(`${lastExport.sha256}  ${lastExport.name}\n`),
+    lastExport.name + ".sha256.txt",
+    "text/plain",
   );
 });
 addEventListener("beforeunload", (e) => {

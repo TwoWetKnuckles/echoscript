@@ -4,7 +4,11 @@ import android.content.Context
 import android.security.keystore.KeyGenParameterSpec
 import android.security.keystore.KeyProperties
 import com.google.crypto.tink.StreamingAead
-import com.google.crypto.tink.integration.android.AndroidKeysetManager
+import com.google.crypto.tink.integration.android.AndroidKeystoreKmsClient
+import com.google.crypto.tink.KeysetHandle
+import com.google.crypto.tink.TinkProtoKeysetFormat
+import com.google.crypto.tink.RegistryConfiguration
+import com.google.crypto.tink.subtle.Hex
 import com.google.crypto.tink.streamingaead.StreamingAeadConfig
 import com.google.crypto.tink.streamingaead.StreamingAeadKeyTemplates
 import org.erdtman.jcs.JsonCanonicalizer
@@ -35,6 +39,7 @@ class EvidenceVault(private val context: Context) {
     companion object {
         const val MAX_SOURCE_BYTES = 4L * 1024 * 1024 * 1024
         private const val ALIAS = "echoscript.vault.master.v1"
+        private val KEY_LOCK = Any()
         private val ID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
         fun sha(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
         fun canonical(json: JSONObject): ByteArray = JsonCanonicalizer(json.toString()).encodedUTF8
@@ -45,8 +50,12 @@ class EvidenceVault(private val context: Context) {
     private val primitive: StreamingAead
     private val deviceId: String = context.getSharedPreferences("echoscript_local_device", Context.MODE_PRIVATE).let { prefs -> prefs.getString("id", null) ?: uuid().also { check(prefs.edit().putString("id", it).commit()) } }
     init {
+      primitive = synchronized(KEY_LOCK) {
         val ks = KeyStore.getInstance("AndroidKeyStore").apply { load(null) }
+        val stored = File(context.filesDir, "EvidenceVault/streaming-keyset.v1.enc")
+        val legacy = context.getSharedPreferences("echoscript_keysets", Context.MODE_PRIVATE).getString("stream_keyset", null)
         if (!ks.containsAlias(ALIAS)) {
+            check(!stored.exists() && legacy == null && root.listFiles().isNullOrEmpty()) { "Master key is missing; existing evidence cannot be opened. Preserve the vault for recovery." }
             val generator = KeyGenerator.getInstance(KeyProperties.KEY_ALGORITHM_AES, "AndroidKeyStore")
             generator.init(KeyGenParameterSpec.Builder(ALIAS, KeyProperties.PURPOSE_ENCRYPT or KeyProperties.PURPOSE_DECRYPT)
                 .setKeySize(256).setBlockModes(KeyProperties.BLOCK_MODE_GCM).setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE).setRandomizedEncryptionRequired(true).build())
@@ -54,9 +63,31 @@ class EvidenceVault(private val context: Context) {
         }
         check(ks.getKey(ALIAS, null) != null) { "Android Keystore unavailable; vault cannot open" }
         StreamingAeadConfig.register()
-        val manager = AndroidKeysetManager.Builder().withSharedPref(context, "stream_keyset", "echoscript_keysets")
-            .withKeyTemplate(StreamingAeadKeyTemplates.AES256_GCM_HKDF_1MB).withMasterKeyUri("android-keystore://$ALIAS").build()
-        primitive = manager.keysetHandle.getPrimitive(StreamingAead::class.java)
+        val master = AndroidKeystoreKmsClient().getAead("android-keystore://$ALIAS")
+        val aad = "org.echoscript.vault.keyset/1".toByteArray(Charsets.UTF_8)
+        val handle = when {
+            stored.exists() -> {
+                check(stored.length() in 1..1048576) { "Invalid encrypted keyset length" }
+                TinkProtoKeysetFormat.parseEncryptedKeyset(stored.readBytes(), master, aad)
+            }
+            legacy != null -> {
+                check(legacy.length <= 2097152) { "Invalid legacy encrypted keyset" }
+                // Migrate only an authenticated encrypted keyset. No cleartext-read fallback.
+                TinkProtoKeysetFormat.parseEncryptedKeyset(Hex.decode(legacy), master, byteArrayOf())
+            }
+            else -> KeysetHandle.generateNew(StreamingAeadKeyTemplates.AES256_GCM_HKDF_1MB)
+        }
+        if (!stored.exists()) {
+            stored.parentFile!!.mkdirs(); val pending = File(stored.parentFile, ".${uuid()}.keyset-pending")
+            try {
+                val encrypted = TinkProtoKeysetFormat.serializeEncryptedKeyset(handle, master, aad)
+                FileOutputStream(pending).use { it.write(encrypted); it.fd.sync() }
+                FileOutputStream(pending, true).use { it.fd.sync() }
+                Files.move(pending.toPath(), stored.toPath(), StandardCopyOption.ATOMIC_MOVE)
+            } catch (failure: Exception) { pending.delete(); throw failure }
+        }
+        handle.getPrimitive(RegistryConfiguration.get(), StreamingAead::class.java)
+      }
     }
     private fun caseDir(caseId: String): File { require(ID.matches(caseId)); return File(root, caseId) }
     private fun associated(caseId: String, artifactId: String) = "$caseId:$artifactId".toByteArray(Charsets.UTF_8)

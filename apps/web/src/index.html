@@ -448,14 +448,28 @@
               id="export-password"
               type="password"
               autocomplete="new-password"
-            /><button id="download" class="primary">
-              Generate and download export
+            />
+            <label
+              ><input id="export-bundle" type="checkbox" checked /> Include
+              file, manifest, hashes and processing history in one ZIP download
+              (except complete case packages)</label
+            >
+            <button id="download" class="primary">
+              Generate export for review
+            </button>
+            <a id="save-export" class="button primary" hidden
+              >Save generated export</a
+            >
+            <button id="download-hash">
+              Save last export's SHA-256 checkpoint
             </button>
             <p id="export-result" class="hash"></p>
             <p class="muted">
-              Exports receive a SHA-256 sidecar. Processed WAV export also
-              downloads its processing-history sidecar. Convenience compressed
-              audio encoders are not included in this browser build.
+              Bundles contain an unencrypted derivative/document and timestamped
+              processing history, manifest and SHA-256 sidecars. Complete case
+              packages contain their own manifest and hashes. Save the package
+              checkpoint independently. Convenience compressed audio encoders
+              are not included in this browser build.
             </p>
           </div>
         </section>

@@ -1,3 +1,6 @@
+#save-export[hidden] {
+  display: none;
+}
 :root {
   font-family: Arial, Helvetica, sans-serif;
   color: #dce5e9;

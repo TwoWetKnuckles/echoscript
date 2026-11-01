@@ -77,6 +77,58 @@ export function processingHistory(manifest) {
     "Unsigned hash/audit consistency does not independently authenticate origin or legal admissibility.",
   ].join("\n");
 }
+/** One explicit download keeps the derivative and its sidecars together. */
+export function createExportBundle(manifest, file) {
+  if (
+    !(file.bytes instanceof Uint8Array) ||
+    !/^[A-Za-z0-9_.-]{1,200}$/.test(file.name) ||
+    file.name.includes("..")
+  )
+    throw Error("Unsafe export filename");
+  const timestamp = new Date().toISOString();
+  const stamp = timestamp.replaceAll(":", "");
+  const root = `EchoScript_Export/${manifest.caseId}_${stamp}/`;
+  const path =
+    root + (file.format === "wav" ? "audio/" : "documents/") + file.name;
+  const files = { [path]: file.bytes };
+  const historyPath = root + `changelog/processing_history_${stamp}.txt`;
+  files[historyPath] = strToU8(processingHistory(manifest));
+  files[root + "manifest/export_manifest.json"] = strToU8(
+    canonical({
+      schema: "org.echoscript.export/1",
+      caseId: manifest.caseId,
+      software: manifest.software,
+      sourceSha256: manifest.artifacts.find((a) => a.type === "SOURCE").sha256,
+      audioRevisionId: manifest.activeArtifact,
+      exportedAtUtc: timestamp,
+      file: {
+        path,
+        sha256: digest(file.bytes),
+        bytes: file.bytes.length,
+        format: file.format,
+        mime: file.mime,
+      },
+      processingHistory: {
+        path: historyPath,
+        sha256: digest(files[historyPath]),
+      },
+      auditHead: manifest.audit.at(-1).entryHash,
+      notice: REPORT_NOTICE,
+      confidentiality:
+        "Unencrypted derivative/report bundle; protect the export destination.",
+    }),
+  );
+  files[root + "hashes/SHA256SUMS.txt"] = strToU8(
+    Object.entries(files)
+      .map(([name, bytes]) => `${digest(bytes)}  ${name}`)
+      .join("\n") + "\n",
+  );
+  return {
+    bytes: zipSync(files, { level: 0 }),
+    name: `echoscript_${manifest.caseId}_${stamp}.zip`,
+    mime: "application/zip",
+  };
+}
 export function exportTranscript(t, format) {
   const data = rows(t),
     header = Object.keys(

@@ -24,6 +24,7 @@ import {
   exportTranscript,
   exportPdf,
   processingHistory,
+  createExportBundle,
 } from "../../../packages/exports/index.mjs";
 let c = null,
   audioId = null,
@@ -379,6 +380,7 @@ async function execute(action, data) {
   }
   if (action === "audioBytes") return { bytes: c.bytes(audioId) };
   if (action === "export") {
+    c.verify();
     let bytes, name, mime;
     if (data.format === "wav") {
       bytes = encodeWav(audio());
@@ -429,6 +431,20 @@ async function execute(action, data) {
       });
     }
     c.log("EXPORT", { name, sha256: digest(bytes), format: data.format });
+    if (data.bundle) {
+      const bundle = createExportBundle(c.manifest, {
+        bytes,
+        name,
+        mime,
+        format: data.format,
+      });
+      c.log("EXPORT_BUNDLE", {
+        name: bundle.name,
+        sha256: digest(bundle.bytes),
+        format: data.format,
+      });
+      return { ...bundle, sha256: digest(bundle.bytes) };
+    }
     return { bytes, name, mime, sha256: digest(bytes) };
   }
   if (action === "snapshot") return snapshot();

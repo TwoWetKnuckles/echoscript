@@ -4,6 +4,7 @@ import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
 import assert from "node:assert/strict";
+import { unzipSync } from "fflate";
 import { buildServer } from "../build/services/api/src/server.js";
 import { digest } from "../packages/evidence/index.mjs";
 const output = resolve("qa-output/local-provider");
@@ -185,6 +186,24 @@ try {
         assert.equal(digest(file.bytes), file.sha256);
         await writeFile(`${output}/run-${run}.${format}`, file.bytes);
       }
+      const bundle = await call("export", { format: "wav", bundle: true });
+      const bundleFiles = unzipSync(bundle.bytes);
+      const bundleManifest = JSON.parse(
+        new TextDecoder().decode(
+          bundleFiles[
+            Object.keys(bundleFiles).find((p) =>
+              p.endsWith("/manifest/export_manifest.json"),
+            )
+          ],
+        ),
+      );
+      assert.equal(bundleManifest.file.sha256, enhanced.sha256);
+      assert.equal(bundleManifest.sourceSha256, provenance.sha256);
+      assert.equal(
+        digest(bundleFiles[bundleManifest.file.path]),
+        enhanced.sha256,
+      );
+      await writeFile(`${output}/run-${run}-audio-bundle.zip`, bundle.bytes);
       const exported = await call("export", {
         format: "case",
         passphrase: "synthetic-QA-package-password",
