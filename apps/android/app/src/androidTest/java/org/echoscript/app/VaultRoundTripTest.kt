@@ -11,6 +11,17 @@ import java.util.zip.ZipInputStream
 @RunWith(AndroidJUnit4::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class VaultRoundTripTest {
+    @Test fun authenticatedDataSourceSupportsBoundedSeekAfterInitialization() {
+        val context = ApplicationProvider.getApplicationContext<Context>(); val vault = EvidenceVault(context)
+        val bytes = "SYNTHETIC TEST DATA — NOT EVIDENCE".toByteArray()
+        val m = vault.importSource(bytes.inputStream(), "synthetic.txt", "Synthetic seek", "TEST")
+        val source = VaultDataSource(vault, m.getString("caseId"), m.getJSONArray("artifacts").getJSONObject(0).getString("id"))
+        try {
+            assertEquals(6L, source.open(androidx.media3.datasource.DataSpec.Builder().setUri("echoscript://synthetic").setPosition(3).setLength(6).build()))
+            val read = ByteArray(20); assertEquals(6, source.read(read, 0, read.size)); assertArrayEquals(bytes.copyOfRange(3,9),read.copyOf(6))
+            assertEquals(androidx.media3.common.C.RESULT_END_OF_INPUT,source.read(read,0,read.size))
+        } finally { source.close() }
+    }
     @Test fun controlledSpeechPlaysFromAuthenticatedEncryptedSourceToEnd() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
         val context = ApplicationProvider.getApplicationContext<Context>(); val vault = EvidenceVault(context)

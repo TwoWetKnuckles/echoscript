@@ -42,7 +42,7 @@ class VaultModel(application: Application) : AndroidViewModel(application) {
     private var vault: EvidenceVault? = null
     var player: ExoPlayer? = null; private set
     init { viewModelScope.launch(Dispatchers.IO) { try { vault = EvidenceVault(application); val listing = vault!!.listCases(); mutable.value = VaultScreen(cases = listing.cases, recoveryWarnings = listing.warnings) } catch (_: Exception) { mutable.value = VaultScreen(message = "Keystore/vault could not open. Evidence keys may be unavailable; no plaintext fallback is used.") } } }
-    fun select(id: String) { mutable.value = mutable.value.copy(selected = id) }
+    fun select(id: String) { if (mutable.value.busy) return; stop(); mutable.value = mutable.value.copy(selected = id) }
     fun cancel() { cancelled.set(true) }
     private fun runJob(task: () -> String) {
         if (mutable.value.busy) return

@@ -15,6 +15,9 @@ class VaultDataSource(private val vault: EvidenceVault, private val caseId: Stri
         transferInitializing(dataSpec)
         val source = vault.seekable(caseId, artifactId)
         try {
+            // Tink selects/authenticates its decryption channel on the first read.
+            // size() is deliberately unavailable before that initialization.
+            check(source.read(ByteBuffer.allocate(1)) == 1) { "Evidence is empty or unavailable" }
             require(dataSpec.position <= source.size()) { "Playback position exceeds evidence length" }
             source.position(dataSpec.position)
             remaining = if (dataSpec.length == C.LENGTH_UNSET.toLong()) source.size() - dataSpec.position else minOf(dataSpec.length, source.size() - dataSpec.position)
