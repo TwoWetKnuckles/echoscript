@@ -4,9 +4,10 @@ node_modules/
 !.env.example
 local.properties
 .gradle/
+.kotlin/
 **/build/
 target/
-models/
+/models/
 qa-output/
 *.keystore
 *.jks

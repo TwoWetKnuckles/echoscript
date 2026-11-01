@@ -1,8 +1,15 @@
 import { build } from "esbuild";
-import { mkdir, writeFile, copyFile, cp } from "node:fs/promises";
+import { mkdir, writeFile, copyFile, cp, rm } from "node:fs/promises";
 import Ajv from "ajv";
 import standaloneCode from "ajv/dist/standalone/index.js";
 import schema from "../specs/json-schema/case.schema.json" with { type: "json" };
+// The worker must be reproducible in a fresh checkout, without downloaded weights.
+import modelInventory from "../specs/models/vosk-small-en-us-0.15.json" with { type: "json" };
+if (
+  modelInventory.files.length !== 14 ||
+  !/^[a-f0-9]{64}$/.test(modelInventory.archiveSha256)
+)
+  throw Error("Missing or invalid pinned speech-model inventory");
 const ajv = new Ajv({
   allErrors: true,
   strict: true,
@@ -13,8 +20,10 @@ await writeFile(
   "packages/evidence/schema-validator.cjs",
   standaloneCode(ajv, validator),
 );
-await mkdir("apps/web/dist", { recursive: true });
 if (process.argv.includes("--schema-only")) process.exit(0);
+await rm("apps/web/dist", { recursive: true, force: true });
+await rm("dist", { recursive: true, force: true });
+await mkdir("apps/web/dist", { recursive: true });
 await build({
   entryPoints: ["apps/web/src/main.mjs", "apps/web/src/processing.worker.mjs"],
   outdir: "apps/web/dist",
