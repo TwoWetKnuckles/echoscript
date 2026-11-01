@@ -21,6 +21,7 @@ import java.nio.file.Files
 import java.nio.file.StandardCopyOption
 import java.security.KeyStore
 import java.security.MessageDigest
+import java.security.DigestOutputStream
 import java.time.Instant
 import java.time.ZoneOffset
 import java.time.format.DateTimeFormatter
@@ -29,11 +30,12 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 import javax.crypto.KeyGenerator
 
+data class VaultListing(val cases: List<JSONObject>, val warnings: List<String>)
 class EvidenceVault(private val context: Context) {
     companion object {
         const val MAX_SOURCE_BYTES = 4L * 1024 * 1024 * 1024
         private const val ALIAS = "echoscript.vault.master.v1"
-        private val ID = Regex("^[0-9a-f-]{36}$")
+        private val ID = Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")
         fun sha(bytes: ByteArray): String = MessageDigest.getInstance("SHA-256").digest(bytes).joinToString("") { "%02x".format(it.toInt() and 255) }
         fun canonical(json: JSONObject): ByteArray = JsonCanonicalizer(json.toString()).encodedUTF8
         fun utc(): String = DateTimeFormatter.ofPattern("yyyy-MM-dd'T'HH:mm:ss.SSS'Z'").withZone(ZoneOffset.UTC).format(Instant.now())
@@ -112,7 +114,9 @@ class EvidenceVault(private val context: Context) {
         val file = File(caseDir(caseId), "manifests/${revision.toString().padStart(10, '0')}.enc")
         writeEncrypted(file, "$caseId:manifest:$revision".toByteArray(), canonical(manifest).inputStream(), 8L * 1024 * 1024, { false }, {})
     }
-    fun listCases(): List<JSONObject> = root.listFiles()?.filter { it.isDirectory && ID.matches(it.name) }?.mapNotNull { folder ->
+    fun listCases(): VaultListing {
+      val warnings = mutableListOf<String>()
+      val cases = root.listFiles()?.filter { it.isDirectory && ID.matches(it.name) }?.mapNotNull { folder ->
         val file = File(folder, "manifests").listFiles()?.filter { it.extension == "enc" }?.maxByOrNull { it.name } ?: return@mapNotNull null
         try {
             val revision = file.nameWithoutExtension.toInt()
@@ -121,11 +125,15 @@ class EvidenceVault(private val context: Context) {
                     val output = ByteArrayOutputStream(); val buffer = ByteArray(65536)
                     while (true) { val n = stream.read(buffer); if (n < 0) break; require(output.size() + n <= 8 * 1024 * 1024); output.write(buffer, 0, n) }
                     val bytes = output.toByteArray()
-                    JSONObject(bytes.toString(Charsets.UTF_8))
+                    val manifest = JSONObject(bytes.toString(Charsets.UTF_8))
+                    check(manifest.getString("caseId") == folder.name && manifest.getJSONArray("audit").length() == revision && canonical(manifest).contentEquals(bytes)) { "Snapshot metadata mismatch" }
+                    manifest
                 }
             }
-        } catch (_: Exception) { null }
-    }?.sortedByDescending { it.getString("createdAtUtc") } ?: emptyList()
+        } catch (_: Exception) { warnings.add("Case ${folder.name}: latest snapshot could not be authenticated or validated. No older snapshot was silently substituted. Preserve the vault for recovery."); null }
+      }?.sortedByDescending { it.getString("createdAtUtc") } ?: emptyList()
+      return VaultListing(cases, warnings)
+    }
     fun open(caseId: String, artifactId: String): InputStream {
         val physical = FileInputStream(encryptedFile(caseId, artifactId))
         try { return primitive.newDecryptingStream(physical, associated(caseId, artifactId)) }
@@ -138,30 +146,52 @@ class EvidenceVault(private val context: Context) {
     }
     @Synchronized
     fun verify(manifest: JSONObject): String {
+        check(manifest.getString("format") == "org.echoscript.case/1" && manifest.getInt("schemaVersion") == 1 && ID.matches(manifest.getString("caseId"))) { "Unsupported case manifest" }
         val chain = manifest.getJSONArray("audit"); var previous = "0".repeat(64)
+        val commitments = mutableMapOf<String,String>()
         for (i in 0 until chain.length()) {
             val entry = JSONObject(chain.getJSONObject(i).toString()); val expected = entry.getString("entryHash"); entry.remove("entryHash")
             check(entry.getInt("seq") == i + 1 && entry.getString("prevHash") == previous && sha(canonical(entry)) == expected) { "Audit linkage mismatch" }; previous = expected
+            if (entry.getString("action") == "ARTIFACT_COMMIT") { val details = entry.getJSONObject("details"); val id = details.getString("artifactId"); check(!commitments.containsKey(id)) { "Duplicate artifact commitment" }; commitments[id] = details.getString("sha256") }
         }
         val artifacts = manifest.getJSONArray("artifacts")
+        check(artifacts.length() in 1..10000) { "Invalid artifact inventory" }
+        val seen = mutableSetOf<String>(); var sources = 0
         for (i in 0 until artifacts.length()) {
             val artifact = artifacts.getJSONObject(i); val hash = MessageDigest.getInstance("SHA-256"); var count = 0L
+            val id = artifact.getString("id"); val parents = artifact.getJSONArray("parents"); val parentIds = (0 until parents.length()).map { parents.getString(it) }
+            check(ID.matches(id) && id !in seen && artifact.getString("caseId") == manifest.getString("caseId") && artifact.getString("path") == "artifacts/$id" && artifact.getInt("revision") == i + 1) { "Artifact identifier/revision mismatch" }
+            check(parentIds.distinct().size == parentIds.size && parentIds.all { it in seen }) { "Invalid provenance parent" }
+            if (artifact.getString("type") == "SOURCE") { sources++; check(parentIds.isEmpty()) { "Source must not have parents" } } else check(parentIds.isNotEmpty()) { "Derivative lacks a parent" }
+            check(commitments[id] == artifact.getString("sha256")) { "Missing artifact audit commitment" }
             open(manifest.getString("caseId"), artifact.getString("id")).use { stream -> val buffer = ByteArray(65536); while (true) { val n = stream.read(buffer); if (n < 0) break; hash.update(buffer, 0, n); count += n } }
             check(hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) } == artifact.getString("sha256") && count == artifact.getLong("bytes")) { "Artifact integrity mismatch" }
+            seen.add(id)
         }
+        check(sources == 1 && manifest.getString("activeArtifact") in seen) { "Source or active artifact invariant failed" }
         return "Source hashes, authenticated decryption and audit linkage agree. Signatures and external authenticity are not verified."
     }
     @Synchronized
-    fun exportPackage(manifest: JSONObject, destination: OutputStream, actor: String) {
+    fun recordEvent(manifest: JSONObject, actor: String, action: String, details: JSONObject) {
+        require(actor.isNotBlank() && actor.length <= 128 && actor.none { it.code < 32 })
+        require(action in setOf("PLAYBACK_REQUEST", "VERIFICATION", "ANNOTATION", "BOOKMARK"))
+        appendAudit(manifest, actor, action, details); saveSnapshot(manifest)
+    }
+    @Synchronized
+    fun exportPackage(manifest: JSONObject, destination: OutputStream, actor: String): String {
+        require(actor.isNotBlank() && actor.length <= 128 && actor.none { it.code < 32 })
         verify(manifest); appendAudit(manifest, actor, "EXPORT_PREPARE", JSONObject().put("format", "org.echoscript.case/1")); saveSnapshot(manifest)
         val bytes = canonical(manifest); val sums = StringBuilder(); val caseId = manifest.getString("caseId")
-        ZipOutputStream(destination).use { zip ->
+        val packageDigest = MessageDigest.getInstance("SHA-256")
+        ZipOutputStream(DigestOutputStream(destination, packageDigest)).use { zip ->
             zip.setLevel(0); val artifacts = manifest.getJSONArray("artifacts")
             for (i in 0 until artifacts.length()) { val a = artifacts.getJSONObject(i); zip.putNextEntry(ZipEntry(a.getString("path"))); open(caseId, a.getString("id")).use { it.copyTo(zip, 65536) }; zip.closeEntry(); sums.append(a.getString("sha256")).append("  ").append(a.getString("path")).append('\n') }
             zip.putNextEntry(ZipEntry("manifest.json")); zip.write(bytes); zip.closeEntry(); sums.append(sha(bytes)).append("  manifest.json\n")
             zip.putNextEntry(ZipEntry("SHA256SUMS.txt")); zip.write(sums.toString().toByteArray()); zip.closeEntry()
             zip.putNextEntry(ZipEntry("README.txt")); zip.write("EchoScript case format 1. This package is unencrypted and unsigned. Preserve its SHA-256 independently. Technical integrity does not establish legal admissibility.\n".toByteArray()); zip.closeEntry()
         }
-        appendAudit(manifest, actor, "EXPORT_COMPLETE", JSONObject().put("format", "org.echoscript.case/1")); saveSnapshot(manifest)
+        val packageHash = packageDigest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
+        appendAudit(manifest, actor, "EXPORT_COMPLETE", JSONObject().put("format", "org.echoscript.case/1").put("packageSha256", packageHash)); saveSnapshot(manifest)
+        return packageHash
     }
 }

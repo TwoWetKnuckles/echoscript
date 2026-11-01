@@ -1,0 +1,168 @@
+{
+  "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+  "consecutive": 7,
+  "results": [
+    {
+      "run": 1,
+      "result": "PASS",
+      "consecutive": 1,
+      "durationMs": 3303,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "87d0300053ce356c45eff2f848cd0e60e8100a810fe2b2e618f4b65a9417355a",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 195538944
+    },
+    {
+      "run": 2,
+      "result": "PASS",
+      "consecutive": 2,
+      "durationMs": 3055,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "df0eadf95217c78433ad2cb212d499e215cd1127f2ae7685087007df20c69e48",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 233103360
+    },
+    {
+      "run": 3,
+      "result": "PASS",
+      "consecutive": 3,
+      "durationMs": 3097,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "9f92d118bd456dce7a7b7de76092362501fb3f0ab230d328a8d9af1414843edb",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 237424640
+    },
+    {
+      "run": 4,
+      "result": "PASS",
+      "consecutive": 4,
+      "durationMs": 2949,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "6f91305608ab7771782bb210d7814f864e831a5863424c0b697ca3c07bb3defc",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 235302912
+    },
+    {
+      "run": 5,
+      "result": "PASS",
+      "consecutive": 5,
+      "durationMs": 2998,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "f573e2d4c8ba86b06f3b1e819e0cde7dc8e5bd6211bf6dac63874d7c1cb48e86",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 234713088
+    },
+    {
+      "run": 6,
+      "result": "PASS",
+      "consecutive": 6,
+      "durationMs": 2953,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "2336aad8184b67046d603db297b3d8a281e6aba7aecf49303efee9269d685aa4",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 258916352
+    },
+    {
+      "run": 7,
+      "result": "PASS",
+      "consecutive": 7,
+      "durationMs": 3341,
+      "wordErrorRate": 0,
+      "sourceHash": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+      "renderedHash": "14eec0d537abef18a0053b1367f0d81d82189189d41daf875bedd8b812deeb0f",
+      "packageHash": "9470323ebf91daeb4d8e2625b2c79aa577b324da5e81d2c441fb575e33d063dd",
+      "scope": "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+      "transport": "REAL_LOOPBACK_HTTP",
+      "diarization": "NOT_IMPLEMENTED",
+      "androidDeviceWorkflow": "NOT_EXECUTED",
+      "rssBytes": 277286912
+    }
+  ],
+  "resourceSamples": [
+    {
+      "run": 1,
+      "heapUsed": 16919240,
+      "rss": 184815616,
+      "descriptors": 24
+    },
+    {
+      "run": 2,
+      "heapUsed": 17125864,
+      "rss": 222597120,
+      "descriptors": 24
+    },
+    {
+      "run": 3,
+      "heapUsed": 17306472,
+      "rss": 226869248,
+      "descriptors": 24
+    },
+    {
+      "run": 4,
+      "heapUsed": 17387720,
+      "rss": 223711232,
+      "descriptors": 24
+    },
+    {
+      "run": 5,
+      "heapUsed": 18141184,
+      "rss": 226111488,
+      "descriptors": 24
+    },
+    {
+      "run": 6,
+      "heapUsed": 17973784,
+      "rss": 248324096,
+      "descriptors": 24
+    },
+    {
+      "run": 7,
+      "heapUsed": 18012792,
+      "rss": 266661888,
+      "descriptors": 24
+    }
+  ],
+  "resourceThresholds": {
+    "heapMiB": 64,
+    "rssMiB": 512,
+    "descriptorsAboveBaseline": 4
+  },
+  "fullApplicationBetaGate": "NOT PASSED",
+  "remainingMandatory": [
+    "Android/device full workflow",
+    "speaker diarization",
+    "large cases and recovery",
+    "qualified external provider path when configured",
+    "complete authentication/sync and security release review"
+  ]
+}

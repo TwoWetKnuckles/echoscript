@@ -33,7 +33,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
-data class VaultScreen(val cases: List<JSONObject> = emptyList(), val selected: String? = null, val busy: Boolean = false, val bytes: Long = 0, val message: String = "Encrypted local vault. Import a non-sensitive test file.")
+data class VaultScreen(val cases: List<JSONObject> = emptyList(), val selected: String? = null, val busy: Boolean = false, val bytes: Long = 0, val message: String = "Encrypted local vault. Import a non-sensitive test file.", val recoveryWarnings: List<String> = emptyList())
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
 class VaultModel(application: Application) : AndroidViewModel(application) {
     private val mutable = MutableStateFlow(VaultScreen())
@@ -41,14 +41,14 @@ class VaultModel(application: Application) : AndroidViewModel(application) {
     private val cancelled = AtomicBoolean(false)
     private var vault: EvidenceVault? = null
     var player: ExoPlayer? = null; private set
-    init { viewModelScope.launch(Dispatchers.IO) { try { vault = EvidenceVault(application); mutable.value = VaultScreen(cases = vault!!.listCases()) } catch (_: Exception) { mutable.value = VaultScreen(message = "Keystore/vault could not open. Evidence keys may be unavailable; no plaintext fallback is used.") } } }
+    init { viewModelScope.launch(Dispatchers.IO) { try { vault = EvidenceVault(application); val listing = vault!!.listCases(); mutable.value = VaultScreen(cases = listing.cases, recoveryWarnings = listing.warnings) } catch (_: Exception) { mutable.value = VaultScreen(message = "Keystore/vault could not open. Evidence keys may be unavailable; no plaintext fallback is used.") } } }
     fun select(id: String) { mutable.value = mutable.value.copy(selected = id) }
     fun cancel() { cancelled.set(true) }
     private fun runJob(task: () -> String) {
         if (mutable.value.busy) return
         cancelled.set(false); mutable.value = mutable.value.copy(busy = true, bytes = 0)
         viewModelScope.launch(Dispatchers.IO) {
-            try { val result = task(); mutable.value = mutable.value.copy(cases = vault!!.listCases(), message = result) }
+            try { val result = task(); val listing = vault!!.listCases(); mutable.value = mutable.value.copy(cases = listing.cases, recoveryWarnings = listing.warnings, message = result) }
             catch (failure: Exception) { mutable.value = mutable.value.copy(message = failure.message ?: "Operation failed; original evidence was not overwritten.") }
             finally { mutable.value = mutable.value.copy(busy = false) }
         }
@@ -61,10 +61,10 @@ class VaultModel(application: Application) : AndroidViewModel(application) {
         "Imported, SHA-256 hashed and encrypted. Source: " + manifest.getJSONArray("artifacts").getJSONObject(0).getString("sha256")
     }
     private fun selected(): JSONObject = mutable.value.cases.firstOrNull { it.getString("caseId") == mutable.value.selected }?.let { JSONObject(it.toString()) } ?: error("Select a case")
-    fun verify() = runJob { vault!!.verify(selected()) }
+    fun verify(actor: String) = runJob { val m = selected(); val result = vault!!.verify(m); vault!!.recordEvent(m, actor, "VERIFICATION", JSONObject().put("result", "PASS")); result }
     fun export(uri: Uri, actor: String) = runJob {
-        val manifest = selected(); getApplication<Application>().contentResolver.openOutputStream(uri, "w")!!.use { vault!!.exportPackage(manifest, it, actor) }
-        "Case package exported. It is unencrypted and unsigned; store it in a secure location and verify independently."
+        val manifest = selected(); val hash = getApplication<Application>().contentResolver.openOutputStream(uri, "w")!!.use { vault!!.exportPackage(manifest, it, actor) }
+        "Case package exported. It is unencrypted and unsigned; store it securely. Package SHA-256: $hash"
     }
     fun play(onError: (String) -> Unit) {
         try {
@@ -104,6 +104,7 @@ fun VaultApp(model: VaultModel = viewModel()) {
             Text("Air-gapped mode — no external transcription performed.", color = MaterialTheme.colorScheme.primary)
             Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) { for (name in listOf("Cases", "Acquire", "Audit", "Export")) TextButton(onClick = { tab = name }) { Text(name) } }
             Text(screen.message, style = MaterialTheme.typography.bodyMedium)
+            for (warning in screen.recoveryWarnings) Text(warning, color = MaterialTheme.colorScheme.error)
             if (screen.busy) { LinearProgressIndicator(Modifier.fillMaxWidth()); Text("Processed ${screen.bytes} bytes"); OutlinedButton(onClick = model::cancel) { Text("Cancel acquisition") } }
             when (tab) {
                 "Acquire" -> {
@@ -122,7 +123,7 @@ fun VaultApp(model: VaultModel = viewModel()) {
                     if (playerMessage.isNotBlank()) Text(playerMessage)
                 }
                 "Audit" -> {
-                    Button(onClick = model::verify, enabled = screen.selected != null && !screen.busy) { Text("Verify complete source and audit chain") }
+                    Button(onClick = { model.verify(actor) }, enabled = screen.selected != null && !screen.busy) { Text("Verify complete source and audit chain") }
                     screen.cases.firstOrNull { it.getString("caseId") == screen.selected }?.let { Text(it.toString(2), style = MaterialTheme.typography.bodySmall) }
                 }
                 "Export" -> {

@@ -1,5 +1,5 @@
 import { Worker } from "node:worker_threads";
-import { readFile, writeFile, mkdir } from "node:fs/promises";
+import { readFile, writeFile, mkdir, readdir } from "node:fs/promises";
 import { randomBytes } from "node:crypto";
 import { spawnSync } from "node:child_process";
 import { resolve } from "node:path";
@@ -31,6 +31,9 @@ const apiOrigin = await app.listen({ host: "127.0.0.1", port: 0 });
 const results = [],
   renderedHashes = [];
 let consecutive = 0;
+const baselineFd =
+  process.platform === "linux" ? (await readdir("/proc/self/fd")).length : null;
+const resourceSamples = [];
 function errorRate(reference, hypothesis) {
   const a = reference.split(/\s+/),
     b = hypothesis.split(/\s+/),
@@ -264,6 +267,15 @@ try {
       for (const job of jobs.values()) clearTimeout(job.timeout);
       await worker.terminate();
       globalThis.gc?.();
+      const memory = process.memoryUsage();
+      const descriptors =
+        baselineFd === null ? null : (await readdir("/proc/self/fd")).length;
+      resourceSamples.push({
+        run,
+        heapUsed: memory.heapUsed,
+        rss: memory.rss,
+        descriptors,
+      });
     }
   }
   assert.equal(
@@ -271,6 +283,19 @@ try {
     1,
     "Deterministic enhanced renders differ between runs",
   );
+  assert.ok(
+    resourceSamples.every((s) => s.heapUsed <= 64 * 1024 ** 2),
+    "Post-worker heap exceeds the 64 MiB QA threshold",
+  );
+  assert.ok(
+    resourceSamples.every((s) => s.rss <= 512 * 1024 ** 2),
+    "Process RSS exceeds the 512 MiB QA threshold",
+  );
+  if (baselineFd !== null)
+    assert.ok(
+      resourceSamples.every((s) => s.descriptors <= baselineFd + 4),
+      "File descriptor growth exceeds QA threshold",
+    );
 } catch (error) {
   process.stderr.write("Local workflow failed: " + error.message + "\n");
   process.exitCode = 1;
@@ -283,6 +308,12 @@ try {
         scope: "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
         consecutive,
         results,
+        resourceSamples,
+        resourceThresholds: {
+          heapMiB: 64,
+          rssMiB: 512,
+          descriptorsAboveBaseline: 4,
+        },
         fullApplicationBetaGate: "NOT PASSED",
         remainingMandatory: [
           "Android/device full workflow",

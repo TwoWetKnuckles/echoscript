@@ -18,6 +18,7 @@ import {
 import {
   normalizeVosk,
   reviseTranscript,
+  validateTranscript,
 } from "../../../packages/evidence/transcript.mjs";
 import {
   exportTranscript,
@@ -85,6 +86,34 @@ function snapshot() {
     verification: c.verify(),
   };
 }
+function commitAnalysis(info) {
+  const node = c.add(
+    jsonBytes({
+      schema: "org.echoscript.analysis/1",
+      inputArtifactId: audioId,
+      parameters: info.analysis.parameters,
+      events: info.analysis.events,
+      meters: info.audio.meters,
+      warning:
+        "Automatic speech-event candidates require independent examination.",
+    }),
+    {
+      type: "ANALYSIS",
+      parents: [audioId],
+      name: "Reproducible audio analysis",
+      operation: op(
+        "fft-hann-and-conservative-event-analysis",
+        info.analysis.parameters,
+      ),
+    },
+  );
+  c.log("ANALYSIS", {
+    artifactId: audioId,
+    analysisArtifactId: node.id,
+    parameters: info.analysis.parameters,
+    eventCount: info.analysis.events.length,
+  });
+}
 async function execute(action, data) {
   if (action === "import") {
     if (data.bytes.length > 16 * 1024 * 1024)
@@ -117,11 +146,7 @@ async function execute(action, data) {
     profile = null;
     redo = [];
     const info = snapshot();
-    c.log("ANALYSIS", {
-      artifactId: audioId,
-      parameters: info.analysis.parameters,
-      eventCount: info.analysis.events.length,
-    });
+    commitAnalysis(info);
     return snapshot();
   }
   if (action === "importPackage") {
@@ -137,16 +162,20 @@ async function execute(action, data) {
     const id = available.some((a) => a.id === m.activeArtifact)
       ? m.activeArtifact
       : available.at(-1).id;
-    decodeWav(next.bytes(id));
-    c = next;
-    audioId = id;
-    transcriptId =
+    const pcm = decodeWav(next.bytes(id));
+    const nextTranscriptId =
       m.artifacts
         .filter((a) =>
           ["NORMALIZED_TRANSCRIPT", "HUMAN_TRANSCRIPT"].includes(a.type),
         )
         .at(-1)?.id || null;
-    transcript = transcriptId ? safeJson(c.bytes(transcriptId)) : null;
+    const nextTranscript = nextTranscriptId
+      ? validateTranscript(safeJson(next.bytes(nextTranscriptId)), pcm.duration)
+      : null;
+    c = next;
+    audioId = id;
+    transcriptId = nextTranscriptId;
+    transcript = nextTranscript;
     redo = [];
     return snapshot();
   }
@@ -157,9 +186,12 @@ async function execute(action, data) {
     const pcm = audio(),
       result = render(pcm, data.graph, data.selections);
     const parent = audioId;
+    const analysisParent = c.manifest.artifacts.findLast(
+      (a) => a.type === "ANALYSIS" && a.parents.includes(parent),
+    );
     const a = c.add(encodeWav(result.pcm), {
       type: "ENHANCED_AUDIO",
-      parents: [parent],
+      parents: [parent, ...(analysisParent ? [analysisParent.id] : [])],
       name: "Enhanced PCM16 WAV",
       operation: op(result.algorithm, {
         graph: result.graph,
@@ -173,6 +205,7 @@ async function execute(action, data) {
     c.log("ENHANCEMENT_RENDER", { artifactId: a.id, parent });
     audioId = a.id;
     redo = [];
+    commitAnalysis(snapshot());
     return snapshot();
   }
   if (action === "selectRevision") {
@@ -184,6 +217,7 @@ async function execute(action, data) {
     if (!a) throw Error("Not an audio revision");
     decodeWav(c.bytes(a.id));
     audioId = a.id;
+    redo = [];
     c.activate(audioId, "REVISION_ACTIVATE");
     return snapshot();
   }
@@ -247,26 +281,33 @@ async function execute(action, data) {
   }
   if (action === "providerResult") {
     const parsed = safeJson(data.bytes);
+    const transmission = c.manifest.artifacts.find(
+      (a) =>
+        a.id === data.transmissionId && a.type === "TRANSCRIPTION_TRANSMISSION",
+    );
+    if (!transmission || transmission.sha256 !== data.transmissionHash)
+      throw Error("Provider result transmission binding mismatch");
     const raw = c.add(data.bytes, {
       type: "RAW_PROVIDER_RESULT",
       parents: [data.transmissionId],
       name: "Exact local Vosk result",
       operation: op("vosk-local", { model: "vosk-model-small-en-us-0.15" }),
     });
-    transcript = normalizeVosk(parsed, {
+    const nextTranscript = normalizeVosk(parsed, {
       duration: audio().duration,
       events,
       transmissionHash: data.transmissionHash,
     });
-    const normalized = c.add(jsonBytes(transcript), {
+    const normalized = c.add(jsonBytes(nextTranscript), {
       type: "NORMALIZED_TRANSCRIPT",
       parents: [raw.id, data.transmissionId],
       name: "AI transcript draft",
       operation: op("vosk-normalization", {
         provider: "vosk-local",
-        model: transcript.model,
+        model: nextTranscript.model,
       }),
     });
+    transcript = nextTranscript;
     transcriptId = normalized.id;
     c.log("TRANSCRIPTION_RESULT", {
       rawArtifactId: raw.id,

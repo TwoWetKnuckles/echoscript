@@ -16,8 +16,11 @@ export const xml = (s) =>
       })[c],
   );
 export function time(s, separator = ".") {
-  const ms = Math.max(0, Math.round(s * 1000));
+  if (!Number.isFinite(s)) throw Error("Invalid timestamp");
+  const sign = s < 0 ? "-" : "";
+  const ms = Math.round(Math.abs(s) * 1000);
   return (
+    sign +
     [
       Math.floor(ms / 3600000),
       Math.floor(ms / 60000) % 60,
@@ -125,6 +128,18 @@ export function exportTranscript(t, format) {
       `<!doctype html><html lang="en"><meta charset="utf-8"><title>EchoScript transcript</title><h1>Transcript</h1><p>${xml(REPORT_NOTICE)}</p><p>${xml(t.state)} · ${xml(t.provider)} · ${xml(t.model)}</p><table><thead><tr>${header.map((k) => `<th>${xml(k)}</th>`).join("")}</tr></thead><tbody>${data.map((r) => `<tr>${header.map((k) => `<td>${xml(r[k])}</td>`).join("")}</tr>`).join("")}</tbody></table></html>`,
     );
   if (format === "srt" || format === "vtt") {
+    if (
+      t.segments.some(
+        (s) =>
+          s.start < 0 ||
+          s.end <= s.start ||
+          s.flags.includes("OUT_OF_RANGE") ||
+          s.flags.includes("TIMESTAMP_ANOMALY"),
+      )
+    )
+      throw Error(
+        "Subtitle export requires examiner-corrected valid timestamps; original anomalies remain in JSON",
+      );
     const vtt = format === "vtt";
     return strToU8(
       (vtt ? "WEBVTT\n\n" : "") +
@@ -137,6 +152,16 @@ export function exportTranscript(t, format) {
     );
   }
   if (format === "ctm") {
+    if (
+      t.segments.some(
+        (s) =>
+          s.flags.includes("OUT_OF_RANGE") ||
+          s.flags.includes("TIMESTAMP_ANOMALY"),
+      )
+    )
+      throw Error(
+        "CTM requires valid provider word alignment without timestamp anomalies",
+      );
     if (t.segments.some((s) => s.text.trim() && !s.words?.length))
       throw Error(
         "CTM requires provider-supported word alignment for every exported segment",
