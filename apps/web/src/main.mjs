@@ -68,6 +68,22 @@ function route() {
   $("breadcrumb").textContent =
     "Workspace / " + page.id[0].toUpperCase() + page.id.slice(1);
   document.title = "EchoScript · " + page.id;
+  if (page.id === "audit" && state) {
+    const caseId = state.manifest.caseId;
+    call("auditSnapshot")
+      .then((next) => {
+        if (state?.manifest.caseId !== caseId) return;
+        state = {
+          ...state,
+          manifest: next.manifest,
+          verification: next.verification,
+        };
+        $("audit-log").textContent = processingHistory(next.manifest);
+        $("verification").textContent =
+          `Hash/provenance/audit consistency: PASS · ${next.verification.artifacts} artifacts · ${next.verification.auditEntries} audit entries · signatures not implemented`;
+      })
+      .catch((error) => message(error.message, true));
+  }
 }
 document.querySelector(".skip").onclick = (e) => {
   e.preventDefault();

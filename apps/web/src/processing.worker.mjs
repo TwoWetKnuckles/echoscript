@@ -151,6 +151,8 @@ async function execute(action, data) {
     return snapshot();
   }
   if (!c) throw Error("Import or open a case first");
+  if (action === "auditSnapshot")
+    return { manifest: c.manifest, verification: c.verify() };
   if (action === "render") {
     const pcm = audio(),
       result = render(pcm, data.graph, data.selections);

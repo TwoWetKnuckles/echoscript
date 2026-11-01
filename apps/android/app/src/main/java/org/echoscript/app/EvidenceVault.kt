@@ -116,16 +116,26 @@ class EvidenceVault(private val context: Context) {
         val file = File(folder, "manifests").listFiles()?.filter { it.extension == "enc" }?.maxByOrNull { it.name } ?: return@mapNotNull null
         try {
             val revision = file.nameWithoutExtension.toInt()
-            primitive.newDecryptingStream(FileInputStream(file), "${folder.name}:manifest:$revision".toByteArray()).use { stream ->
-                val output = ByteArrayOutputStream(); val buffer = ByteArray(65536)
-                while (true) { val n = stream.read(buffer); if (n < 0) break; require(output.size() + n <= 8 * 1024 * 1024); output.write(buffer, 0, n) }
-                val bytes = output.toByteArray()
-                JSONObject(bytes.toString(Charsets.UTF_8))
+            FileInputStream(file).use { physical ->
+                primitive.newDecryptingStream(physical, "${folder.name}:manifest:$revision".toByteArray()).use { stream ->
+                    val output = ByteArrayOutputStream(); val buffer = ByteArray(65536)
+                    while (true) { val n = stream.read(buffer); if (n < 0) break; require(output.size() + n <= 8 * 1024 * 1024); output.write(buffer, 0, n) }
+                    val bytes = output.toByteArray()
+                    JSONObject(bytes.toString(Charsets.UTF_8))
+                }
             }
         } catch (_: Exception) { null }
     }?.sortedByDescending { it.getString("createdAtUtc") } ?: emptyList()
-    fun open(caseId: String, artifactId: String): InputStream = primitive.newDecryptingStream(FileInputStream(encryptedFile(caseId, artifactId)), associated(caseId, artifactId))
-    fun seekable(caseId: String, artifactId: String): SeekableByteChannel = primitive.newSeekableDecryptingChannel(Files.newByteChannel(encryptedFile(caseId, artifactId).toPath()), associated(caseId, artifactId))
+    fun open(caseId: String, artifactId: String): InputStream {
+        val physical = FileInputStream(encryptedFile(caseId, artifactId))
+        try { return primitive.newDecryptingStream(physical, associated(caseId, artifactId)) }
+        catch (failure: Exception) { physical.close(); throw failure }
+    }
+    fun seekable(caseId: String, artifactId: String): SeekableByteChannel {
+        val physical = Files.newByteChannel(encryptedFile(caseId, artifactId).toPath())
+        try { return primitive.newSeekableDecryptingChannel(physical, associated(caseId, artifactId)) }
+        catch (failure: Exception) { physical.close(); throw failure }
+    }
     @Synchronized
     fun verify(manifest: JSONObject): String {
         val chain = manifest.getJSONArray("audit"); var previous = "0".repeat(64)

@@ -27,6 +27,7 @@ const app = buildServer({
     process.env.VOSK_MODEL_PATH || "models/vosk-model-small-en-us-0.15",
   ),
 });
+const apiOrigin = await app.listen({ host: "127.0.0.1", port: 0 });
 const results = [],
   renderedHashes = [];
 let consecutive = 0;
@@ -104,31 +105,32 @@ try {
         duration: transmission.duration,
         approved: true,
       });
-      const consent = await app.inject({
+      const consent = await fetch(apiOrigin + "/v1/consents", {
         method: "POST",
-        url: "/v1/consents",
-        headers,
-        payload: {
+        headers: { ...headers, "Content-Type": "application/json" },
+        body: JSON.stringify({
           artifactHash: transmission.artifact.sha256,
           duration: transmission.duration,
           approved: true,
           provider: "vosk-local",
-        },
+        }),
+        signal: AbortSignal.timeout(90000),
       });
-      assert.equal(consent.statusCode, 200);
-      const response = await app.inject({
+      assert.equal(consent.status, 200);
+      const consentBody = await consent.json();
+      const response = await fetch(apiOrigin + "/v1/transcriptions", {
         method: "POST",
-        url: "/v1/transcriptions",
         headers: {
           ...headers,
           "content-type": "audio/wav",
-          "x-consent-id": consent.json().consentId,
+          "x-consent-id": consentBody.consentId,
         },
-        payload: Buffer.from(transmission.bytes),
+        body: transmission.bytes,
+        signal: AbortSignal.timeout(90000),
       });
-      assert.equal(response.statusCode, 200, response.body);
+      assert.equal(response.status, 200);
       s = await call("providerResult", {
-        bytes: new Uint8Array(response.rawPayload),
+        bytes: new Uint8Array(await response.arrayBuffer()),
         transmissionId: transmission.artifact.id,
         transmissionHash: transmission.artifact.sha256,
       });
@@ -221,17 +223,21 @@ try {
           assert.equal(check.status, 0, check.stderr);
       }
       const native = spawnSync(
-        "python3",
+        process.env.DOC_PYTHON || "python3",
         [
           "-c",
-          "import sys;from docx import Document;from openpyxl import load_workbook;assert len(Document(sys.argv[1]).paragraphs)>1;assert load_workbook(sys.argv[2]).active.max_row>1",
+          "import sys;from docx import Document;from openpyxl import load_workbook;from pypdf import PdfReader;assert len(Document(sys.argv[1]).paragraphs)>1;assert load_workbook(sys.argv[2]).active.max_row>1;assert len(PdfReader(sys.argv[3],strict=True).pages)>0",
           `${output}/run-${run}.docx`,
           `${output}/run-${run}.xlsx`,
+          `${output}/run-${run}.pdf`,
         ],
         { encoding: "utf8", timeout: 10000 },
       );
-      if (!native.stderr?.includes("ModuleNotFoundError"))
-        assert.equal(native.status, 0, native.stderr);
+      assert.equal(
+        native.status,
+        0,
+        native.stderr || "Native document validation toolchain is required",
+      );
       consecutive++;
       const result = {
         run,
@@ -243,6 +249,7 @@ try {
         renderedHash: enhanced.sha256,
         packageHash: exported.sha256,
         scope: "LOCAL_WEB_ENGINE_WITH_REAL_VOSK_API",
+        transport: "REAL_LOOPBACK_HTTP",
         diarization: "NOT_IMPLEMENTED",
         androidDeviceWorkflow: "NOT_EXECUTED",
         rssBytes: process.memoryUsage().rss,

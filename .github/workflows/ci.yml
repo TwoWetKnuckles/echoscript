@@ -31,11 +31,19 @@ jobs:
         run: |
           python -m venv .venv
           .venv/bin/pip install -r services/api/requirements.txt
+          .venv/bin/pip install -r services/api/qa-requirements.txt
           python scripts/setup-model.py
+      - name: Diagnose local decoder with controlled synthetic fixture
+        env:
+          VOSK_MODEL_PATH: ${{ github.workspace }}/models/vosk-model-small-en-us-0.15
+        run: |
+          mkdir -p qa-output/local-provider
+          .venv/bin/python services/api/vosk_worker.py < specs/fixtures/synthetic-speech.wav > qa-output/local-provider/synthetic-provider-preflight.json
       - name: Seven local engine/provider workflows (not the full application beta gate)
         env:
           VOSK_PYTHON: ${{ github.workspace }}/.venv/bin/python
           VOSK_MODEL_PATH: ${{ github.workspace }}/models/vosk-model-small-en-us-0.15
+          DOC_PYTHON: ${{ github.workspace }}/.venv/bin/python
         run: node --expose-gc tools/qa-local.mjs
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
