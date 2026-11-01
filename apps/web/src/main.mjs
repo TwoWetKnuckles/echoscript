@@ -100,6 +100,22 @@ function save(bytes, name, mime = "application/octet-stream") {
   setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 async function refresh(next, replaceAudio = true) {
+  if (state?.manifest.caseId !== next.manifest.caseId) {
+    regions = [];
+    profile = null;
+    pendingTransmission = null;
+    requestAbort?.abort();
+    $("regions").textContent =
+      "No regions selected: processing applies to the whole recording.";
+    $("selection-start").value = 0;
+    $("selection-end").value = Math.min(1, next.audio.duration);
+    $("view-start").value = 0;
+    $("view-duration").value = Math.min(10, next.audio.duration);
+    $("human-verified").checked = false;
+    $("transcript-search").value = "";
+    $("transcript-filter").value = "all";
+    $("annotation").value = "";
+  }
   state = next;
   const m = state.manifest;
   $("case-summary").textContent =
@@ -169,8 +185,6 @@ async function ingest(bytes, name, title, actor) {
   message(
     "Hashing original bytes, decoding and analyzing in the audio worker…",
   );
-  regions = [];
-  profile = null;
   await refresh(await call("import", { bytes, name, title, actor }));
   location.hash = "analyze";
 }

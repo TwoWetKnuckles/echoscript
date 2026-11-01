@@ -117,9 +117,7 @@ jobs:
           working-directory: apps/android
           script: |
             ./gradlew :app:connectedDebugAndroidTest --no-daemon
-            mkdir -p ../../qa-output/native-${{ matrix.api }}
-            adb exec-out run-as org.echoscript.app cat cache/synthetic-native.echocase > ../../qa-output/native-${{ matrix.api }}/synthetic-native.echocase
-            cd ../.. && node tools/case-verify/index.mjs qa-output/native-${{ matrix.api }}/synthetic-native.echocase
+            cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -127,6 +125,7 @@ jobs:
           path: |
             apps/android/app/build/reports/androidTests/
             apps/android/app/build/outputs/androidTest-results/
+            apps/android/app/build/outputs/connected_android_test_additional_output/
           retention-days: 1
   desktop-streaming-stress:
     runs-on: ubuntu-24.04

@@ -176,6 +176,7 @@ async function execute(action, data) {
     audioId = id;
     transcriptId = nextTranscriptId;
     transcript = nextTranscript;
+    profile = null;
     redo = [];
     return snapshot();
   }

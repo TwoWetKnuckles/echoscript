@@ -1,6 +1,7 @@
 package org.echoscript.app
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.ext.junit.runners.AndroidJUnit4
+import androidx.test.platform.app.InstrumentationRegistry
 import android.content.Context
 import org.junit.Test
 import org.junit.Assert.*
@@ -48,7 +49,11 @@ class VaultRoundTripTest {
         assertTrue(vault.verify(manifest).contains("agree"))
         val output = ByteArrayOutputStream(); val packageHash = vault.exportPackage(manifest, output, "TEST_EXAMINER")
         assertEquals(EvidenceVault.sha(output.toByteArray()), packageHash)
-        java.io.File(context.cacheDir, "synthetic-native.echocase").writeBytes(output.toByteArray())
+        // AGP pulls additionalTestOutputDir before disposing the test installation.
+        // Internal app cache cannot be assumed to remain accessible afterwards.
+        val testOutput = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { java.io.File(it).apply { mkdirs() } } ?: context.cacheDir
+        val testPackage = java.io.File(testOutput, "synthetic-native.echocase"); testPackage.writeBytes(output.toByteArray())
+        assertEquals(packageHash, EvidenceVault.sha(testPackage.readBytes()))
         val entries = mutableMapOf<String,ByteArray>(); ZipInputStream(output.toByteArray().inputStream()).use { zip -> while (true) { val entry = zip.nextEntry ?: break; entries[entry.name] = zip.readBytes() } }
         assertArrayEquals(bytes, entries["artifacts/$id"]); assertNotNull(entries["manifest.json"]); assertNotNull(entries["SHA256SUMS.txt"])
     }

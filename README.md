@@ -29,7 +29,7 @@ npm test
 npm run serve
 ```
 
-Open the loopback URL printed by the server. Select **Acquire → Load synthetic speech fixture** to evaluate without real evidence. Browser evidence is session memory, with a **16 MiB source / 64 MiB workspace** policy. Export an encrypted case before closing; browser memory is not the Android vault.
+Open the loopback URL printed by the server. Select **Cases → Load synthetic speech sample** to evaluate without real evidence. Browser evidence is session memory, with a **16 MiB source / 64 MiB workspace** policy. Export an encrypted case before closing; browser memory is not the Android vault.
 
 For real local transcription:
 
