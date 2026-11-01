@@ -1,0 +1,16 @@
+node_modules/
+.env
+.env.*
+!.env.example
+local.properties
+.gradle/
+**/build/
+target/
+models/
+qa-output/
+*.keystore
+*.jks
+*.echocase
+evidence-vault/
+__pycache__/
+.venv/
