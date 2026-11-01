@@ -14,3 +14,7 @@ qa-output/
 evidence-vault/
 __pycache__/
 .venv/
+
+/dist/
+/apps/web/dist/
+.openai/

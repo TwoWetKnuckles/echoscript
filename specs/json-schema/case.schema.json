@@ -1,0 +1,138 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "$id": "https://echoscript.invalid/schemas/case-v1.json",
+  "title": "EchoScript case package v1",
+  "type": "object",
+  "required": [
+    "format",
+    "schemaVersion",
+    "caseId",
+    "title",
+    "createdAtUtc",
+    "software",
+    "artifacts",
+    "audit",
+    "activeArtifact"
+  ],
+  "additionalProperties": false,
+  "properties": {
+    "format": { "const": "org.echoscript.case/1" },
+    "schemaVersion": { "const": 1 },
+    "caseId": { "type": "string", "pattern": "^[0-9a-f-]{36}$" },
+    "title": { "type": "string", "minLength": 1, "maxLength": 256 },
+    "createdAtUtc": { "type": "string" },
+    "software": {
+      "type": "object",
+      "required": ["name", "version"],
+      "additionalProperties": false,
+      "properties": {
+        "name": { "const": "EchoScript" },
+        "version": { "type": "string" }
+      }
+    },
+    "activeArtifact": { "type": ["string", "null"] },
+    "artifacts": {
+      "type": "array",
+      "maxItems": 10000,
+      "items": { "$ref": "#/definitions/artifact" }
+    },
+    "audit": {
+      "type": "array",
+      "maxItems": 100000,
+      "items": { "$ref": "#/definitions/audit" }
+    }
+  },
+  "definitions": {
+    "artifact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "id",
+        "caseId",
+        "type",
+        "parents",
+        "name",
+        "path",
+        "bytes",
+        "sha256",
+        "timestampUtc",
+        "actor",
+        "revision",
+        "softwareVersion",
+        "operation",
+        "warnings"
+      ],
+      "properties": {
+        "id": { "type": "string" },
+        "caseId": { "type": "string" },
+        "type": {
+          "enum": [
+            "SOURCE",
+            "DECODE",
+            "ANALYSIS",
+            "ENHANCED_AUDIO",
+            "TRANSCRIPTION_TRANSMISSION",
+            "RAW_PROVIDER_RESULT",
+            "NORMALIZED_TRANSCRIPT",
+            "HUMAN_TRANSCRIPT",
+            "REPORT",
+            "AUDIO_EXPORT",
+            "DOCUMENT_EXPORT"
+          ]
+        },
+        "parents": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": { "type": "string" }
+        },
+        "name": { "type": "string", "maxLength": 256 },
+        "path": { "type": "string" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "sha256": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "timestampUtc": { "type": "string" },
+        "actor": { "type": "string", "maxLength": 128 },
+        "revision": { "type": "integer", "minimum": 1 },
+        "softwareVersion": { "type": "string" },
+        "operation": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["algorithm", "version", "parameters"],
+          "properties": {
+            "algorithm": { "type": "string", "minLength": 1 },
+            "version": { "type": "string", "minLength": 1 },
+            "parameters": { "type": "object" }
+          }
+        },
+        "warnings": {
+          "type": "array",
+          "items": { "type": "string" },
+          "maxItems": 1024
+        }
+      }
+    },
+    "audit": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "seq",
+        "timestampUtc",
+        "actor",
+        "deviceId",
+        "action",
+        "details",
+        "prevHash",
+        "entryHash"
+      ],
+      "properties": {
+        "seq": { "type": "integer", "minimum": 1 },
+        "timestampUtc": { "type": "string" },
+        "actor": { "type": "string" },
+        "deviceId": { "type": "string" },
+        "action": { "type": "string" },
+        "details": { "type": "object" },
+        "prevHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "entryHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" }
+      }
+    }
+  }
+}

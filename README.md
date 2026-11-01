@@ -10,12 +10,12 @@ Node.js 24 LTS: `npm test`. Serve `apps/web/dist/` over HTTPS or localhost to us
 
 ## Repository map
 
-| Path | Purpose |
-| --- | --- |
-| `apps/web/` | Browser companion, tests and prior implementation notes |
-| `docs/IMPLEMENTATION.md` | Scope, stages and executed verification record |
-| `AGENTS.md` | Coding-agent architecture and evidence invariants |
-| `.github/copilot-instructions.md` | Copilot repository instructions |
+| Path                              | Purpose                                                 |
+| --------------------------------- | ------------------------------------------------------- |
+| `apps/web/`                       | Browser companion, tests and prior implementation notes |
+| `docs/IMPLEMENTATION.md`          | Scope, stages and executed verification record          |
+| `AGENTS.md`                       | Coding-agent architecture and evidence invariants       |
+| `.github/copilot-instructions.md` | Copilot repository instructions                         |
 
 Public GitHub contains application source and synthetic fixtures only. Evidence, audio, transcripts, notes, audit records and case manifests remain local by default. Supabase is limited to approved non-evidence metadata; provider credentials stay server-side.
 
