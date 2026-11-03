@@ -5,6 +5,8 @@ All paths are relative to the public monorepo. Generated output, downloaded mode
 | Path                                                    | Purpose                                                                                                            |
 | ------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `AGENTS.md`, `.github/copilot-instructions.md`          | Evidence invariants and agent build/test instructions                                                              |
+| `LICENSE`, `NOTICE`, `DISCLAIMER.md`, `CONTRIBUTING.md` | Software terms, attribution, case-specific responsibilities and contribution policy                                |
+| `SECURITY.md`, `docs/security/`, `docs/legal/`          | Private reporting procedure, current threat model, operator guidance and license explanation                       |
 | `apps/android/`                                         | Kotlin/Compose vault; Keystore/Tink encryption; SAF intake/export; Media3 authenticated playback; native tests     |
 | `apps/web/src/index.html`, `main.mjs`, `workbench.css`  | Seven-workspace browser UI and local workflow                                                                      |
 | `apps/web/src/processing.worker.mjs`                    | Serialized worker operations, DSP revisions, transcription artifacts/review and exports                            |

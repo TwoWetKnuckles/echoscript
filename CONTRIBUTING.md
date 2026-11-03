@@ -1,0 +1,11 @@
+# Contributing
+
+EchoScript is development software; **BETA GATE: NOT PASSED**. Read [AGENTS.md](AGENTS.md) for architecture, evidence invariants and relevant build/test commands, [DISCLAIMER.md](DISCLAIMER.md) for responsibility boundaries, and [SECURITY.md](SECURITY.md) before reporting a vulnerability.
+
+Use a focused `feature/`, `fix/` or `security/` branch and conventional commits. Explain the concrete behavior, evidence/privacy impact, compatibility, checks actually executed and remaining limitations in a pull request. Keep `main` buildable. Do not weaken a check or relabel an incomplete mandatory gate to obtain a pass. Documentation-only changes need formatting, link and consistency checks; runtime/evidence changes need the relevant behavioral tests described in AGENTS.md.
+
+Only contribute material you have authority to submit. Original project contributions follow [Apache-2.0](LICENSE), including section 5, unless an applicable separate agreement states otherwise. Preserve notices, identify third-party sources and review the exact dependency/model/codec license before adding it. No additional contributor agreement is asserted by this guide. See the [licensing guide](docs/legal/LICENSING.md).
+
+Never include real evidence, recordings of uninformed participants, private case details, credentials, downloaded model weights or production data in source, issues, PRs, logs or automated fixtures. Use synthetic or appropriately licensed non-sensitive fixtures and record their provenance. Disclose synthetic/restoration limitations accurately; no fabricated confidence, identity, certification, legal assurance or QA result.
+
+An end-user responsibility notice is not a fix for a security or evidence-integrity defect. Preserve a sanitized reproduction, correct the cause, verify affected behavior and document limitations. Follow the private security reporting process for sensitive findings; do not post exploit details publicly as a normal bug report.

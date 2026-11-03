@@ -4,6 +4,14 @@ Local-first audio evidence development platform, designed to support defensible 
 
 **Development checkpoint — BETA GATE: NOT PASSED.** A working browser/local-provider workflow and encrypted Android intake vault are implemented. The complete Android forensic application described in the build specification is unfinished. Use synthetic material for evaluation. No admissibility, organizational compliance or certification claim is made.
 
+## Responsibility and limitations
+
+**The examiner and deploying organization are responsible for lawful use and case-specific evidence handling.** Before each use, determine the recording/access authority, consent requirements, jurisdiction, agency and court rules, confidentiality obligations, retention and legal holds applicable to that particular matter. Preserve originals and independent custody records; control devices, keys and exports; validate the exact build and workflow; independently review all processing, transcription and reports before relying on or submitting them. A hash match establishes byte consistency against a trusted reference, not lawful acquisition, speaker identity, completeness or legal admissibility.
+
+Original project code is provided **AS IS, without warranties**, with the limitations and exceptions in [Apache License 2.0](LICENSE), especially sections 7–9. Contributors do not undertake your case management or forensic duties merely by distributing this software. No guarantee is made about fitness for a particular case, accuracy, security, uninterrupted service or an evidentiary outcome. Applicable law and separately authorized written agreements control; these notices cannot exclude non-waivable rights or guarantee immunity from liability.
+
+Read the [responsibility and disclaimer notice](DISCLAIMER.md), [licensing guide](docs/legal/LICENSING.md), [security policy](SECURITY.md) and [operator responsibilities](docs/security/OPERATIONS.md). These notices do not replace engineering safeguards, independent examination or jurisdiction-specific legal advice. They do not change the Apache license or create an additional use restriction.
+
 ## What works
 
 | Component         | Implemented behavior                                                                                                                                                                                                                      |
@@ -101,6 +109,6 @@ The existing companion is published through Sites with its existing owner-privat
 
 ## Project map and licensing
 
-[Architecture](docs/architecture.md) · [File map](docs/FILE-TREE.md) · [Provider qualification](docs/providers/local-vosk.md) · [Security](SECURITY.md) · [Implementation record](docs/IMPLEMENTATION.md)
+[Architecture](docs/architecture.md) · [File map](docs/FILE-TREE.md) · [Provider qualification](docs/providers/local-vosk.md) · [Threat model](docs/security/THREAT_MODEL.md) · [Contributing](CONTRIBUTING.md) · [Implementation record](docs/IMPLEMENTATION.md)
 
-Original project code: Apache-2.0. Preserve dependency/model licenses and the bundled Noto font's SIL Open Font License. Fixture provenance is recorded in `specs/fixtures/`; it contains synthetic speech, not real evidence or a cloned person's voice.
+Original project code: Apache-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). Preserve dependency/model licenses and the bundled Noto font's SIL Open Font License. Third-party services have separate terms. Fixture provenance is recorded in `specs/fixtures/`; it contains synthetic speech, not real evidence or a cloned person's voice. Open-source availability does not include an ongoing support, hosting or service-level commitment.
