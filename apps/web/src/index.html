@@ -1,0 +1,534 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <meta
+      name="description"
+      content="EchoScript local forensic audio development workbench. Preserve originals, inspect sound, record processing and verify exported packages."
+    />
+    <meta name="theme-color" content="#102631" />
+    <title>EchoScript · Audio workspace</title>
+    <link rel="stylesheet" href="./workbench.css" />
+    <script type="module" src="./main.mjs"></script>
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <aside>
+      <a class="brand" href="#cases"><span class="mark">≋</span> EchoScript</a>
+      <div class="edition">AUDIO EVIDENCE WORKSPACE</div>
+      <nav aria-label="Main navigation">
+        <a href="#cases">01 Cases</a><a href="#acquire">02 Acquire</a
+        ><a href="#analyze">03 Analyze</a><a href="#transcript">04 Transcript</a
+        ><a href="#audit">05 Audit</a><a href="#export">06 Export</a
+        ><a href="#settings">07 Settings</a>
+      </nav>
+      <div class="aside-bottom">
+        <span class="dot"></span> Development workbench<br /><small
+          >v0.2.0 · Beta gate not passed</small
+        >
+      </div>
+    </aside>
+    <div class="shell">
+      <header>
+        <span id="breadcrumb">Workspace / Cases</span
+        ><span class="badge" id="mode-badge">LOCAL PROCESSING</span>
+      </header>
+      <p id="global-status" role="status" aria-live="polite">
+        Ready. Use synthetic test material.
+      </p>
+      <div id="session-banner">
+        Browser session workspace · files are held in memory, with a 16 MiB
+        source / 64 MiB workspace limit. Export a case package to preserve work.
+        This is not the Android encrypted evidence vault.
+      </div>
+      <main id="main" tabindex="-1">
+        <section class="page" id="cases">
+          <div class="eyebrow">PRESERVE. REVIEW. VERIFY.</div>
+          <h1>Clarity starts with<br /><em>the original.</em></h1>
+          <p class="lead">
+            An inspectable, local audio workflow. Preserve source bytes, record
+            each derivative, retain uncertainty, and independently verify the
+            exported case.
+          </p>
+          <div class="actions">
+            <a class="button primary" href="#acquire">Import audio ↗</a
+            ><button id="sample">Load synthetic speech sample</button>
+          </div>
+          <div class="notice">
+            Development release. No claim of court admissibility, certification
+            or beta readiness. The local speech adapter supplies word timings
+            and returned alternatives; it does not supply speaker diarization.
+          </div>
+          <div class="panel">
+            <h2>Open an exported case</h2>
+            <label for="case-file"
+              >Case package (.echocase or .echocase.enc)</label
+            ><input id="case-file" type="file" accept=".echocase,.enc" /><label
+              for="import-password"
+              >Package passphrase, if encrypted</label
+            ><input
+              id="import-password"
+              type="password"
+              autocomplete="off"
+            /><button id="open-case">Import and verify package</button>
+            <p id="case-summary">No case open.</p>
+          </div>
+        </section>
+        <section class="page" id="acquire" hidden>
+          <div class="eyebrow">SOURCE / LOCAL INTAKE</div>
+          <h1>Begin with the original.</h1>
+          <p class="lead">
+            Original bytes are hashed before decode. All edits create separate
+            artifacts. This browser workbench currently decodes PCM16/24/32 and
+            float32 WAV files.
+          </p>
+          <form id="import-form" class="panel stack">
+            <label for="case-title">Case title</label
+            ><input
+              id="case-title"
+              required
+              maxlength="256"
+              value="Synthetic audio review"
+            /><label for="actor">Examiner identifier</label
+            ><input
+              id="actor"
+              required
+              maxlength="128"
+              value="TEST_EXAMINER"
+            /><label for="source">Original WAV file · maximum 16 MiB</label
+            ><input
+              id="source"
+              type="file"
+              accept=".wav,audio/wav"
+              required
+            /><button class="primary">Hash and open local case</button>
+          </form>
+          <div class="notice">
+            The session does not persist across reloads. Source hashes establish
+            consistency, not origin or legal authenticity. Use encrypted package
+            export when the downloaded case needs confidentiality.
+          </div>
+        </section>
+        <section class="page" id="analyze" hidden>
+          <div class="eyebrow">ANALYSIS / NON-DESTRUCTIVE PROCESSING</div>
+          <h1>Listen. Inspect. Compare.</h1>
+          <div class="panel">
+            <div class="row">
+              <label for="revision">Audio revision</label
+              ><select id="revision"></select
+              ><button id="undo">Undo</button><button id="redo">Redo</button
+              ><button id="compare">A/B source / latest</button>
+            </div>
+            <audio id="player" controls preload="metadata"></audio>
+            <p id="audio-metrics" class="metric">Import audio to analyze.</p>
+            <div class="controls">
+              <label
+                >View start (seconds)<input
+                  id="view-start"
+                  type="number"
+                  value="0"
+                  min="0"
+                  step=".001" /></label
+              ><label
+                >View duration (seconds)<input
+                  id="view-duration"
+                  type="number"
+                  value="10"
+                  min=".1"
+                  step=".1" /></label
+              ><label
+                ><input id="loop" type="checkbox" /> Loop selected time</label
+              >
+            </div>
+            <canvas
+              id="waveform"
+              width="1024"
+              height="180"
+              aria-label="Waveform. Drag to select a time interval."
+            ></canvas
+            ><canvas
+              id="spectrogram"
+              width="1024"
+              height="256"
+              aria-label="Spectrogram. Drag to select time and frequency."
+            ></canvas>
+            <p id="analysis-parameters" class="muted"></p>
+            <div class="controls">
+              <label
+                >Start (seconds)<input
+                  id="selection-start"
+                  type="number"
+                  value="0"
+                  min="0"
+                  step=".001" /></label
+              ><label
+                >End (seconds)<input
+                  id="selection-end"
+                  type="number"
+                  value="1"
+                  min="0"
+                  step=".001" /></label
+              ><label
+                >Low frequency (Hz)<input
+                  id="low-hz"
+                  type="number"
+                  value="80"
+                  min="0" /></label
+              ><label
+                >High frequency (Hz)<input
+                  id="high-hz"
+                  type="number"
+                  value="5000"
+                  min="1"
+              /></label>
+            </div>
+            <div class="actions">
+              <button id="seek-selection">Play selection</button
+              ><button id="add-region">Add region</button
+              ><button id="clear-regions">Clear regions</button
+              ><button id="noise-profile">
+                Use selection as noise profile
+              </button>
+            </div>
+            <p id="regions" class="muted">
+              No regions selected: processing applies to the whole recording.
+            </p>
+            <h2>Speech-event candidates</h2>
+            <div id="events" class="events">No analysis yet.</div>
+          </div>
+          <div class="panel">
+            <h2>Processing chain</h2>
+            <p class="muted">
+              Ordered: delay → high-pass → hum notches → tonal notch → noise
+              reduction → estimated restoration → EQ → preamp → limiter. Every
+              render records the exact chain. Frequency isolation is appended
+              when selected.
+            </p>
+            <div class="controls">
+              <label
+                >Preamp (dB)<input
+                  id="gain"
+                  type="number"
+                  value="0"
+                  min="-60"
+                  max="40"
+                  step=".5" /></label
+              ><label
+                >LOW EQ (dB, 120 Hz)<input
+                  id="eq-low"
+                  type="number"
+                  value="0"
+                  min="-24"
+                  max="24" /></label
+              ><label
+                >MID EQ (dB, 1 kHz)<input
+                  id="eq-mid"
+                  type="number"
+                  value="0"
+                  min="-24"
+                  max="24" /></label
+              ><label
+                >HIGH EQ (dB, 5 kHz)<input
+                  id="eq-high"
+                  type="number"
+                  value="0"
+                  min="-24"
+                  max="24" /></label
+              ><label
+                >High-pass cutoff (Hz, 0=bypass)<input
+                  id="highpass"
+                  type="number"
+                  value="0"
+                  min="0" /></label
+              ><label
+                >Low-pass cutoff (Hz, 0=bypass)<input
+                  id="lowpass"
+                  type="number"
+                  value="0"
+                  min="0" /></label
+              ><label
+                >Band-pass center (Hz, 0=bypass)<input
+                  id="bandpass"
+                  type="number"
+                  value="0"
+                  min="0" /></label
+              ><label
+                >Filter Q<input
+                  id="filter-q"
+                  type="number"
+                  value=".707"
+                  min=".05"
+                  max="100"
+                  step=".1" /></label
+              ><label
+                >Hum fundamental (Hz, 0=bypass)<input
+                  id="hum"
+                  type="number"
+                  value="0"
+                  min="0"
+                  max="400" /></label
+              ><label
+                >Hum harmonics<input
+                  id="harmonics"
+                  type="number"
+                  value="3"
+                  min="1"
+                  max="12" /></label
+              ><label
+                >Tonal notch (Hz, 0=bypass)<input
+                  id="notch"
+                  type="number"
+                  value="0"
+                  min="0" /></label
+              ><label
+                >Notch Q<input
+                  id="notch-q"
+                  type="number"
+                  value="20"
+                  min="1"
+                  max="100" /></label
+              ><label
+                >Noise reduction (dB, 0=bypass)<input
+                  id="noise"
+                  type="number"
+                  value="0"
+                  min="0"
+                  max="24" /></label
+              ><label
+                >Noise strength<input
+                  id="noise-strength"
+                  type="number"
+                  value=".5"
+                  min="0"
+                  max="1"
+                  step=".05" /></label
+              ><label
+                >Time shift (seconds)<input
+                  id="delay"
+                  type="number"
+                  value="0"
+                  min="-5"
+                  max="5"
+                  step=".001" /></label
+              ><label
+                >Estimated echo delay (ms)<input
+                  id="echo-delay"
+                  type="number"
+                  value="80"
+                  min="1"
+                  max="500" /></label
+              ><label
+                >Estimated echo strength (0=bypass)<input
+                  id="echo"
+                  type="number"
+                  value="0"
+                  min="0"
+                  max=".5"
+                  step=".05" /></label
+              ><label
+                >Estimated dereverb strength<input
+                  id="dereverb"
+                  type="number"
+                  value="0"
+                  min="0"
+                  max=".5"
+                  step=".05"
+              /></label>
+            </div>
+            <div class="checks">
+              <label
+                ><input id="declipping" type="checkbox" /> Estimated
+                de-clipping</label
+              ><label
+                ><input id="limiter" type="checkbox" checked /> Peak limiter at
+                −1 dBFS</label
+              ><label
+                ><input id="isolate" type="checkbox" /> Isolate selected
+                frequency band</label
+              >
+            </div>
+            <p class="warning">
+              De-clipping, echo reduction and dereverberation estimate
+              alterations; they do not recover original lost information.
+              Compare every result with its parent.
+            </p>
+            <button id="render" class="primary">Render new derivative</button>
+          </div>
+          <div class="panel">
+            <label for="annotation">Examiner note / bookmark</label
+            ><textarea id="annotation" rows="3" maxlength="4096"></textarea
+            ><button id="save-note">Append note at playback position</button>
+          </div>
+        </section>
+        <section class="page" id="transcript" hidden>
+          <div class="eyebrow">TRANSCRIPT / EXAMINER REVIEW</div>
+          <h1>Keep uncertainty visible.</h1>
+          <p class="lead">
+            Draft words and decoder scores need independent examination. Empty
+            alternative lists remain empty. No language-model guesses are
+            generated.
+          </p>
+          <div class="panel">
+            <button id="prepare-transcription" class="primary">
+              Prepare local transcription submission</button
+            ><button id="cancel-api">Cancel provider request</button>
+            <p class="muted">
+              Configure the local Vosk service in Settings. Source evidence is
+              not submitted. A separate PCM16 mono 16 kHz transmission artifact
+              is hashed and approved before each request.
+            </p>
+            <label for="transcript-search">Find text</label
+            ><input id="transcript-search" type="search" /><label
+              for="transcript-filter"
+              >Review filter</label
+            ><select id="transcript-filter">
+              <option value="all">All segments</option>
+              <option value="flags">Flagged segments</option>
+              <option value="low">Provider confidence below 0.7</option>
+            </select>
+            <div class="row">
+              <label
+                ><input id="human-verified" type="checkbox" /> I independently
+                verified every included segment</label
+              ><button id="save-review">Save a new transcript revision</button>
+            </div>
+            <p id="transcript-provenance" class="muted">No transcript.</p>
+            <div id="transcript-segments" class="stack"></div>
+          </div>
+        </section>
+        <section class="page" id="audit" hidden>
+          <div class="eyebrow">AUDIT / PROCESSING HISTORY</div>
+          <h1>Every step accounted for.</h1>
+          <div class="actions">
+            <button id="verify-case">Verify current case</button
+            ><button id="copy-history">Copy processing history</button
+            ><button id="print-history">Print history</button>
+          </div>
+          <p id="verification" class="metric">No case.</p>
+          <pre id="audit-log" class="panel audit-log"></pre>
+          <div class="notice">
+            Unsigned audit chains detect inconsistent edits. A party able to
+            rewrite the entire package and all hashes can forge an unsigned
+            checkpoint. Preserve a package hash independently; signatures and
+            trusted timestamping remain release blockers.
+          </div>
+        </section>
+        <section class="page" id="export" hidden>
+          <div class="eyebrow">EXPORT / INDEPENDENT HANDOFF</div>
+          <h1>Take the record with you.</h1>
+          <div class="panel stack">
+            <label for="export-format">Format</label
+            ><select id="export-format">
+              <option value="wav">
+                Enhanced WAV · PCM16 · lossless container
+              </option>
+              <option value="history">
+                Timestamped processing changelog TXT
+              </option>
+              <option value="case">Complete case package (.echocase)</option>
+              <option value="json">Transcript JSON</option>
+              <option value="txt">Transcript TXT</option>
+              <option value="html">Transcript HTML</option>
+              <option value="csv">Transcript CSV (spreadsheet-safe)</option>
+              <option value="srt">Transcript SRT</option>
+              <option value="vtt">Transcript WebVTT</option>
+              <option value="ctm">
+                Transcript CTM (requires genuine word alignment)
+              </option>
+              <option value="docx">Transcript DOCX</option>
+              <option value="xlsx">Transcript XLSX</option>
+              <option value="pdf">
+                Complete processing report PDF
+              </option></select
+            ><label for="export-password"
+              >Optional case-package encryption passphrase · at least 12
+              characters</label
+            ><input
+              id="export-password"
+              type="password"
+              autocomplete="new-password"
+            />
+            <label
+              ><input id="export-bundle" type="checkbox" checked /> Include
+              file, manifest, hashes and processing history in one ZIP download
+              (except complete case packages)</label
+            >
+            <button id="download" class="primary">
+              Generate export for review
+            </button>
+            <a id="save-export" class="button primary" hidden
+              >Save generated export</a
+            >
+            <button id="download-hash">
+              Save last export's SHA-256 checkpoint
+            </button>
+            <p id="export-result" class="hash"></p>
+            <p class="muted">
+              Bundles contain an unencrypted derivative/document and timestamped
+              processing history, manifest and SHA-256 sidecars. Complete case
+              packages contain their own manifest and hashes. Save the package
+              checkpoint independently. Convenience compressed audio encoders
+              are not included in this browser build.
+            </p>
+          </div>
+        </section>
+        <section class="page" id="settings" hidden>
+          <div class="eyebrow">SETTINGS / LOCAL POLICY</div>
+          <h1>A deliberate boundary.</h1>
+          <div class="panel stack">
+            <label
+              ><input id="airgap" type="checkbox" checked /> Air-gapped mode:
+              prohibit provider requests</label
+            >
+            <p id="airgap-status">
+              Air-gapped mode — no external transcription performed.
+            </p>
+            <label for="api-url">Local Vosk API origin (loopback only)</label
+            ><input
+              id="api-url"
+              type="url"
+              value="http://localhost:8787"
+            /><label for="api-token"
+              >Local API bearer token (session only)</label
+            ><input id="api-token" type="password" autocomplete="off" />
+            <p class="muted">
+              The server must allow this page's exact origin. Tokens are held
+              only in this session. Cloud providers and cloud evidence storage
+              are disabled. Supabase preference sync is not implemented in this
+              build.
+            </p>
+            <p class="muted">
+              Complete source and setup:
+              <a
+                href="https://github.com/TwoWetKnuckles/echoscript"
+                rel="noreferrer"
+                >TwoWetKnuckles/echoscript</a
+              >
+            </p>
+          </div>
+        </section>
+      </main>
+      <footer>
+        <span>EchoScript</span
+        ><span>Source integrity first. Every step accounted for.</span
+        ><span>DEVELOPMENT · 0.2.0</span>
+      </footer>
+    </div>
+    <dialog id="consent">
+      <h2>Approve local audio submission</h2>
+      <dl id="consent-details"></dl>
+      <p>
+        Only the exact transmission artifact shown above leaves this browser.
+        The configured local adapter writes no evidence files; verify the
+        operator's deployment separately. This request is not a qualified
+        external-cloud evidence workflow.
+      </p>
+      <div class="actions">
+        <button id="approve-consent" class="primary">
+          Approve this synthetic/local submission</button
+        ><button id="deny-consent">Cancel</button>
+      </div>
+    </dialog>
+  </body>
+</html>

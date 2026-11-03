@@ -1,5 +1,40 @@
-# Security
+# Security policy
 
-Do not put real evidence, credentials or private case data in this public repository, issues, Actions logs or fixtures. Report suspected vulnerabilities using private vulnerability reporting when enabled, or contact the owner privately.
+**Development software — BETA GATE: NOT PASSED.** No production, admissibility or regulatory certification is claimed. Evaluate with synthetic, non-sensitive material. Security controls and executed tests reduce specific risks; they do not guarantee that a system is secure or suitable for a case. Read the [responsibility notice](DISCLAIMER.md) and [QA limits](docs/qa/STATUS.md).
 
-This project is under development. No production, beta, admissibility or regulatory certification is claimed. Preserve originals independently and protect exported files at their destination.
+## Versions and maintenance
+
+| Version                                               | Status                                                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Current `main` / `0.2.0-dev` development line         | Reports may be submitted for review; no stable or production-supported release has been announced |
+| Historical commits, forks and third-party deployments | No maintenance or backport commitment from this project; contact their operator for its policy    |
+
+No guaranteed acknowledgement, remediation deadline, continued support, bounty or service level is offered. An operator is responsible for monitoring its dependencies and advisories and choosing a maintenance plan. Separate authorized written support agreements, if any, govern their own obligations.
+
+## Report a vulnerability privately
+
+**Never post evidence, audio, transcript text, case identifiers, personal information, secrets or exploitable vulnerability details in public issues, discussions, pull requests or Actions logs.** This repository is public. Use only a minimal synthetic reproducer that you are authorized to share.
+
+1. Open the repository's [Security page](https://github.com/TwoWetKnuckles/echoscript/security). If **Report a vulnerability** is available, use GitHub's private vulnerability reporting form. A `SECURITY.md` file does not itself enable that feature.
+2. If private reporting is unavailable and no verified private contact is published, open a public issue containing **only a request for a private security contact**, without technical details or attachments. Wait for a confirmed private channel before providing a report. Do not guess an email address or send secrets through a public channel.
+3. In the private report, include the affected commit/version, component, synthetic reproduction steps, expected/observed behavior, potential impact and environment. Redact credentials and case content. Do not attach real evidence even privately; arrange a sanitized reproduction instead.
+
+Testing must stay within systems/data you own or have permission to assess. Do not probe another user's device, hosted service or case, access third-party data, disrupt availability or publish sensitive information. This policy provides a reporting route, not a legal safe-harbor promise, third-party authorization or a bounty agreement. See [GitHub's private reporting guidance](https://docs.github.com/en/code-security/how-tos/report-and-fix-vulnerabilities/report-privately).
+
+## Controls and trust boundaries
+
+- Android source bytes are hashed before decode and stored using maintained Tink Streaming AEAD with a Keystore-protected keyset in persistent app-private storage. Backup/device transfer are excluded. Loss of keys/device reset can make the vault unrecoverable. A compromised unlocked device remains outside the vault's protection.
+- Browser working evidence is bounded session memory, not a persistent Android-equivalent vault. Encrypted case exports depend on the chosen passphrase. Individual audio/documents and current Android case exports are plaintext; protect their destinations and transfers.
+- Artifacts, revisions, canonical audit linkage and the independent verifier detect defined inconsistencies. Unsigned package hashes/chains can be replaced together by an attacker; preserve trusted external checkpoints. Signatures, trusted timestamps and complete crash/recovery validation remain outstanding.
+- The implemented speech service is authenticated loopback-only local Vosk, with origin/consent/replay controls and bounded jobs. Its development bearer token is not team authentication. OIDC/roles, cloud adapters and approved profile/workload sync remain unfinished. No evidence is synchronized to Supabase by the current application.
+- Imported archives, media and provider responses are untrusted. The implemented paths enforce schema/path/size/hash checks and finite job limits. Those checks do not establish safety against every malformed input or host compromise.
+
+CI includes behavioral/tamper tests, Android checks, Rust checks, npm advisory scanning and JavaScript/TypeScript/Python CodeQL. Scans and dependency-update configuration are not a penetration test or certification. Secret scanning, push protection, private reporting and branch protections are separate GitHub settings; their presence is not guaranteed by these files.
+
+## Suspected integrity failure or exposure
+
+Stop affected processing, transmission and reliance. Preserve originals, trusted checkpoints and a minimal incident record; isolate affected devices/services through your organization's procedure. Revoke or rotate exposed credentials through their issuer, assess affected derivatives/transcripts/exports, and notify responsible security/legal personnel under applicable incident and disclosure requirements. Do not upload the incident's evidence to this repository or destroy material subject to preservation duties.
+
+Maintainer triage should reproduce with synthetic material, assess affected versions and evidence impact, add a meaningful regression test, and document the fix and remaining limits. Publication/disclosure coordination must avoid case data and premature exposure of exploit details. An integrity-affecting fix requires revalidation of affected workflows; changing a disclaimer is not a remediation.
+
+The [threat model](docs/security/THREAT_MODEL.md) and [operator guide](docs/security/OPERATIONS.md) describe the current boundaries and organizational duties. Apache [LICENSE](LICENSE) governs the software's warranty/liability terms; non-waivable legal rights and obligations remain applicable.

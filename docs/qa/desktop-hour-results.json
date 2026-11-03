@@ -1,0 +1,48 @@
+{
+  "scope": "DESKTOP_STREAMING_ONLY",
+  "synthetic": true,
+  "durationSeconds": 3600,
+  "fullApplicationBetaGate": "NOT PASSED",
+  "checks": [
+    {
+      "check": "stream-render-a",
+      "result": "PASS",
+      "elapsedMs": 820,
+      "peakRssKiB": 9088,
+      "rssThresholdMiB": 64
+    },
+    {
+      "check": "stream-render-b",
+      "result": "PASS",
+      "elapsedMs": 816,
+      "peakRssKiB": 9088,
+      "rssThresholdMiB": 64
+    },
+    {
+      "check": "existing-output-refused",
+      "result": "PASS",
+      "elapsedMs": 31,
+      "peakRssKiB": 9088,
+      "rssThresholdMiB": 64
+    },
+    {
+      "check": "truncated-input-cleanup",
+      "result": "PASS",
+      "elapsedMs": 36,
+      "peakRssKiB": 9088,
+      "rssThresholdMiB": 64
+    },
+    {
+      "check": "hour-package-independent-streaming-verifier",
+      "result": "PASS",
+      "elapsedMs": 503,
+      "peakRssKiB": 108580,
+      "rssThresholdMiB": 256
+    }
+  ],
+  "result": "PASS",
+  "sourceBytes": 115200044,
+  "sourceSha256": "d8bd80f17bb3a9bdbc4ac15db1cac82bede9cd7080c77f36891df53eca5bac8e",
+  "derivativeSha256": "29f63c8bad5be90f3751d9d0d2ed7991712101702b71218aa8f95e09d61e565d",
+  "packageBytes": 115202390
+}

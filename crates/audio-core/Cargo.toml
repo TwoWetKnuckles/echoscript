@@ -1,0 +1,10 @@
+[package]
+name = "echoscript-audio-core"
+version = "0.2.0"
+edition = "2024"
+license = "Apache-2.0"
+description = "Bounded streaming PCM processing for EchoScript; no cryptographic primitives"
+
+[[bin]]
+name = "echoscript-audio"
+path = "src/main.rs"

@@ -1,0 +1,10 @@
+node_modules
+dist
+apps/web/dist
+build
+target
+models
+qa-output
+packages/evidence/schema-validator.cjs
+apps/android/.gradle
+apps/android/app/build

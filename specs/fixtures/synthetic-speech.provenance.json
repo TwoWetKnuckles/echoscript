@@ -1,0 +1,13 @@
+{
+  "label": "SYNTHETIC TEST DATA \u2014 NOT EVIDENCE",
+  "kind": "locally generated TTS",
+  "generator": "FFmpeg lavfi flite, voice slt",
+  "referenceTranscript": "this is a synthetic audio test the meeting starts at eight please review the original recording",
+  "sampleRate": 16000,
+  "channels": 1,
+  "encoding": "PCM_S16LE",
+  "sha256": "9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd",
+  "command": "ffmpeg -f lavfi -i flite=text=<reference>:voice=slt -ar 16000 -ac 1 -c:a pcm_s16le synthetic-speech.wav",
+  "purpose": "Controlled non-sensitive speech QA; no real evidence or cloned speaker voice",
+  "modelLicense": "Flite/CMU voice licensing must be retained with engine distribution; FFmpeg is an external development dependency, not bundled"
+}
