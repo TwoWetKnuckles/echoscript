@@ -7,8 +7,7 @@ android {
     compileSdk = 36
     defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 3; versionName = "0.3.0-dev"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true }
-    sourceSets.getByName("androidTest").assets.srcDirs("../../../specs/fixtures", "build/codec-fixtures")
-    sourceSets.getByName("main").assets.srcDir("../../../specs/fixtures")
+    sourceSets.getByName("androidTest").assets.srcDir("../../../specs/fixtures")
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
     buildTypes {
         debug {
@@ -44,6 +43,7 @@ dependencies {
 abstract class PrepareOfflineModels : DefaultTask() {
     @get:InputFile abstract val script: RegularFileProperty
     @get:InputFile abstract val license: RegularFileProperty
+    @get:InputFile abstract val syntheticSample: RegularFileProperty
     @get:Internal abstract val archiveCache: DirectoryProperty
     @get:OutputDirectory abstract val assetsDirectory: DirectoryProperty
     @get:Inject abstract val execOperations: ExecOperations
@@ -58,6 +58,7 @@ abstract class PrepareOfflineModels : DefaultTask() {
 val prepareOfflineModels = tasks.register<PrepareOfflineModels>("prepareOfflineModels") {
     script.set(rootProject.layout.projectDirectory.file("../../scripts/bundle-android-models.py"))
     license.set(rootProject.layout.projectDirectory.file("../../LICENSE"))
+    syntheticSample.set(rootProject.layout.projectDirectory.file("../../specs/fixtures/synthetic-speech.wav"))
     val cache = providers.environmentVariable("ECHOSCRIPT_MODEL_CACHE")
     archiveCache.set(layout.dir(cache.map { file(it) }).orElse(rootProject.layout.projectDirectory.dir(".gradle/echoscript-models")))
     assetsDirectory.set(layout.buildDirectory.dir("generated/offline-model-assets"))

@@ -6,7 +6,7 @@ import subprocess
 
 root = pathlib.Path(__file__).resolve().parents[1]
 source = root / "specs/fixtures/synthetic-speech.wav"
-output = root / "apps/android/app/build/codec-fixtures"
+output = root / "specs/fixtures/android-codecs"
 output.mkdir(parents=True, exist_ok=True)
 formats = {
     "mp3": ["-c:a", "libmp3lame", "-b:a", "96k"],

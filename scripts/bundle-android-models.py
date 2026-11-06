@@ -73,6 +73,7 @@ def build(destination, cache):
         (models / "inventory.json").write_text(json.dumps({"models": inventory}, separators=(",", ":")), encoding="utf-8")
         root = pathlib.Path(__file__).resolve().parents[1]
         shutil.copyfile(root / "LICENSE", models / "Apache-2.0.txt")
+        shutil.copyfile(root / "specs/fixtures/synthetic-speech.wav", stage / "synthetic-speech.wav")
         (models / "NOTICE.txt").write_text(
             "Vosk Android and model assets by Alpha Cephei and their contributors.\n"
             "Models: vosk-model-small-en-us-0.15 and vosk-model-spk-0.4.\n"

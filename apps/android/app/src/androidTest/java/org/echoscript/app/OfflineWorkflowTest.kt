@@ -96,13 +96,15 @@ class OfflineWorkflowTest {
     }
     @Test fun androidDecodesSyntheticMp3AacFlacVorbisAndOpusFromTheVault() {
         val instrumentation = InstrumentationRegistry.getInstrumentation()
-        org.junit.Assume.assumeTrue("Generate codec fixtures before running the codec matrix", instrumentation.context.assets.list("")?.contains("codec-fixtures.json") == true)
+        val fixtures = instrumentation.context.assets.open("android-codecs/codec-fixtures.json").bufferedReader().use { org.json.JSONObject(it.readText()) }
+        val hashes = fixtures.items("files").associate { it.getString("name") to it.getString("sha256") }
         val context = ApplicationProvider.getApplicationContext<Context>()
         val vault = EvidenceVault(context)
         val workflow = OfflineWorkflow(context, vault)
         for (extension in listOf("mp3", "m4a", "flac", "ogg", "opus")) {
             val name = "synthetic-codec.$extension"
-            val bytes = instrumentation.context.assets.open(name).use { it.readBytes() }
+            val bytes = instrumentation.context.assets.open("android-codecs/$name").use { it.readBytes() }
+            assertEquals(hashes[name], EvidenceVault.sha(bytes))
             val case = vault.importSource(bytes.inputStream(), name, "Synthetic $extension codec", "TEST")
             val id = case.getString("caseId")
             try {
