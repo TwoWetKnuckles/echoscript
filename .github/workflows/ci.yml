@@ -74,12 +74,29 @@ jobs:
       - name: Compile, unit test, lint, instrumentation APK and unsigned release
         working-directory: apps/android
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest :app:assembleRelease --no-daemon
+      - name: Verify and stage the installable offline preview
+        run: |
+          apk=apps/android/app/build/outputs/apk/debug/app-debug.apk
+          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
+          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
+          if "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions "$apk" | rg -q 'android.permission.INTERNET'; then
+            exit 1
+          fi
+          mkdir -p qa-output/android-preview
+          cp "$apk" qa-output/android-preview/EchoScript-offline-preview.apk
+          cd qa-output/android-preview
+          sha256sum EchoScript-offline-preview.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: github.event_name != 'pull_request'
+        with:
+          name: EchoScript-offline-Android-preview
+          path: qa-output/android-preview/
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: android-development-apks-and-reports
           path: |
-            apps/android/app/build/outputs/apk/debug/
             apps/android/app/build/reports/
             apps/android/app/build/test-results/
           retention-days: 1
@@ -102,21 +119,24 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Generate synthetic codec inputs
+        run: python3 scripts/android-qa-fixtures.py
       - name: Enable hardware virtualization for the disposable emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
           sudo udevadm control --reload-rules
           sudo udevadm trigger --name-match=kvm
-      - name: Run encrypted-vault round trip and tamper/resource regression on Android
+      - name: Run vault, codec, tamper and seven bundled speech workflows
         uses: ReactiveCircus/android-emulator-runner@a421e43855164a8197daf9d8d40fe71c6996bb0d
         with:
           api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
           disable-animations: true
+          emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -partition-size 4096
           working-directory: apps/android
           script: |
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }}
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
