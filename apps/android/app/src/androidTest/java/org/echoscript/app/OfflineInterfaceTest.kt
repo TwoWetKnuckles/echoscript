@@ -1,6 +1,7 @@
 package org.echoscript.app
 
 import androidx.compose.ui.test.assertIsDisplayed
+import androidx.compose.ui.test.assertIsNotEnabled
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onNodeWithText
@@ -24,9 +25,13 @@ class OfflineInterfaceTest {
         waitFor("Synthetic speech is ready in Analyze.")
         click("Analyze audio")
         waitFor("Waveform, spectral overview and candidate speech regions are ready.")
-        click("Transcript")
+        ui.onNodeWithText("Transcript").assertIsDisplayed().performClick()
         click("Transcribe active audio on device")
         waitFor("Draft transcript saved. Review the words, timestamps and speaker groups.", 120000)
         ui.onNodeWithText("Examiner transcript text").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Export").assertIsDisplayed().performClick()
+        ui.onNodeWithText("Case package").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Active audio WAV").performScrollTo().assertIsDisplayed()
+        ui.onNodeWithText("Transcript and report formats").performScrollTo().assertIsDisplayed().assertIsNotEnabled()
     }
 }
