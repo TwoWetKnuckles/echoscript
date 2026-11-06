@@ -7,7 +7,10 @@ async function find(directory) {
   for (const entry of await readdir(directory, { withFileTypes: true })) {
     const path = join(directory, entry.name);
     if (entry.isDirectory()) matches.push(...(await find(path)));
-    else if (entry.isFile() && entry.name === "synthetic-native.echocase")
+    else if (
+      entry.isFile() &&
+      /^synthetic-(native|offline-run-[1-7])\.echocase$/.test(entry.name)
+    )
       matches.push(path);
   }
   return matches;
@@ -17,6 +20,12 @@ assert.ok(
   files.length > 0,
   "No native package in AGP additional test output; do not count this as a pass",
 );
+for (let i = 1; i <= 7; i++) {
+  assert.ok(
+    files.some((path) => path.endsWith(`/synthetic-offline-run-${i}.echocase`)),
+    `Missing native run ${i}`,
+  );
+}
 for (const path of files) {
   assert.ok(
     (await stat(path)).size > 100,

@@ -20,7 +20,7 @@ The local sequence performs source import/hash → decode → waveform/spectrogr
 
 ## Material outstanding release work
 
-Native Android analysis/DSP/transcription integration; microphone capture; resumable jobs and crash/restart recovery; biometric unlock/key recovery; digital signatures and trusted checkpoints; neutral speaker diarization; provider chunking and qualified external adapters; OIDC, multi-user roles, approved preference/workflow sync; convenience encoders; complete cross-user/security/resource/device matrix; seven consecutive complete application runs.
+Native feature parity and physical-device validation; resumable jobs and crash/restart recovery; biometric unlock/key recovery; digital signatures and trusted checkpoints; diarization accuracy on overlap and multiple speakers; qualified external adapters; OIDC, multi-user roles, approved preference/workflow sync; convenience encoders; complete cross-user/security/resource/device matrix; seven consecutive complete application runs.
 
 ## Failure repairs recorded
 
@@ -53,3 +53,7 @@ On `025986b8dee656371119124d9e2ef4330ffaadae`, all six quality jobs passed in [r
 ## Responsibility-documentation validation
 
 The November 3 documentation update preserves canonical Apache-2.0 terms and adds prominent case-specific user/deployer responsibilities, security reporting, operational guidance and agent rules. The local `LICENSE` was compared byte-for-byte with the Apache Software Foundation's current text (SHA-256 `cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30`); npm/lockfile/Rust license metadata agree. Relative document links, touched-file formatting and whitespace checks passed. A fresh lockfile install, browser/API build, lint and all 25 Node behavioral tests passed. No runtime code was changed by this documentation update. These are technical/document checks, not legal review, a third-party license audit or a compliance assessment.
+
+## Offline Android preview
+
+The new native workflow includes bundled Vosk English and speaker models, bounded PCM processing, transcript revisions, verified case transfer and native exports. It is a separate development APK with no network permission. CI builds the preview, verifies its signature and APK alignment, exercises actual bundled speech on Android API 29 and 36, and verifies each of seven synthetic native output packages independently. The 750 MB processing test runs on the designated API 36 emulator. See the matching CI run for executed results and [the Android guide](../android/OFFLINE.md) for device, codec, feature and release limits. The full beta gate remains NOT PASSED.
