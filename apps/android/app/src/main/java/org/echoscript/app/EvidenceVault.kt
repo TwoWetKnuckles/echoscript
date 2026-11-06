@@ -41,7 +41,7 @@ class EvidenceVault(private val context: Context) {
         const val MAX_SOURCE_BYTES = 4L * 1024 * 1024 * 1024
         const val MAX_PROCESS_SOURCE_BYTES = 750_000_000L
         const val MAX_PACKAGE_BYTES = 16L * 1024 * 1024 * 1024
-        const val VERSION = "0.3.0-dev"
+        val VERSION = BuildConfig.VERSION_NAME
         private const val MAX_MANIFEST_BYTES = 8L * 1024 * 1024
         private const val ALIAS = "echoscript.vault.master.v1"
         private val KEY_LOCK = Any()

@@ -1,0 +1,43 @@
+EchoScript Android preview 0.3.1
+================================
+Android 10 or later. Use synthetic, non-sensitive recordings for evaluation.
+BETA GATE: NOT PASSED. This package uses a debuggable development build.
+
+Official download
+https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.3.1
+
+Install on the device
+1. Download EchoScript-Android-preview.zip from the release page. In Android
+   Files, open the ZIP and extract the EchoScript-Android folder.
+2. Open EchoScript-offline-preview.apk in that folder and tap Install. Follow
+   the Android prompt. If Android requests permission to install from Files,
+   allow that source only if your device and organization permit it. Restore
+   the permission setting afterward. If device policy blocks the install,
+   use an approved test device.
+3. Open EchoScript. In Cases, choose Load synthetic speech sample to try the
+   workflow or Choose audio file to import your own synthetic recording. The
+   speech models are included. All processing runs inside the app.
+4. In Analyze, run Analyze audio. Select a speech candidate or enter a region,
+   apply filters and render an enhanced WAV revision. Review the original and
+   the derivative. In Transcript, transcribe the active audio on device.
+5. Listen at the timestamps and review words and draft speaker groups. Save
+   examiner revisions when needed. Use Audit to verify. Export writes WAV,
+   transcripts, reports or a .echocase to a destination you choose.
+
+Verification and upgrades
+SHA256SUMS.txt contains the APK hash. Compare it to the value on the release
+page or a separately trusted copy before installing. BUILD.txt identifies the
+source commit and CI run. APK signing verifies the installer; case verification
+has its own hashes and custody records.
+
+If Android rejects an update to an earlier preview, the signing identities
+may differ. Preserve the original and export any cases to protected storage
+before removing or resetting an earlier preview. Uninstalling can erase the
+vault. Test the export and independently preserve its SHA-256 before relying on
+it. A fresh preview uses its own local vault. Exports are plaintext and unsigned.
+
+Android guide and verified limits
+https://github.com/TwoWetKnuckles/echoscript/blob/main/docs/android/OFFLINE.md
+
+Operator responsibilities
+https://github.com/TwoWetKnuckles/echoscript/blob/main/DISCLAIMER.md

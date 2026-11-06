@@ -2,7 +2,13 @@
 
 Local-first audio evidence development platform, designed to support defensible forensic-audio analysis, transcription, evidence preservation, and chain-of-custody workflows.
 
-**Development checkpoint — BETA GATE: NOT PASSED.** The browser/local-provider workflow and a native offline Android preview are implemented. The Android APK bundles English and speaker models and uses its own interface. Full release validation remains outstanding. Use synthetic material for evaluation. No admissibility, organizational compliance or certification claim is made.
+## Download for Android
+
+**[Download the Android preview ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.3.1/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
+
+Android 10 or later. Extract the ZIP, open the APK and tap **Install**. In **Cases**, choose **Load synthetic speech sample** to try the workflow. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
+
+**Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** Read the [installation guide](downloads/android/INSTALL.txt) before installing or upgrading.
 
 ## Responsibility and limitations
 
@@ -14,18 +20,16 @@ Read the [responsibility and disclaimer notice](DISCLAIMER.md), [licensing guide
 
 ## What works
 
-| Component         | Implemented behavior                                                                                                                                                                                                                  |
-| ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Android 10+       | Offline workbench with encrypted source intake, playback, streaming PCM analysis/rendering, bundled local Vosk speech and speaker groups, examiner revisions, package transfer and verification                                       |
-| Browser workbench | PCM WAV import; waveform/spectrogram; conservative speech-event candidates; time/frequency regions; deterministic non-destructive DSP; revision branches, undo/redo and comparison playback                                           |
-| DSP               | Gain/preamp, low/mid/high parametric EQ, HPF/LPF/band-pass, hum/harmonic notches, tonal suppression, noise profiling/reduction, spectral isolation, delay, limiter, estimated echo/reverb reduction and conservative de-clipping      |
-| Transcription     | Real offline Vosk decoder through an authenticated loopback HTTP API; exact transmission/raw-result artifacts; word timing; returned decoder scores and genuine alternatives; acoustic review flags; immutable human-review revisions |
-| Export            | WAV, processing changelog, TXT/JSON/HTML/CSV/SRT/WebVTT/CTM/PDF/DOCX/XLSX; encrypted browser case packages; separate hashes for artifacts and exports                                                                                 |
-| Independent tools | Streaming Node case verifier; bounded-buffer Rust PCM16 gain/filter renderer; synthetic end-to-end and hour-scale desktop resource checks                                                                                             |
+| Component                   | Available in the development preview                                                                                                                                                                                      |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android 10+                 | Encrypted original intake, waveform/spectral overview, speech-region candidates, non-destructive WAV rendering, offline English transcription, draft speaker groups, examiner revisions, audit and explicit case transfer |
+| Browser companion           | Session-only PCM WAV workbench with time-frequency selections, deterministic DSP and revision comparisons. Real Vosk speech is available through the separately started loopback service                                  |
+| Android and browser exports | WAV, transcript and document formats, case package and SHA-256. The native case package is plaintext and unsigned. The browser offers encrypted case export and processing-history bundles                                |
+| Independent tools           | Streaming Node case verifier and bounded-buffer Rust PCM16 renderer for development and independent checks                                                                                                                |
 
-Automatic candidates and restoration estimates do not recover missing original information. Vosk N-best scores are not calibrated probabilities. This adapter has no speaker diarization; it never invents speakers, confidence or alternatives. CTM requires genuine word alignment; human text changes invalidate that alignment. Invalid timestamps remain flagged in JSON; subtitle/CTM exports require valid timing.
+The [Android guide](docs/android/OFFLINE.md) lists native filters, codecs and device limits. Draft speaker groups are local acoustic estimates. The loopback web adapter leaves speaker identity unassigned. Both paths preserve returned score semantics and alternatives when available. CTM requires genuine word alignment. Human text edits invalidate that alignment.
 
-## Run locally
+## Run the browser companion locally
 
 Use Node.js 24, npm, and Python 3.12 for the tested speech path:
 
@@ -64,9 +68,9 @@ npm run api
 
 Set the matching API URL/token in Settings, explicitly disable the provider prohibition, then prepare and approve the exact transcription artifact. The service binds only to `127.0.0.1`, writes no evidence files and logs no audio/transcripts/tokens. Do not expose this development-token service to a team or the Internet. A hosted HTTPS companion may be unable to reach a local HTTP service because of browser network policy; use the local host for this workflow instead of disabling browser security.
 
-## Android
+## Build Android from source
 
-Install and use the [offline Android preview](docs/android/OFFLINE.md) directly on a device. The APK includes the local models and native interface. GitHub supplies a development-signed preview artifact after a successful build.
+For installation without development tools, use the [Android download](downloads/README.md).
 
 The pinned build uses JDK 17, Gradle 9.8.2, AGP 9.5.0 and Android SDK/build tools 36.0.0. Android 10/API 29 is the minimum. With an installed SDK, accepted SDK license and Python 3.11 or later on the build host:
 
@@ -77,7 +81,7 @@ cd apps/android
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK uses the separate `org.echoscript.app.preview` application ID. The release APK is unsigned until an independently controlled signing configuration is supplied. CI publishes a signed development preview artifact and SHA-256; no signing key is committed.
+The debug APK uses the separate `org.echoscript.app.preview` application ID. The release APK is unsigned until an independently controlled signing configuration is supplied. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
 

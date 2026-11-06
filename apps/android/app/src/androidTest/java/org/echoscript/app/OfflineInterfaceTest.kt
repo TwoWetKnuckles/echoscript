@@ -18,7 +18,8 @@ class OfflineInterfaceTest {
         }
         fun click(text: String) { ui.onNodeWithText(text).performScrollTo().performClick() }
         waitFor("Choose a case or import a recording.")
-        click("Acquire")
+        ui.onNodeWithText("Choose audio file").assertIsDisplayed()
+        ui.onNodeWithText("Export").assertIsDisplayed()
         click("Load synthetic speech sample")
         waitFor("Synthetic speech is ready in Analyze.")
         click("Analyze audio")

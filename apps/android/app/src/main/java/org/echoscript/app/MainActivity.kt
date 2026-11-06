@@ -89,7 +89,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private fun selected(): JSONObject = mutable.value.cases.firstOrNull { it.getString("caseId") == mutable.value.selected }
         ?.let { JSONObject(it.toString()) } ?: error("Select a case first")
 
-    private fun runJob(name: String, completed: () -> Unit = {}, action: () -> String) {
+    private fun runJob(
+        name: String,
+        completed: () -> Unit = {},
+        refreshCases: Boolean = true,
+        action: () -> String,
+    ) {
         if (!mutable.value.ready || mutable.value.job != null) return
         stop(); cancelled.set(false)
         mutable.update { it.copy(job = name, message = name) }
@@ -99,11 +104,24 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             catch (_: InterruptedException) { "Cancelled. Completed originals and revisions are preserved." }
             catch (_: LinkageError) { "The bundled speech library could not load on this Android device." }
             catch (failure: Exception) { failure.message?.take(350) ?: "Operation could not complete. Review the case before retrying." }
-            try {
-                val listing = vault.listCases()
-                mutable.update { it.copy(cases = listing.cases, recoveryWarnings = listing.warnings, message = message, job = null) }
-            } catch (_: Exception) { succeeded = false; mutable.update { it.copy(job = null, message = "Vault refresh failed. Reopen the app to check the saved case.") } }
-            if (succeeded) withContext(Dispatchers.Main) { completed() }
+            var refreshFailed = false
+            val listing = try {
+                if (refreshCases) vault.listCases() else null
+            } catch (_: Exception) {
+                refreshFailed = true
+                null
+            }
+            withContext(Dispatchers.Main) {
+                mutable.update { current ->
+                    current.copy(
+                        cases = listing?.cases ?: current.cases,
+                        recoveryWarnings = listing?.warnings ?: current.recoveryWarnings,
+                        job = null,
+                        message = if (refreshFailed) "Vault refresh failed. Reopen the app to check the saved case." else message,
+                    )
+                }
+                if (succeeded && !refreshFailed) completed()
+            }
         }
     }
     private fun showCase(manifest: JSONObject) {
@@ -119,15 +137,15 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             }
         }
     }
-    fun importAudio(uri: Uri, title: String, actor: String) = runJob("Preserving source") {
+    fun importAudio(uri: Uri, title: String, actor: String, completed: () -> Unit) = runJob("Preserving source", completed) {
         val resolver = getApplication<Application>().contentResolver
         val filename = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } ?: "source-audio"
         val name = filename.filter { it.code >= 32 }.take(256).ifBlank { "source-audio" }
         val manifest = checkNotNull(resolver.openInputStream(uri)) { "The selected recording could not be opened" }.use {
-            vault.importSource(it, name, title, actor, cancelled::get, reportProgress("bytes preserved"))
+            vault.importSource(it, name, title.ifBlank { name }, actor, cancelled::get, reportProgress("bytes preserved"))
         }
         showCase(manifest)
-        "Original preserved and verified by SHA-256 ${manifest.activeAudio().getString("sha256")}. Open Analyze to process it."
+        "Original preserved and verified by SHA-256 ${manifest.activeAudio().getString("sha256")}."
     }
     fun stopRecording() { recordingStop.set(true) }
     fun record(title: String, actor: String) {
@@ -139,13 +157,13 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             "Microphone acquisition preserved and hashed. Open Analyze to process the recording."
         }
     }
-    fun sample(actor: String) = runJob("Loading synthetic speech") {
+    fun sample(actor: String, completed: () -> Unit) = runJob("Loading synthetic speech", completed) {
         val manifest = getApplication<Application>().assets.open("synthetic-speech.wav").use {
             vault.importSource(it, "SYNTHETIC TEST DATA - NOT EVIDENCE.wav", "Synthetic speech evaluation", actor, cancelled::get)
         }
         showCase(manifest); "Synthetic speech is ready in Analyze."
     }
-    fun importCase(uri: Uri, actor: String, expected: String) = runJob("Verifying and importing case") {
+    fun importCase(uri: Uri, actor: String, expected: String, completed: () -> Unit) = runJob("Verifying and importing case", completed) {
         val manifest = checkNotNull(getApplication<Application>().contentResolver.openInputStream(uri)).use {
             vault.importPackage(it, actor, expected.trim().lowercase().ifBlank { null }, cancelled::get, reportProgress("bytes checked"))
         }
@@ -177,7 +195,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         val transcript = workflow.readTranscript(case, artifact)
         mutable.update { it.copy(transcript = transcript, transcriptRevision = artifact.getString("id")) }
     }
-    fun openTranscript() = runJob("Opening transcript") {
+    fun openTranscript() = runJob("Opening transcript", refreshCases = false) {
         val case = selected(); openTranscript(case, case.latestTranscript() ?: error("This case has no transcript yet"))
         "Saved transcript opened."
     }
@@ -262,10 +280,11 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         if (granted) model.record(title, actor) else model.notice("Microphone permission was declined. File import is available.")
     }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { model.importAudio(it, title, actor); tab = "Analyze" }
+        uri?.let { model.importAudio(it, if (tab == "Acquire") title else "", actor) { tab = "Analyze" } }
     }
+    val chooseAudio = { importAudio.launch(arrayOf("audio/*", "video/mp4", "video/webm", "application/octet-stream")) }
     val importCase = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { model.importCase(it, actor, expectedHash); tab = "Cases" }
+        uri?.let { model.importCase(it, actor, expectedHash) { tab = "Cases" } }
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) result.data?.data?.let { model.export(it, actor, ExportFormat.valueOf(exportType)) }
@@ -285,9 +304,11 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             Text("EchoScript", style = MaterialTheme.typography.headlineMedium)
             Text("On-device workbench · development preview", color = MaterialTheme.colorScheme.primary)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (page in listOf("Cases", "Acquire", "Analyze", "Transcript", "Audit", "Export")) {
-                    FilterChip(selected = tab == page, onClick = { tab = page }, label = { Text(page) })
+            for (pages in listOf(listOf("Cases", "Acquire", "Analyze"), listOf("Transcript", "Audit", "Export"))) {
+                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                    for (page in pages) {
+                        FilterChip(selected = tab == page, onClick = { tab = page }, label = { Text(page) }, modifier = Modifier.weight(1f))
+                    }
                 }
             }
             Text(screen.message, style = MaterialTheme.typography.bodySmall)
@@ -301,25 +322,32 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                 AndroidView(factory = { context -> PlayerView(context).apply { this.player = activePlayer } }, update = { it.player = activePlayer }, modifier = Modifier.fillMaxWidth().height(90.dp))
                 TextButton(onClick = model::stop) { Text("Close player") }
             }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+            val pageScroll = key(tab) { rememberScrollState() }
+            Column(Modifier.weight(1f).verticalScroll(pageScroll), verticalArrangement = Arrangement.spacedBy(10.dp)) {
                 for (warning in screen.recoveryWarnings.take(10)) Text(warning, color = MaterialTheme.colorScheme.error)
                 val ready = screen.ready && !busy && actor.isNotBlank()
                 when (tab) {
                     "Acquire" -> {
-                        OutlinedTextField(title, { title = it.take(256) }, label = { Text("Case title") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                        OutlinedTextField(title, { title = it.take(256) }, label = { Text("Case title (required for microphone)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                         OutlinedTextField(actor, { actor = it.take(128) }, label = { Text("Examiner identifier") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        Button(onClick = { importAudio.launch(arrayOf("audio/*", "video/mp4", "video/webm", "application/octet-stream")) }, enabled = ready && title.isNotBlank()) { Text("Choose audio file") }
+                        Button(onClick = chooseAudio, enabled = ready) { Text("Choose audio file") }
                         Text("The vault preserves original files up to 4 GiB. Processing accepts sources up to 750 MB, subject to codec support and space for decoded audio.")
                         OutlinedButton(onClick = { microphone.launch(android.Manifest.permission.RECORD_AUDIO) }, enabled = ready && title.isNotBlank()) { Text("Record from microphone") }
-                        OutlinedButton(onClick = { model.sample(actor); tab = "Analyze" }, enabled = ready) { Text("Load synthetic speech sample") }
                     }
                     "Cases" -> {
                         Text("Cases on this device", style = MaterialTheme.typography.titleLarge)
-                        if (screen.cases.isEmpty()) Text("Choose Acquire to add an audio file.")
+                        Button(onClick = chooseAudio, enabled = ready) { Text("Choose audio file") }
+                        if (screen.cases.isEmpty()) Text("Import a recording or try the included sample.")
+                        OutlinedButton(onClick = { model.sample(actor) { tab = "Analyze" } }, enabled = ready) { Text("Load synthetic speech sample") }
                         for (case in screen.cases.take(200)) {
                             val id = case.getString("caseId")
-                            val workload = case.items("audit").lastOrNull { it.getString("action") == "WORKLOAD_UPDATE" }?.getJSONObject("details")?.optString("status") ?: "NEW"
-                            OutlinedCard(onClick = { model.select(id) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
+                            val workload = remember(case) {
+                                val audit = case.getJSONArray("audit")
+                                (audit.length() - 1 downTo 0).asSequence().map(audit::getJSONObject)
+                                    .firstOrNull { it.getString("action") == "WORKLOAD_UPDATE" }
+                                    ?.getJSONObject("details")?.optString("status", "NEW") ?: "NEW"
+                            }
+                            OutlinedCard(onClick = { model.select(id); tab = "Analyze" }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
                                 Column(Modifier.padding(12.dp)) {
                                     Text(case.getString("title"), style = MaterialTheme.typography.titleMedium)
                                     Text("${if (id == screen.selected) "Selected · " else ""}${workload.replace('_', ' ')} · ${case.getJSONArray("artifacts").length()} artifacts")
@@ -339,7 +367,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                         Text("Transfer is explicit. Existing case histories are protected from replacement.")
                     }
                     "Analyze" -> if (selected == null) Text("Select or import a case first.") else AnalysisScreen(model, screen, selected, actor, ready)
-                    "Transcript" -> if (selected == null) Text("Select or import a case first.") else TranscriptScreen(model, screen, actor, ready)
+                    "Transcript" -> if (selected == null) Text("Select or import a case first.") else TranscriptScreen(model, screen, actor, ready, selected.latestTranscript() != null)
                     "Audit" -> {
                         Button(onClick = { model.verify(actor) }, enabled = ready && selected != null) { Text("Verify all hashes and custody records") }
                         selected?.let { case ->
@@ -350,16 +378,30 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                     "Export" -> {
                         Text("Files are written to a destination you choose. The case ZIP includes the original, derivatives and custody history. Exported files are plaintext. Keep them in approved storage and retain their hashes independently.")
                         Row { Checkbox(acknowledge, { acknowledge = it }); Text("I understand and will protect exported files.", Modifier.padding(top = 12.dp)) }
-                        for (format in ExportFormat.entries) {
-                            OutlinedButton(onClick = {
-                                exportType = format.name
-                                export.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(format.mime).putExtra(Intent.EXTRA_TITLE, "echoscript.${format.extension}"))
-                            }, enabled = ready && selected != null && acknowledge && (!format.transcript || selected.latestTranscript() != null)) { Text(format.label) }
+                        ExportOptions(ready && selected != null && acknowledge, selected?.latestTranscript() != null) { format ->
+                            exportType = format.name
+                            export.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(format.mime).putExtra(Intent.EXTRA_TITLE, "echoscript.${format.extension}"))
                         }
                     }
                 }
                 HorizontalDivider()
                 Text("Synthetic evaluation only. Human review and case-specific custody remain essential. Beta gate not passed.", style = MaterialTheme.typography.bodySmall)
+            }
+        }
+    }
+}
+
+@Composable
+private fun ExportOptions(ready: Boolean, hasTranscript: Boolean, export: (ExportFormat) -> Unit) {
+    for (format in listOf(ExportFormat.CASE, ExportFormat.WAV)) {
+        OutlinedButton(onClick = { export(format) }, enabled = ready) { Text(format.label) }
+    }
+    var expanded by remember { mutableStateOf(false) }
+    Box {
+        OutlinedButton(onClick = { expanded = true }, enabled = ready && hasTranscript) { Text("Transcript and report formats") }
+        DropdownMenu(expanded = expanded && ready && hasTranscript, onDismissRequest = { expanded = false }) {
+            for (format in ExportFormat.entries.filter { it.transcript }) {
+                DropdownMenuItem(text = { Text(format.label) }, onClick = { expanded = false; export(format) })
             }
         }
     }
@@ -448,11 +490,11 @@ private fun NumberField(value: String, change: (String) -> Unit, label: String) 
 }
 
 @Composable
-private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, actor: String, ready: Boolean) {
+private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, actor: String, ready: Boolean, hasTranscript: Boolean) {
     Text("Offline English transcription", style = MaterialTheme.typography.titleLarge)
     Text("Uses the bundled model on this device. Review draft words, timings and speaker groups before relying on them.")
     Button(onClick = { model.transcribe(actor) }, enabled = ready) { Text("Transcribe active audio on device") }
-    TextButton(onClick = model::openTranscript, enabled = ready) { Text("Open saved transcript") }
+    TextButton(onClick = model::openTranscript, enabled = ready && hasTranscript) { Text("Open saved transcript") }
     val transcript = screen.transcript ?: return
     val segments = transcript.items("segments")
     if (segments.isEmpty()) { Text("The decoder returned no words. Listen to the audio and assess it independently."); return }
