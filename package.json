@@ -23,7 +23,7 @@
     "ajv": "8.20.0",
     "fastify": "5.12.7",
     "fflate": "0.8.3",
-    "jose": "6.2.14",
+    "jose": "6.2.15",
     "json-canonicalize": "3.0.1",
     "jspdf": "4.2.1",
     "yauzl": "3.4.0"
