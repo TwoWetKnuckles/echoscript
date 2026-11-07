@@ -34,6 +34,7 @@ import java.util.zip.ZipEntry
 import org.apache.commons.compress.archivers.zip.ZipFile
 import java.util.zip.ZipOutputStream
 import javax.crypto.KeyGenerator
+import org.echoscript.security.SignedCheckpoint
 
 data class VaultListing(val cases: List<JSONObject>, val warnings: List<String>)
 class EvidenceVault(private val context: Context) {
@@ -336,7 +337,34 @@ class EvidenceVault(private val context: Context) {
             }
             check(hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) } == artifact.getString("sha256") && count == artifact.getLong("bytes")) { "Artifact integrity mismatch" }
         }
-        return "Source and derivative hashes, authenticated decryption and audit linkage agree. Independent custody and signatures require separate verification."
+        val checkpoints = verifyCheckpoints(manifest, cancelled)
+        return if (checkpoints.isEmpty()) "Source and derivative hashes, authenticated decryption and audit linkage agree. Independent custody and signatures require separate verification."
+        else "Source and derivative hashes, authenticated decryption and audit linkage agree. ${checkpoints.size} device checkpoint signatures are mathematically valid. Confirm signer fingerprints independently; later events are outside earlier checkpoints."
+    }
+
+    internal fun verifyCheckpoints(manifest: JSONObject, cancelled: () -> Boolean = { false }): List<SignedCheckpoint.Verification> {
+        val checkpoints = manifest.items("artifacts").filter { it.getJSONObject("operation").getString("algorithm") == SignedCheckpoint.ALGORITHM }
+        require(checkpoints.size <= SignedCheckpoint.MAX_CHECKPOINTS) { "Too many signed checkpoints" }
+        return checkpoints.map { artifact ->
+            require(artifact.getString("type") == "REPORT" && artifact.getJSONObject("operation").getString("version") == "1") { "Unsupported checkpoint artifact" }
+            require(artifact.getLong("bytes") in 1..SignedCheckpoint.MAX_BYTES.toLong()) { "Oversized checkpoint" }
+            val data = ByteArrayOutputStream()
+            open(manifest.getString("caseId"), artifact.getString("id")).use { input ->
+                val block = ByteArray(65536)
+                while (true) {
+                    if (cancelled()) throw InterruptedException("Checkpoint verification cancelled")
+                    val n = input.read(block); if (n < 0) break
+                    require(data.size().toLong() + n <= artifact.getLong("bytes")) { "Checkpoint length differs" }
+                    data.write(block, 0, n)
+                }
+            }
+            val bytes = data.toByteArray()
+            check(bytes.size.toLong() == artifact.getLong("bytes") && sha(bytes) == artifact.getString("sha256")) { "Checkpoint artifact hash differs" }
+            SignedCheckpoint.verify(bytes, manifest).also {
+                check(it.coveredArtifacts + 1 == artifact.getInt("revision")) { "Checkpoint does not cover its immediately preceding artifact history" }
+                check(artifact.getJSONObject("operation").getJSONObject("parameters").getString("keySha256") == it.keySha256) { "Checkpoint signer metadata differs" }
+            }
+        }
     }
 
     @Synchronized
@@ -391,6 +419,7 @@ class EvidenceVault(private val context: Context) {
                                 check(result == artifact.getString("sha256")) { "Imported artifact hash mismatch" }
                                 installed += entry.size
                             }
+                            verifyCheckpoints(manifest, cancelled)
                             if (cancelled()) throw InterruptedException("Case import cancelled")
                             appendAudit(manifest, actor, "CASE_IMPORT", JSONObject().put("packageSha256", hash).put("trustedExternalHash", expectedHash != null))
                             saveSnapshot(manifest); committed = true
@@ -417,7 +446,7 @@ class EvidenceVault(private val context: Context) {
     @Synchronized
     fun recordEvent(manifest: JSONObject, actor: String, action: String, details: JSONObject) {
         actorCheck(actor)
-        require(action in setOf("PLAYBACK_REQUEST", "VERIFICATION", "ANNOTATION", "BOOKMARK", "LOCAL_TRANSCRIPTION", "WORKLOAD_UPDATE", "REVISION_SELECT", "EXPORT_ARTIFACT"))
+        require(action in setOf("PLAYBACK_REQUEST", "VERIFICATION", "ANNOTATION", "BOOKMARK", "LOCAL_TRANSCRIPTION", "WORKLOAD_UPDATE", "REVISION_SELECT", "EXPORT_ARTIFACT", "PROTECTED_TRANSFER_EXPORT", "PROTECTED_TRANSFER_IMPORT"))
         val next = JSONObject(manifest.toString())
         check(latestRevision(next.getString("caseId")) == next.getJSONArray("audit").length()) { "Case history changed. Reopen the case." }
         appendAudit(next, actor, action, details); saveSnapshot(next); replaceManifest(manifest, next)
@@ -433,7 +462,7 @@ class EvidenceVault(private val context: Context) {
             for (i in 0 until artifacts.length()) { val a = artifacts.getJSONObject(i); zip.putNextEntry(ZipEntry(a.getString("path"))); open(caseId, a.getString("id")).use { copyBounded(it, zip, cancelled) }; zip.closeEntry(); sums.append(a.getString("sha256")).append("  ").append(a.getString("path")).append('\n') }
             zip.putNextEntry(ZipEntry("manifest.json")); zip.write(bytes); zip.closeEntry(); sums.append(sha(bytes)).append("  manifest.json\n")
             zip.putNextEntry(ZipEntry("SHA256SUMS.txt")); zip.write(sums.toString().toByteArray()); zip.closeEntry()
-            zip.putNextEntry(ZipEntry("README.txt")); zip.write("EchoScript case format 1. This package is unencrypted and unsigned. Preserve its SHA-256 independently. Technical integrity does not establish legal admissibility.\n".toByteArray()); zip.closeEntry()
+            zip.putNextEntry(ZipEntry("README.txt")); zip.write("EchoScript case format 1. This ZIP layer is plaintext; it may be inside a protected transfer container. Device-signed checkpoint artifacts, when present, cover stated historical prefixes only. Verify signatures and independently trust public-key fingerprints. Preserve the package SHA-256 through a trusted channel. Technical validation does not establish legal admissibility.\n".toByteArray()); zip.closeEntry()
         }
         val packageHash = packageDigest.digest().joinToString("") { "%02x".format(it.toInt() and 255) }
         appendAudit(manifest, actor, "EXPORT_COMPLETE", JSONObject().put("format", "org.echoscript.case/1").put("packageSha256", packageHash)); saveSnapshot(manifest)

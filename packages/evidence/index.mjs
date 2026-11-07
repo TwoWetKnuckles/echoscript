@@ -190,7 +190,7 @@ export function verifyManifest(manifest, hashes) {
     valid: true,
     artifacts: seen.size,
     auditEntries: manifest.audit.length,
-    signatures: "NOT_IMPLEMENTED",
+    signatures: "NOT_CHECKED",
     authenticity:
       "Hash consistency only; no independent origin or custody authentication",
   };

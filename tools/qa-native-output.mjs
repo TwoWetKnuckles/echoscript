@@ -1,7 +1,11 @@
-import { readdir, stat } from "node:fs/promises";
+import { readdir, stat, readFile } from "node:fs/promises";
 import { join } from "node:path";
 import assert from "node:assert/strict";
-import { verifyZipFile, fileHash } from "./case-verify/streaming.mjs";
+import {
+  verifyZipFile,
+  verifyProtectedFile,
+  fileHash,
+} from "./case-verify/streaming.mjs";
 async function find(directory) {
   const matches = [];
   for (const entry of await readdir(directory, { withFileTypes: true })) {
@@ -9,7 +13,7 @@ async function find(directory) {
     if (entry.isDirectory()) matches.push(...(await find(path)));
     else if (
       entry.isFile() &&
-      /^synthetic-(native|offline-run-[1-7]|ui-run-[1-7])\.echocase$/.test(
+      /^synthetic-(native|offline-run-[1-7]|ui-run-[1-7]|protected-run-[1-7])\.echocase(?:\.enc)?$/.test(
         entry.name,
       )
     )
@@ -23,6 +27,12 @@ assert.ok(
   "No native package in AGP additional test output; do not count this as a pass",
 );
 for (let i = 1; i <= 7; i++) {
+  assert.ok(
+    files.some((path) =>
+      path.endsWith(`/synthetic-protected-run-${i}.echocase.enc`),
+    ),
+    `Missing protected native export ${i}`,
+  );
   for (const kind of ["offline", "ui"]) {
     assert.ok(
       files.some((path) =>
@@ -37,8 +47,20 @@ for (const path of files) {
     (await stat(path)).size > 100,
     "Native output package is empty/truncated",
   );
-  const result = await verifyZipFile(path);
+  const protectedPackage = path.endsWith(".enc");
+  const fingerprint = protectedPackage
+    ? (
+        await readFile(path.replace(".echocase.enc", ".key-sha256.txt"), "utf8")
+      ).trim()
+    : null;
+  const result = protectedPackage
+    ? await verifyProtectedFile(path, "SYNTHETIC test transfer password 42", {
+        trustedKeys: new Set([fingerprint]),
+      })
+    : await verifyZipFile(path);
   assert.equal(result.valid, true);
+  if (protectedPackage)
+    assert.equal(result.trustedCheckpointCoversAllEvidence, true);
   process.stdout.write(
     JSON.stringify({
       check: "ANDROID_NATIVE_EXPORT_INDEPENDENT_VERIFIER",

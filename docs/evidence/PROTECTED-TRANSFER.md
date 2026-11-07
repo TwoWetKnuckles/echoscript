@@ -1,0 +1,52 @@
+# Protected transfers and device checkpoints
+
+This source revision introduces an opt-in protected native case export and a device-key checkpoint. The published 0.4.0 preview predates these changes. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
+
+## Native workflow
+
+1. Finish and save the intended audio/transcript/document revisions.
+2. In Audit, create a device-signed checkpoint. Record its public-key SHA-256 through an independently trusted organizational channel. The displayed examiner label is supplied locally; it is not an authenticated identity.
+3. In Export, acknowledge responsibility for the destination. Enter and confirm an unpredictable transfer passphrase of 16–1024 characters. Choose **Protected case package** and a protected destination.
+4. Preserve the completed outer ciphertext SHA-256 separately. Send the passphrase through a separate authorized channel. Protect the recipient, destination, retention period and access rights under the applicable case policy.
+5. On the receiving device, enter the passphrase and, when available, the independently retained ciphertext hash before choosing the package. Existing cases are never replaced. In Audit, supply the independently trusted public-key fingerprint before verification.
+
+Unsigned ZIP case export remains available for compatibility and is clearly labeled. Individual audio/documents are plaintext exports. Export acknowledgement does not make a destination secure. Failed or cancelled Storage Access Framework writes may leave an incomplete destination; remove it using the destination's file manager. Only a completed, independently verified package is a recovery copy.
+
+Passphrases are not saved to preferences, files or saved-instance state. Temporary character arrays are cleared after a job. Managed runtime strings cannot be guaranteed to be erased from RAM; this is not a memory-erasure claim. Use a managed, uncompromised device and an approved password manager/separate custody process. There is no password reset or escrow service. Forgotten passphrases make the protected transfer unrecoverable.
+
+## Protected case format 1
+
+All integers are unsigned-format positive, big-endian 32-bit values; invalid signed/oversized values are rejected. The file consists of:
+
+| Field                 | Encoding / bound                                                                                              |
+| --------------------- | ------------------------------------------------------------------------------------------------------------- |
+| Magic                 | Eight ASCII bytes `ECHOCS01`                                                                                  |
+| PBKDF2 iterations     | Writer uses 600,000; reader accepts 600,000–2,000,000                                                         |
+| Salt                  | 32 cryptographically random bytes                                                                             |
+| Wrapped keyset length | 1–65,536 bytes                                                                                                |
+| Wrapped keyset        | Tink encrypted binary keyset; AES-256-GCM wrapping key derived by platform PBKDF2-HMAC-SHA256, 256-bit output |
+| Encrypted ZIP         | Tink `AES256_GCM_HKDF_1MB` streaming AEAD, fresh random keyset per export                                     |
+
+The magic, iteration count and salt are the keyset associated data. The complete exact header, including length and wrapped keyset, is the streaming associated data. Neither passphrases nor keys are serialized in plaintext. Use maintained Tink readers, not a hand-written cryptographic implementation. Passphrases are passed as characters to the platform PBKDF2 API without normalization; the JVM/Android round-trip fixtures test compatibility. Plain ZIP maximum: 16 GiB. Outer maximum: 16 GiB + 2 MiB. Android's smaller artifact, manifest, expansion and free-space policies continue to apply.
+
+Streaming AEAD authenticates segments; a partial stream is not a completed package. Android stages incoming bytes in encrypted app-private files, authenticates/decrypts through EOF, validates inventory/hashes/provenance/audit and checkpoint signatures, then commits the case. No plaintext ZIP is staged. Staging files are removed on the handled success/failure paths. Power-loss cleanup/resumption requires its separate release matrix.
+
+The older bounded browser `ECHENC01` container is a separate format. It is not interchangeable with `ECHOCS01`. The independent verifier dispatches on magic and preserves the outer ciphertext hash separately from the decoded ZIP hash. Browser session memory is not the native evidence vault.
+
+## Checkpoint schema and signature scope
+
+`specs/json-schema/checkpoint.schema.json` defines `org.echoscript.checkpoint/1`. A checkpoint is an immutable `REPORT` artifact with operation `ecdsa-p256-case-checkpoint`, version `1`. Its payload contains the complete preceding case manifest, its SHA-256, the case ID, UTC creation time, local actor label and SHA-256 of the DER SubjectPublicKeyInfo public key. RFC 8785 canonical payload bytes are signed using platform `SHA256withECDSA` and the P-256 curve; the signature is ASN.1 DER, base64 encoded. The envelope is canonical JSON. The artifact's parameters must contain the same `keySha256`. Maximum envelope: 16 MiB; maximum snapshot: 8 MiB; maximum checkpoints: 128 per case.
+
+The snapshot precedes the checkpoint artifact, avoiding a self-referential hash. Verification requires identical signed header fields and exact artifact/audit prefixes, plus ordinary case schema, artifact hash, provenance and audit validation. Later events remain outside that checkpoint. Reports state coverage and unsigned tail counts. A valid embedded key is not trusted merely because it arrived in the same package.
+
+Android creates the P-256 signing key in Android Keystore only after the explicit checkpoint action. It records the public fingerprint separately and fails if a retained identity loses its key; it never silently substitutes another identity. Hardware backing is **not asserted**. The key is separate from vault encryption. No attestation, certificate authority, trusted timestamp, revocation service or examiner identity binding is implemented. Keystore keys are not exported. An imported checkpoint can be checked using its public key without the originating private key.
+
+Independent `--trusted-key-sha256` verification fails unless a mathematically valid checkpoint from a supplied fingerprint covers every current non-checkpoint artifact. All later audit events still require review. Without a fingerprint, signatures are reported as mathematical prefix checks only. An organizational deployment must approve key enrollment, independent pin retention, revocation, timestamp/custody procedures and accepted unsigned events before this can satisfy its trust policy.
+
+## Recovery boundary
+
+Android cloud backup/device transfer remain excluded. Device reset, uninstall or lost vault keys can make the local vault unreadable. A completed protected export, its passphrase and independently retained hashes/fingerprints can recover the exported snapshot onto a clean installation; the independent desktop verifier can validate it without Android. Changes after that export are not recovered. In-place merge/replacement of an existing case is rejected. No raw vault-key escrow, automatic cloud backup or automatic resumable job is introduced.
+
+Before real evidence use, approve and exercise the protected-export schedule, offline custody, access control, passphrase recovery responsibility, clean-device restore and destruction/legal-hold process. Repository documentation is not organizational approval or an executed agreement.
+
+Primary references: [Tink Streaming AEAD](https://developers.google.com/tink/streaming-aead), [Android Keystore](https://developer.android.com/privacy-and-security/keystore), [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785), [OWASP PBKDF2 guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html). Algorithm selection or an iteration count is not a FIPS or other certification claim.

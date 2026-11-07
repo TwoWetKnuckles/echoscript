@@ -56,6 +56,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var acquisitionTitle by mutableStateOf("")
     var caseQuery by mutableStateOf("")
     var reviewEditorKey by mutableStateOf<String?>(null)
+    var transferPassphrase by mutableStateOf("")
+    var exportPassphrase by mutableStateOf("")
+    var exportPassphraseConfirmation by mutableStateOf("")
+    var trustedCheckpointKey by mutableStateOf("")
+
+    fun clearExportSecret() { exportPassphrase = ""; exportPassphraseConfirmation = "" }
 
     fun updateReviewDraft(key: String, draft: ReviewDraft) {
         reviewDrafts = reviewDrafts + (key to draft)
@@ -200,12 +206,21 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         showCase(manifest)
         analyzeAcquired(manifest, actor)
     }
-    fun importCase(uri: Uri, actor: String, expected: String, completed: () -> Unit) = runJob("Verifying and importing case", completed) {
-        val manifest = checkNotNull(getApplication<Application>().contentResolver.openInputStream(uri)).use {
-            vault.importPackage(it, actor, expected.trim().lowercase().ifBlank { null }, cancelled::get, reportProgress("bytes checked"))
+    fun importCase(uri: Uri, actor: String, expected: String, completed: () -> Unit) {
+        if (!mutable.value.ready || mutable.value.job != null) return
+        val password = transferPassphrase.toCharArray()
+        runJob("Verifying and importing case", completed) {
+            try {
+                val manifest = checkNotNull(getApplication<Application>().contentResolver.openInputStream(uri)).use {
+                    ProtectedTransfer.import(vault, it, actor, expected.trim().lowercase().ifBlank { null }, password, cancelled::get, reportProgress("bytes checked"))
+                }
+                restoreWorkspace(manifest)
+                "Case transferred into the encrypted vault. ${if (expected.isBlank()) "Internal consistency checked." else "The independent package hash matched."}"
+            } finally {
+                password.fill('\u0000')
+                viewModelScope.launch(Dispatchers.Main.immediate) { transferPassphrase = "" }
+            }
         }
-        restoreWorkspace(manifest)
-        "Case transferred into the encrypted vault. ${if (expected.isBlank()) "Internal consistency checked." else "The independent package hash matched."}"
     }
     fun analyze(actor: String) = runJob("Analyzing audio") {
         val overview = workflow.analyze(selected(), actor, cancelled::get, reportProgress("units processed"))
@@ -268,19 +283,43 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     }
     fun verify(actor: String) = runJob("Verifying evidence and audit") {
         val case = selected(); val result = vault.verify(case, cancelled::get)
-        vault.recordEvent(case, actor, "VERIFICATION", JSONObject().put("result", "PASS")); result
+        val pin = trustedCheckpointKey.trim().lowercase()
+        if (pin.isNotEmpty()) {
+            require(pin.matches(Regex("[a-f0-9]{64}"))) { "Enter an independently trusted 64-character signer SHA-256" }
+            check(vault.verifyCheckpoints(case, cancelled::get).any { checkpoint ->
+                checkpoint.keySha256 == pin && case.items("artifacts").drop(checkpoint.coveredArtifacts).all {
+                    it.getJSONObject("operation").getString("algorithm") == org.echoscript.security.SignedCheckpoint.ALGORITHM
+                }
+            }) { "No trusted checkpoint covers the current evidence revisions. Review the signer or create a new checkpoint." }
+        }
+        vault.recordEvent(case, actor, "VERIFICATION", JSONObject().put("result", "PASS").put("trustedCheckpointKey", if (pin.isEmpty()) JSONObject.NULL else pin))
+        if (pin.isEmpty()) result else "$result Independently supplied signer fingerprint matched; review audit events outside the signed snapshot."
     }
-    fun export(uri: Uri, actor: String, format: ExportFormat) = runJob("Exporting ${format.label}") {
-        val case = selected()
-        val resolver = getApplication<Application>().contentResolver
-        val hash = checkNotNull(resolver.openOutputStream(uri, "w")) { "Could not open the export destination" }.use { output ->
-            when (format) {
-                ExportFormat.CASE -> vault.exportPackage(case, output, actor, cancelled::get)
-                ExportFormat.WAV -> workflow.exportArtifact(case, actor, workflow.prepareAudio(case, actor, cancelled::get, {}), output, cancelled::get)
-                else -> exportDocument(workflow, vault, case, actor, format, output, cancelled::get)
+    fun checkpoint(actor: String) = runJob("Creating device-signed checkpoint") {
+        val artifact = DeviceCheckpoint(getApplication()).create(vault, selected(), actor, cancelled::get)
+        "Device checkpoint saved. Verify the public-key fingerprint through an independent trusted channel. ${artifact.operationParameters().getString("keySha256")}"
+    }
+    fun export(uri: Uri, actor: String, format: ExportFormat) {
+        if (!mutable.value.ready || mutable.value.job != null) return
+        val password = exportPassphrase.toCharArray()
+        runJob("Exporting ${format.label}") {
+            try {
+                val case = selected()
+                val resolver = getApplication<Application>().contentResolver
+                val hash = checkNotNull(resolver.openOutputStream(uri, "w")) { "Could not open the export destination" }.use { output ->
+                    when (format) {
+                        ExportFormat.PROTECTED_CASE -> ProtectedTransfer.export(vault, case, actor, output, password, cancelled::get)
+                        ExportFormat.CASE -> vault.exportPackage(case, output, actor, cancelled::get)
+                        ExportFormat.WAV -> workflow.exportArtifact(case, actor, workflow.prepareAudio(case, actor, cancelled::get, {}), output, cancelled::get)
+                        else -> exportDocument(workflow, vault, case, actor, format, output, cancelled::get)
+                    }
+                }
+                "Export saved. SHA-256 $hash"
+            } finally {
+                password.fill('\u0000')
+                viewModelScope.launch(Dispatchers.Main.immediate) { clearExportSecret() }
             }
         }
-        "Export saved. SHA-256 $hash"
     }
     fun play(actor: String, id: String? = null, startSeconds: Double = 0.0) = runJob("Preparing authenticated playback", { startPlayback(id, startSeconds) }) {
         val case = selected()

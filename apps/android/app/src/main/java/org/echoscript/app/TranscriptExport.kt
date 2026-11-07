@@ -9,6 +9,7 @@ import java.util.zip.ZipEntry
 import java.util.zip.ZipOutputStream
 
 internal enum class ExportFormat(val label: String, val extension: String, val mime: String, val transcript: Boolean = true) {
+    PROTECTED_CASE("Protected case package", "echocase.enc", "application/octet-stream", false),
     CASE("Case package", "echocase", "application/zip", false),
     WAV("Active audio WAV", "wav", "audio/wav", false),
     TXT("Transcript TXT", "txt", "text/plain"),

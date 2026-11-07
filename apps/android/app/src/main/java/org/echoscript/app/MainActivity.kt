@@ -35,6 +35,7 @@ import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -114,6 +115,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode == android.app.Activity.RESULT_OK) result.data?.data?.let { model.export(it, actor, ExportFormat.valueOf(exportType)) }
+        else model.clearExportSecret()
     }
     DisposableEffect(busy) {
         if (busy) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -191,6 +193,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             }
                             if (transfer) Section("Open a case package", "Choose protected storage and retain a separate package hash.") {
                                 OutlinedTextField(expectedHash, { expectedHash = it.take(64) }, label = { Text("Independently received SHA-256 (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                SecretField(model.transferPassphrase, { model.transferPassphrase = it }, "Transfer passphrase (protected packages)", ready)
                                 Button(onClick = { importCase.launch(arrayOf("application/zip", "application/octet-stream")) }, enabled = ready) { Text("Choose .echocase package") }
                             }
                             CasesList(model, screen, ready) { model.select(it); tab = "Analyze" }
@@ -218,7 +221,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                                 Button(onClick = { actor = draft.trim(); preferences.edit().putString("examiner", actor).apply(); model.notice("Examiner identifier saved on this device.") }, enabled = draft.isNotBlank() && draft.none { it.code < 32 }) { Text("Save examiner") }
                             }
                             Text("${BuildConfig.VERSION_NAME} · Android 10+", style = MaterialTheme.typography.bodySmall)
-                            Text("The vault is encrypted on this device. Keep protected exports before uninstalling or resetting the app. Native exports are plaintext and unsigned.", style = MaterialTheme.typography.bodySmall)
+                            Text("The vault is encrypted on this device. Keep verified protected case exports before uninstalling or resetting the app. Individual WAV/document exports and legacy case ZIPs are plaintext. Device checkpoints require independently trusted signer fingerprints.", style = MaterialTheme.typography.bodySmall)
                         }
                         else -> if (selected == null) Section("Start with a recording", "Import an audio file or try the included sample from Cases.") {
                             Button(onClick = chooseAudio, enabled = ready) { Text("Choose audio file") }
@@ -226,7 +229,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             "Analyze" -> AnalysisScreen(model, screen, selected, actor, ready) { tab = "Transcript" }
                             "Transcript" -> TranscriptScreen(model, screen, selected, actor, ready) { tab = "Export" }
                             "Audit" -> AuditScreen(model, selected, actor, ready)
-                            "Export" -> ExportScreen(selected, ready) { format ->
+                            "Export" -> ExportScreen(model, selected, ready) { format ->
                                 exportType = format.name
                                 val basename = selected.getString("caseId").take(8)
                                 export.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(format.mime).putExtra(Intent.EXTRA_TITLE, "echoscript-$basename.${format.extension}"))
@@ -477,6 +480,14 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
 private fun AuditScreen(model: VaultModel, selected: JSONObject, actor: String, ready: Boolean) {
     Text("Evidence and custody", style = MaterialTheme.typography.headlineSmall)
     Button(onClick = { model.verify(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Verify all hashes and custody records") }
+    OutlinedTextField(model.trustedCheckpointKey, { model.trustedCheckpointKey = it.take(64) },
+        label = { Text("Independently trusted signer SHA-256 (optional)") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedButton(onClick = { model.checkpoint(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Create device-signed checkpoint") }
+    selected.items("artifacts").lastOrNull { it.getJSONObject("operation").getString("algorithm") == org.echoscript.security.SignedCheckpoint.ALGORITHM }?.let { artifact ->
+        Section("Device signer SHA-256", "A device key attests the saved snapshot. This does not authenticate the examiner or later audit events. Retain this fingerprint independently.") {
+            SelectionContainer { Text(artifact.operationParameters().getString("keySha256"), style = MaterialTheme.typography.bodySmall) }
+        }
+    }
     Section("Original SHA-256", "Retain an independent trusted checkpoint.") {
         SelectionContainer { Text(selected.items("artifacts").first { it.getString("type") == "SOURCE" }.getString("sha256"), style = MaterialTheme.typography.bodySmall) }
     }
@@ -494,13 +505,20 @@ private fun AuditScreen(model: VaultModel, selected: JSONObject, actor: String, 
 }
 
 @Composable
-private fun ExportScreen(selected: JSONObject, ready: Boolean, export: (ExportFormat) -> Unit) {
+private fun ExportScreen(model: VaultModel, selected: JSONObject, ready: Boolean, export: (ExportFormat) -> Unit) {
     var acknowledge by rememberSaveable(selected.getString("caseId")) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     Text("Save your work", style = MaterialTheme.typography.headlineSmall)
-    Section("Export to protected storage", "Native exports are plaintext and unsigned. Preserve the exported hash through a trusted channel.") {
+    Section("Protect a case transfer", "Passphrase-protected streaming encryption. Save the passphrase and package hash through separate trusted channels. Losing the passphrase makes this export unavailable.") {
         Acknowledgement("I understand and will protect exported files.", acknowledge, ready) { acknowledge = it }
-        Button(onClick = { export(ExportFormat.CASE) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Case package") }
+        SecretField(model.exportPassphrase, { model.exportPassphrase = it }, "New transfer passphrase", ready)
+        SecretField(model.exportPassphraseConfirmation, { model.exportPassphraseConfirmation = it }, "Confirm transfer passphrase", ready)
+        val valid = model.exportPassphrase.length in 16..1024 && model.exportPassphrase.isNotBlank() && model.exportPassphrase == model.exportPassphraseConfirmation
+        Button(onClick = { export(ExportFormat.PROTECTED_CASE) }, enabled = ready && acknowledge && valid, modifier = Modifier.fillMaxWidth()) { Text("Protected case package") }
+        Text("Use 16 or more unpredictable characters. Passphrases stay in app memory and are cleared after a transfer operation. Only saved case revisions are exported.", style = MaterialTheme.typography.bodySmall)
+    }
+    Section("Individual and legacy plaintext exports", "Choose an approved protected destination. These exports do not have container encryption. Signed checkpoints, when present, cover their stated historical snapshots.") {
+        OutlinedButton(onClick = { export(ExportFormat.CASE) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Case package") }
         OutlinedButton(onClick = { export(ExportFormat.WAV) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Active audio WAV") }
         Box {
             OutlinedButton(onClick = { expanded = true }, enabled = ready && acknowledge && selected.latestTranscript() != null, modifier = Modifier.fillMaxWidth()) { Text("Transcript and report formats") }
@@ -510,6 +528,14 @@ private fun ExportScreen(selected: JSONObject, ready: Boolean, export: (ExportFo
         }
         Text("A case package includes original audio, derivatives, transcript revisions and custody history.", style = MaterialTheme.typography.bodySmall)
     }
+}
+
+@Composable
+private fun SecretField(value: String, change: (String) -> Unit, label: String, enabled: Boolean) {
+    OutlinedTextField(value, { change(it.take(1024)) }, label = { Text(label) }, enabled = enabled,
+        singleLine = true, visualTransformation = PasswordVisualTransformation(),
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+        modifier = Modifier.fillMaxWidth())
 }
 
 internal fun clock(millis: Long, separator: String = "."): String {

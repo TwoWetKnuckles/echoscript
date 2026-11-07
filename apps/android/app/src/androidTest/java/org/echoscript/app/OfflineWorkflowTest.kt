@@ -64,6 +64,18 @@ class OfflineWorkflowTest {
                     File(outputDir, "synthetic-native-transcript.${format.extension}").writeBytes(bytes)
                 }
             }
+            val checkpoint = DeviceCheckpoint(context).create(vault, case, actor) { false }
+            val fingerprint = checkpoint.operationParameters().getString("keySha256")
+            assertEquals(fingerprint, vault.verifyCheckpoints(case).single().keySha256)
+            val protectedOutput = ByteArrayOutputStream()
+            val testPassword = "SYNTHETIC test transfer password 42".toCharArray()
+            val protectedHash = try { ProtectedTransfer.export(vault, case, actor, protectedOutput, testPassword) { false } }
+                finally { testPassword.fill('\u0000') }
+            val protectedBytes = protectedOutput.toByteArray()
+            assertEquals(protectedHash, EvidenceVault.sha(protectedBytes))
+            assertEquals("ECHOCS01", protectedBytes.copyOfRange(0, 8).toString(Charsets.US_ASCII))
+            File(outputDir, "synthetic-protected-run-${index + 1}.echocase.enc").writeBytes(protectedBytes)
+            File(outputDir, "synthetic-protected-run-${index + 1}.key-sha256.txt").writeText(fingerprint + "\n")
             val archive = ByteArrayOutputStream()
             val digest = vault.exportPackage(case, archive, actor)
             val zip = archive.toByteArray()
@@ -78,6 +90,23 @@ class OfflineWorkflowTest {
             assertEquals("CASE_IMPORT", reopened.items("audit").last().getString("action"))
             assertEquals("IN_REVIEW", reopened.items("audit").last { it.getString("action") == "WORKLOAD_UPDATE" }.getJSONObject("details").getString("status"))
             File(outputDir, "synthetic-offline-run-${index + 1}.echocase").writeBytes(zip)
+            assertTrue(folder.deleteRecursively())
+            // A receiving installation never replaces an existing case or needs
+            // the originating device's private signing/vault keys.
+            if (index == 0) {
+                assertThrows(Exception::class.java) { ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, protectedHash,
+                    "WRONG synthetic password".toCharArray(), { false }, {}) }
+                assertFalse(folder.exists())
+                assertThrows(Exception::class.java) { ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, "0".repeat(64),
+                    "SYNTHETIC test transfer password 42".toCharArray(), { false }, {}) }
+                assertFalse(folder.exists())
+            }
+            val recovered = ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, protectedHash,
+                "SYNTHETIC test transfer password 42".toCharArray(), { false }, {})
+            assertEquals(caseId, recovered.getString("caseId"))
+            assertTrue(vault.verify(recovered).contains("mathematically valid"))
+            assertEquals("PROTECTED_TRANSFER_IMPORT", recovered.items("audit").last().getString("action"))
+            assertEquals(speechHash, recovered.items("artifacts").first().getString("sha256"))
             assertTrue(folder.deleteRecursively())
             count++
         }

@@ -17,3 +17,11 @@ EchoScript 0.4.0 is a development preview advancing the native Android workflow.
 | Complete release gate | Core and interface subsets are reported separately                                                                                                                                             | Seven consecutive full accepted workflows with every mandatory product gate executed                                                                  |
 
 A successful emulator or speech subset is recorded as that subset. A defect resets the relevant consecutive workflow count after repair. Outstanding physical-device, signing, policy and feature gates continue to block a release-candidate or beta claim.
+
+## Evidence gate implementation in progress
+
+The current source adds opt-in native streaming protected transfers, Keystore P-256 historical checkpoints and an independent JVM/Node verification path. See [the exact format, trust and recovery boundaries](evidence/PROTECTED-TRANSFER.md). The published 0.4.0 APK does not contain these additions. These controls are not an authenticated examiner identity, revocation/attestation infrastructure, a trusted timestamp service or an approved recovery policy.
+
+Desktop validation includes 30 Node tests, 9 JVM tests with the cross-runtime fixture enabled, and a real Tink-encrypted JVM-to-Node interoperability run, including wrong-passphrase, tag-tamper and no-clobber failures. Android compilation/emulator validation for these additions must be recorded against the resulting commit before claiming native success. CI now requires independent verification of seven native protected exports in addition to the existing core and interface subsets.
+
+The remaining acceptance column above continues to apply. No row becomes passed simply because a control or test harness exists. Physical-device measurements, complete native feature parity, team authorization/sync, owner production signing and deployment-specific governance remain mandatory.
