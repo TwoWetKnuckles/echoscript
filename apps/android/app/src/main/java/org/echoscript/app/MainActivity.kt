@@ -98,7 +98,9 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     var expectedHash by rememberSaveable { mutableStateOf("") }
     var transfer by rememberSaveable { mutableStateOf(false) }
     var exportType by rememberSaveable { mutableStateOf(ExportFormat.CASE.name) }
-    val stateHolder = rememberSaveableStateHolder()
+    // Retain workspace state for this case across navigation/rotation. A new
+    // case gets a fresh registry so restored fields cannot cross case boundaries.
+    val stateHolder = key(screen.selected) { rememberSaveableStateHolder() }
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
         if (granted) model.record(title.ifBlank { "Microphone ${EvidenceVault.utc()}" }, actor) { tab = "Analyze" }
         else model.notice("Microphone permission was declined. Choose audio file to import a recording.")
