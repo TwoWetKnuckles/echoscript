@@ -10,6 +10,8 @@
 - Keep `downloads/android/INSTALL.txt` and the landing-page ZIP link aligned with the published preview. Publish binaries as GitHub Release assets and verify the exact tested APK, install guide, SHA-256, license notices and build record. Keep the development preview labeled for synthetic evaluation.
 - Rust: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace --locked`, `cargo build --workspace --release --locked`. `python3 tools/qa-stress.py` requires the built Rust utility and Node dependencies.
 
+Native UI changes must retain accessible touch targets, export acknowledgement and explicit examiner verification. Check dark/light rendering, saved form state and the seven synthetic interface workflows. Report controlled picker responses separately from physical-device picker testing.
+
 Keep `main` buildable, use focused conventional commits and existing module conventions/strict types. Run checks appropriate to the affected behavior; record actual results and limits in `docs/IMPLEMENTATION.md` / `docs/qa/STATUS.md`. Do not invent tests executed in an unavailable environment.
 
 ## Evidence invariants

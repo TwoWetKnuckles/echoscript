@@ -1,10 +1,10 @@
-EchoScript Android preview 0.3.1
+EchoScript Android preview 0.4.0
 ================================
 Android 10 or later. Use synthetic, non-sensitive recordings for evaluation.
 BETA GATE: NOT PASSED. This package uses a debuggable development build.
 
 Official download
-https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.3.1
+https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.4.0
 
 Install on the device
 1. Download EchoScript-Android-preview.zip from the release page. In Android
@@ -17,10 +17,12 @@ Install on the device
 3. Open EchoScript. In Cases, choose Load synthetic speech sample to try the
    workflow or Choose audio file to import your own synthetic recording. The
    speech models are included. All processing runs inside the app.
-4. In Analyze, run Analyze audio. Select a speech candidate or enter a region,
-   apply filters and render an enhanced WAV revision. Review the original and
-   the derivative. In Transcript, transcribe the active audio on device.
-5. Listen at the timestamps and review words and draft speaker groups. Save
+4. Analyze shows the waveform automatically after import. Select a speech
+   candidate or keep the full recording, choose a filter preset and gain, then
+   tap Render & transcribe. Render enhanced revision saves WAV separately.
+   Settings saves the examiner identifier and Dark, Light or System appearance.
+5. In Transcript, listen at the timestamps. Open Edit and verify segment to
+   review words and draft speaker groups. Save
    examiner revisions when needed. Use Audit to verify. Export writes WAV,
    transcripts, reports or a .echocase to a destination you choose.
 

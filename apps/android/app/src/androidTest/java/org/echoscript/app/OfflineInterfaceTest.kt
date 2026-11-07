@@ -1,37 +1,141 @@
 package org.echoscript.app
 
-import androidx.compose.ui.test.assertIsDisplayed
-import androidx.compose.ui.test.assertIsNotEnabled
+import android.app.Activity
+import android.app.Instrumentation.ActivityResult
+import android.content.Context
+import android.content.Intent
+import android.net.Uri
+import android.graphics.Bitmap
+import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
-import androidx.compose.ui.test.onAllNodesWithText
-import androidx.compose.ui.test.onNodeWithText
-import androidx.compose.ui.test.performClick
-import androidx.compose.ui.test.performScrollTo
+import androidx.test.core.app.ApplicationProvider
+import androidx.test.espresso.Espresso.closeSoftKeyboard
+import androidx.test.espresso.intent.Intents
+import androidx.test.espresso.intent.Intents.intending
+import androidx.test.espresso.intent.matcher.IntentMatchers.hasAction
+import androidx.test.platform.app.InstrumentationRegistry
+import org.junit.Assert.*
 import org.junit.Rule
 import org.junit.Test
+import java.io.File
 
 class OfflineInterfaceTest {
     @get:Rule val ui = createAndroidComposeRule<MainActivity>()
 
-    @Test fun acquireAnalyzeAndTranscribeFromTheInstalledInterface() {
-        fun waitFor(text: String, timeout: Long = 30000) {
-            ui.waitUntil(timeoutMillis = timeout) { ui.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    private fun waitFor(text: String, timeout: Long = 120000) {
+        ui.waitUntil(timeoutMillis = timeout) { ui.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
+    }
+    private fun click(text: String, navigation: Boolean = false) {
+        ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodes(hasText(text) and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        val node = ui.onNodeWithText(text)
+        if (!navigation) node.performScrollTo()
+        node.performClick()
+    }
+    private fun document(action: String, file: File, block: () -> Unit) {
+        // The platform picker result is controlled. Processing, speech, storage,
+        // UI callbacks, encryption, exports and package verification remain real.
+        Intents.init()
+        try {
+            intending(hasAction(action)).respondWith(ActivityResult(Activity.RESULT_OK, Intent().setData(Uri.fromFile(file))))
+            block()
+        } finally { Intents.release() }
+    }
+    private fun screenshot(name: String) {
+        ui.waitForIdle()
+        val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir") ?: return
+        val folder = File(output).apply { mkdirs() }
+        val image = checkNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
+        try { File(folder, name).outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
+        finally { image.recycle() }
+    }
+
+    @Test fun appearanceAndExaminerSettingsSurviveRecreation() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodes(hasContentDescription("Settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        ui.onNodeWithContentDescription("Settings").performClick()
+        click("Light")
+        ui.onNodeWithText("Examiner identifier").performScrollTo().performTextReplacement("SYNTHETIC_QA")
+        closeSoftKeyboard()
+        click("Save examiner")
+        waitFor("Examiner identifier saved on this device.")
+        ui.activityRule.scenario.recreate()
+        ui.onNodeWithText("Examiner identifier").performScrollTo().assertTextContains("SYNTHETIC_QA")
+        assertEquals("Light", context.getSharedPreferences("echoscript_preferences", 0).getString("appearance", null))
+        screenshot("ui-settings-light.png")
+        click("Dark")
+        ui.onNodeWithText("Examiner identifier").performScrollTo().performTextReplacement("EXAMINER")
+        closeSoftKeyboard()
+        click("Save examiner")
+        waitFor("Examiner identifier saved on this device.")
+    }
+
+    @Test fun sevenInterfaceWorkflowsFromFileIntakeThroughVerifiedTransfer() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val vault = EvidenceVault(context)
+        val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it) } ?: context.cacheDir
+        repeat(7) { run ->
+            if (run > 0) click("Cases", navigation = true)
+            ui.onNodeWithText("Choose audio file").assertIsDisplayed()
+            if (run == 0) screenshot("ui-cases.png")
+            val before = vault.listCases().cases.map { it.getString("caseId") }.toSet()
+            val source = File(context.cacheDir, "SYNTHETIC UI RUN ${run + 1} NOT EVIDENCE.wav")
+            context.assets.open("synthetic-speech.wav").use { input -> source.outputStream().use { input.copyTo(it) } }
+            document(Intent.ACTION_OPEN_DOCUMENT, source) {
+                click("Choose audio file")
+                waitFor("Original preserved. Waveform and speech candidates are ready.")
+            }
+            val case = vault.listCases().cases.single { it.getString("caseId") !in before }
+            val id = case.getString("caseId")
+            assertEquals("9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd", case.items("artifacts").first().getString("sha256"))
+            ui.onNodeWithTag("waveform").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithTag("spectrogram").performScrollTo().assertIsDisplayed()
+            if (run == 0) screenshot("ui-analysis.png")
+            click("Render & transcribe")
+            waitFor("Draft transcript saved. Review the words, timestamps and speaker groups.")
+            if (run == 0) screenshot("ui-transcript.png")
+            click("Edit and verify segment")
+            ui.onNodeWithText("Examiner speaker label").performScrollTo().performTextReplacement("Synthetic examiner ${run + 1}")
+            closeSoftKeyboard()
+            if (run == 0) {
+                click("Export", navigation = true)
+                ui.onNodeWithText("Case package").performScrollTo().assertIsNotEnabled()
+                click("Transcript", navigation = true)
+                ui.activityRule.scenario.recreate()
+                ui.onNodeWithText("Examiner speaker label").performScrollTo().assertTextContains("Synthetic examiner 1")
+            }
+            click("I listened to and verified this segment.")
+            click("Save examiner revision")
+            waitFor("This segment is marked as reviewed by the examiner.")
+            ui.onNodeWithContentDescription("Audit").performClick()
+            click("Verify all hashes and custody records")
+            waitFor("Source and derivative hashes, authenticated decryption and audit linkage agree. Independent custody and signatures require separate verification.")
+            click("Export", navigation = true)
+            click("I understand and will protect exported files.")
+            val archive = File(context.cacheDir, "synthetic-ui-run-${run + 1}.echocase")
+            document(Intent.ACTION_CREATE_DOCUMENT, archive) {
+                click("Case package")
+                ui.waitUntil(timeoutMillis = 30000) { archive.exists() && archive.length() > 100 && ui.onAllNodesWithText("Export saved. SHA-256 ", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            }
+            val hash = archive.inputStream().use { java.security.MessageDigest.getInstance("SHA-256").let { digest ->
+                val buffer = ByteArray(65536)
+                while (true) { val length = it.read(buffer); if (length < 0) break; digest.update(buffer, 0, length) }
+                digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 255) }
+            } }
+            assertTrue(File(context.filesDir, "EvidenceVault/cases/$id").deleteRecursively())
+            click("Cases", navigation = true)
+            click("Transfer case")
+            ui.onNodeWithText("Independently received SHA-256 (optional)").performScrollTo().performTextReplacement(hash)
+            closeSoftKeyboard()
+            document(Intent.ACTION_OPEN_DOCUMENT, archive) {
+                click("Choose .echocase package")
+                waitFor("Case transferred into the encrypted vault. The independent package hash matched.")
+            }
+            val imported = vault.listCases().cases.single { it.getString("caseId") == id }
+            assertTrue(vault.verify(imported).contains("agree"))
+            assertEquals("HUMAN_VERIFIED", OfflineWorkflow(context, vault).readTranscript(imported, checkNotNull(imported.latestTranscript())).items("segments").first().getString("verification"))
+            archive.copyTo(File(output, "synthetic-ui-run-${run + 1}.echocase"), overwrite = true)
+            assertTrue(File(context.filesDir, "EvidenceVault/cases/$id").deleteRecursively())
+            archive.delete(); source.delete()
         }
-        fun click(text: String) { ui.onNodeWithText(text).performScrollTo().performClick() }
-        waitFor("Choose a case or import a recording.")
-        ui.onNodeWithText("Choose audio file").assertIsDisplayed()
-        ui.onNodeWithText("Export").assertIsDisplayed()
-        click("Load synthetic speech sample")
-        waitFor("Synthetic speech is ready in Analyze.")
-        click("Analyze audio")
-        waitFor("Waveform, spectral overview and candidate speech regions are ready.")
-        ui.onNodeWithText("Transcript").assertIsDisplayed().performClick()
-        click("Transcribe active audio on device")
-        waitFor("Draft transcript saved. Review the words, timestamps and speaker groups.", 120000)
-        ui.onNodeWithText("Examiner transcript text").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("Export").assertIsDisplayed().performClick()
-        ui.onNodeWithText("Case package").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("Active audio WAV").performScrollTo().assertIsDisplayed()
-        ui.onNodeWithText("Transcript and report formats").performScrollTo().assertIsDisplayed().assertIsNotEnabled()
     }
 }

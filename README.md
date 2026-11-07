@@ -4,9 +4,9 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Download the Android preview ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.3.1/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
+**[Download the Android preview ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
 
-Android 10 or later. Extract the ZIP, open the APK and tap **Install**. In **Cases**, choose **Load synthetic speech sample** to try the workflow. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
+Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Material interface defaults to a dark graphite theme with cyan accents. In **Cases**, choose **Load synthetic speech sample** to try the workflow. Import prepares the waveform automatically, and **Render & transcribe** opens the resulting draft for review. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
 
 **Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** Read the [installation guide](downloads/android/INSTALL.txt) before installing or upgrading.
 
@@ -115,6 +115,6 @@ The existing companion is published through Sites with its existing owner-privat
 
 ## Project map and licensing
 
-[Architecture](docs/architecture.md) · [File map](docs/FILE-TREE.md) · [Provider qualification](docs/providers/local-vosk.md) · [Threat model](docs/security/THREAT_MODEL.md) · [Contributing](CONTRIBUTING.md) · [Implementation record](docs/IMPLEMENTATION.md)
+[Architecture](docs/architecture.md) · [File map](docs/FILE-TREE.md) · [Provider qualification](docs/providers/local-vosk.md) · [Threat model](docs/security/THREAT_MODEL.md) · [Contributing](CONTRIBUTING.md) · [Implementation record](docs/IMPLEMENTATION.md) · [Release candidate gates](docs/RELEASE-CANDIDATE.md)
 
 Original project code: Apache-2.0; see [LICENSE](LICENSE) and [NOTICE](NOTICE). Preserve dependency/model licenses and the bundled Noto font's SIL Open Font License. Third-party services have separate terms. Fixture provenance is recorded in `specs/fixtures/`; it contains synthetic speech, not real evidence or a cloned person's voice. Open-source availability does not include an ongoing support, hosting or service-level commitment.

@@ -6,7 +6,7 @@
 
 | Version                                                                 | Status                                                                                            |
 | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Current development line (`0.2.0-dev` web, `0.3.1-dev-preview` Android) | Reports may be submitted for review; no stable or production-supported release has been announced |
+| Current development line (`0.2.0-dev` web, `0.4.0-dev-preview` Android) | Reports may be submitted for review; no stable or production-supported release has been announced |
 | Historical commits, forks and third-party deployments                   | No maintenance or backport commitment from this project; contact their operator for its policy    |
 
 No guaranteed acknowledgement, remediation deadline, continued support, bounty or service level is offered. An operator is responsible for monitoring its dependencies and advisories and choosing a maintenance plan. Separate authorized written support agreements, if any, govern their own obligations.

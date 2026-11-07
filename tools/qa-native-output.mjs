@@ -9,7 +9,9 @@ async function find(directory) {
     if (entry.isDirectory()) matches.push(...(await find(path)));
     else if (
       entry.isFile() &&
-      /^synthetic-(native|offline-run-[1-7])\.echocase$/.test(entry.name)
+      /^synthetic-(native|offline-run-[1-7]|ui-run-[1-7])\.echocase$/.test(
+        entry.name,
+      )
     )
       matches.push(path);
   }
@@ -21,10 +23,14 @@ assert.ok(
   "No native package in AGP additional test output; do not count this as a pass",
 );
 for (let i = 1; i <= 7; i++) {
-  assert.ok(
-    files.some((path) => path.endsWith(`/synthetic-offline-run-${i}.echocase`)),
-    `Missing native run ${i}`,
-  );
+  for (const kind of ["offline", "ui"]) {
+    assert.ok(
+      files.some((path) =>
+        path.endsWith(`/synthetic-${kind}-run-${i}.echocase`),
+      ),
+      `Missing ${kind} run ${i}`,
+    );
+  }
 }
 for (const path of files) {
   assert.ok(
