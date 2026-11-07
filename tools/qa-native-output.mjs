@@ -60,9 +60,15 @@ for (const path of files) {
       ).trim()
     : null;
   const result = protectedPackage
-    ? await verifyProtectedFile(path, "SYNTHETIC test transfer password 42", {
-        trustedKeys: new Set([fingerprint]),
-      })
+    ? await verifyProtectedFile(
+        path,
+        path.endsWith("/synthetic-protected-run-1.echocase.enc")
+          ? "SYNTHETIC test 密码 é 😀 42"
+          : "SYNTHETIC test transfer password 42",
+        {
+          trustedKeys: new Set([fingerprint]),
+        },
+      )
     : await verifyZipFile(path);
   assert.equal(result.valid, true);
   if (protectedPackage)

@@ -42,10 +42,15 @@ def execute(phase):
 
 execute("prepare")
 interrupted = subprocess.Popen(command("interrupt"), stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
+probe = None
+interrupted_output = None
 try:
     deadline = time.monotonic() + 30
     while True:
-        ready = subprocess.run(["adb", "shell", "run-as", package, "test", "-f", "files/synthetic-crash-ready"], timeout=5, capture_output=True).returncode == 0
+        # `test` may only be a shell builtin on a device image. Use an explicit
+        # executable to read only this harness's known synthetic marker.
+        probe = subprocess.run(["adb", "shell", "run-as", package, "cat", "files/synthetic-crash-ready"], timeout=5, capture_output=True)
+        ready = probe.returncode == 0 and probe.stdout == b"SYNTHETIC_IMPORT_BLOCKED"
         if ready:
             break
         if interrupted.poll() is not None or time.monotonic() >= deadline:
@@ -53,13 +58,18 @@ try:
         time.sleep(0.2)
     subprocess.run(["adb", "shell", "am", "force-stop", package], check=True, timeout=10)
     stdout, stderr = interrupted.communicate(timeout=15)
-    (output / "synthetic-interrupt.txt").write_text(stdout + stderr, encoding="utf-8")
+    interrupted_output = (stdout, stderr)
     if "OK (1 test)" in stdout:
         raise RuntimeError("Interrupt phase completed instead of being killed")
 finally:
     if interrupted.poll() is None:
+        subprocess.run(["adb", "shell", "am", "force-stop", package], timeout=10, capture_output=True)
         interrupted.kill()
-        interrupted.communicate(timeout=5)
+    if interrupted_output is None:
+        interrupted_output = interrupted.communicate(timeout=5)
+    (output / "synthetic-interrupt.txt").write_text("".join(interrupted_output), encoding="utf-8")
+    if probe is not None:
+        (output / "synthetic-readiness-probe.txt").write_bytes(probe.stdout + probe.stderr)
 execute("verify")
 subprocess.run(["adb", "pull", device_output + "/process-kill-import.json", str(output / "process-kill-import.json")], check=True, timeout=15, stdout=subprocess.DEVNULL)
 result = json.loads((output / "process-kill-import.json").read_text())

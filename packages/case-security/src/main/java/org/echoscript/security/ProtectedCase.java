@@ -50,7 +50,15 @@ public final class ProtectedCase {
         if (passphrase == null || passphrase.length < 16 || passphrase.length > 1024)
             throw new IllegalArgumentException("Use a transfer passphrase of 16 to 1024 characters");
         boolean nonSpace = false;
-        for (char c : passphrase) nonSpace |= !Character.isWhitespace(c);
+        for (int i = 0; i < passphrase.length; i++) {
+            char c = passphrase[i]; nonSpace |= !Character.isWhitespace(c);
+            if (Character.isHighSurrogate(c)) {
+                if (i + 1 >= passphrase.length || !Character.isLowSurrogate(passphrase[++i]))
+                    throw new IllegalArgumentException("Transfer passphrase must contain valid Unicode characters");
+            } else if (Character.isLowSurrogate(c)) {
+                throw new IllegalArgumentException("Transfer passphrase must contain valid Unicode characters");
+            }
+        }
         if (!nonSpace) throw new IllegalArgumentException("The transfer passphrase cannot be blank");
     }
 

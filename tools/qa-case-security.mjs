@@ -1,4 +1,4 @@
-import { mkdir, writeFile, readFile } from "node:fs/promises";
+import { mkdir, writeFile, readFile, readdir } from "node:fs/promises";
 import { resolve, join } from "node:path";
 import { spawnSync } from "node:child_process";
 import assert from "node:assert/strict";
@@ -67,6 +67,40 @@ if (process.argv[2] === "prepare") {
   const library =
     process.env.ECHOSCRIPT_CASE_PROTECT_LIB ||
     resolve("tools/case-protect/build/install/echoscript-case-protect/lib");
+  const distribution = resolve(library, "..");
+  for (const file of [
+    "LICENSE",
+    "NOTICE",
+    "DISCLAIMER.md",
+    "THIRD_PARTY_NOTICES.txt",
+    "VERIFY.txt",
+    "licenses/PROTOBUF-BSD-3-Clause.txt",
+  ])
+    assert.ok(
+      (await readFile(join(distribution, file))).length > 0,
+      `Missing distribution notice ${file}`,
+    );
+  assert.equal(
+    digest(await readFile(join(distribution, "LICENSE"))),
+    digest(await readFile("LICENSE")),
+  );
+  const inventory = (
+    await readFile(join(distribution, "runtime-components.tsv"), "utf8")
+  )
+    .trimEnd()
+    .split("\n");
+  assert.equal(inventory.shift(), "file\tsha256");
+  const actualJars = (await readdir(library))
+    .filter((name) => name.endsWith(".jar"))
+    .sort();
+  assert.deepEqual(
+    inventory.map((line) => line.split("\t")[0]).sort(),
+    actualJars,
+  );
+  for (const line of inventory) {
+    const [file, expected] = line.split("\t");
+    assert.equal(digest(await readFile(join(library, file))), expected);
+  }
   // Public test fixture password only. Never use real evidence/credentials in QA.
   const password = "SYNTHETIC test transfer password 42";
   const invoke = (args, passphrase = password) =>

@@ -1,0 +1,35 @@
+EchoScript independent protected-case tool — development evaluation
+
+Requires Java 17+. No Android installation or source device key is needed.
+Use the source revision's Node case verifier for complete case/schema/audit,
+provenance and independent P-256 checkpoint validation. The JVM command alone
+performs authenticated container conversion; it is not full case verification.
+
+bin/echoscript-case-protect encrypt INPUT.echocase OUTPUT.echocase.enc
+bin/echoscript-case-protect decrypt INPUT.echocase.enc OUTPUT.echocase
+
+A console prompts for the transfer passphrase. Without a console, set
+ECHOSCRIPT_PACKAGE_PASSPHRASE in a trusted process environment, then unset it.
+Never put passphrases in command-line arguments, logs, source or issues.
+Decryption intentionally creates plaintext at the explicitly chosen output;
+use protected storage. Existing destinations are never replaced. This tool
+requires same-directory hard-link support for atomic no-clobber completion.
+
+For independent Node verification without plaintext case staging, build the
+repository's Node dependencies/schema and use:
+node tools/case-verify/index.mjs CASE.echocase.enc --sha256 HASH --trusted-key-sha256 PIN
+
+HASH is the independently retained outer ciphertext SHA-256. PIN is the
+independently trusted signer SPKI SHA-256. Embedded public keys are not trusted
+identity. All hashes are 64 hexadecimal characters. ECHOSCRIPT_CASE_PROTECT_LIB
+can point to this distribution's lib directory. Review unsigned-tail limits.
+Signatures, encryption and hashes do not establish lawful acquisition,
+examiner identity, legal admissibility or organizational compliance.
+
+Read LICENSE, NOTICE, DISCLAIMER.md and THIRD_PARTY_NOTICES.txt. The runtime
+component inventory accompanies this distribution; it is not a certification.
+Source instructions and exact trust/recovery boundaries:
+https://github.com/TwoWetKnuckles/echoscript/tree/main/tools/case-protect
+https://github.com/TwoWetKnuckles/echoscript/blob/main/docs/evidence/PROTECTED-TRANSFER.md
+
+BETA GATE: NOT PASSED. Use synthetic, non-sensitive data for evaluation.

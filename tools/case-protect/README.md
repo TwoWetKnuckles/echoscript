@@ -6,6 +6,8 @@ Java 17+, no Android SDK or device required. Uses maintained Tink and platform c
 apps/android/gradlew -p tools/case-protect :case-security:test installDist --no-daemon
 ```
 
+The installed distribution carries the project license/responsibility notices, exact-version third-party notices including the Protobuf BSD notice, verification instructions and a SHA-256 inventory of its actual runtime JARs. Review dependency/license changes before redistributing it. The JVM itself is not bundled. This is not the complete application license/compliance audit.
+
 For independent verification of a protected transfer without a plaintext temporary case:
 
 ```sh

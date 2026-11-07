@@ -89,5 +89,20 @@ public class ProtectedCaseTest {
         assertThrows(IOException.class, () -> ProtectedCase.encrypt(new ByteArrayOutputStream(), PASSWORD, out -> { out.write(1); throw new IOException("Synthetic interruption"); }));
         assertThrows(IllegalArgumentException.class, () -> ProtectedCase.validatePassphrase("short".toCharArray()));
         assertThrows(IllegalArgumentException.class, () -> ProtectedCase.validatePassphrase("                ".toCharArray()));
+        assertThrows(IllegalArgumentException.class, () -> ProtectedCase.validatePassphrase("SYNTHETIC malformed \ud800".toCharArray()));
+        assertThrows(IllegalArgumentException.class, () -> ProtectedCase.validatePassphrase("SYNTHETIC malformed \udc00".toCharArray()));
+    }
+    @Test public void unicodePassphraseRoundTripsWithoutSilentNormalization() throws Exception {
+        char[] password = "SYNTHETIC test 密码 é 😀 42".toCharArray();
+        byte[] plain = "SYNTHETIC TEST DATA — NOT EVIDENCE".getBytes(java.nio.charset.StandardCharsets.UTF_8);
+        ByteArrayOutputStream output = new ByteArrayOutputStream();
+        ProtectedCase.encrypt(output, password, stream -> stream.write(plain));
+        try (var input = ProtectedCase.decryptingStream(new ByteArrayInputStream(output.toByteArray()), password)) {
+            assertArrayEquals(plain, input.readAllBytes());
+        }
+        char[] different = java.text.Normalizer.normalize(new String(password), java.text.Normalizer.Form.NFD).toCharArray();
+        assertThrows(Exception.class, () -> {
+            try (var input = ProtectedCase.decryptingStream(new ByteArrayInputStream(output.toByteArray()), different)) { input.readAllBytes(); }
+        });
     }
 }

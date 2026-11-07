@@ -112,6 +112,7 @@ export class ProtectedReader {
   static async open(path, passphrase) {
     if (
       typeof passphrase !== "string" ||
+      !passphrase.isWellFormed() ||
       passphrase.length < 16 ||
       passphrase.length > 1024
     )

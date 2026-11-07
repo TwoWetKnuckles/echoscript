@@ -68,7 +68,8 @@ class OfflineWorkflowTest {
             val fingerprint = checkpoint.operationParameters().getString("keySha256")
             assertEquals(fingerprint, vault.verifyCheckpoints(case).single().keySha256)
             val protectedOutput = ByteArrayOutputStream()
-            val testPassword = "SYNTHETIC test transfer password 42".toCharArray()
+            val transferPassword = if (index == 0) "SYNTHETIC test 密码 é 😀 42" else "SYNTHETIC test transfer password 42"
+            val testPassword = transferPassword.toCharArray()
             val protectedHash = try { ProtectedTransfer.export(vault, case, actor, protectedOutput, testPassword) { false } }
                 finally { testPassword.fill('\u0000') }
             val protectedBytes = protectedOutput.toByteArray()
@@ -102,7 +103,7 @@ class OfflineWorkflowTest {
                 assertFalse(folder.exists())
             }
             val recovered = ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, protectedHash,
-                "SYNTHETIC test transfer password 42".toCharArray(), { false }, {})
+                transferPassword.toCharArray(), { false }, {})
             assertEquals(caseId, recovered.getString("caseId"))
             assertTrue(vault.verify(recovered).contains("mathematically valid"))
             assertEquals("PROTECTED_TRANSFER_IMPORT", recovered.items("audit").last().getString("action"))
