@@ -438,13 +438,13 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     val text = draft.text
     val label = draft.label
     val verified = draft.verified
-    var edit by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    val edit = model.reviewEditorKey == draftKey
     var details by rememberSaveable(screen.selected) { mutableStateOf(false) }
     val dirty = text != segment.getString("text") || label != segment.optString("speakerLabel", "") || verified
     Section("Segment ${current + 1} of ${segments.size}", "${clock((start * 1000).toLong())} – ${clock((end * 1000).toLong())}") {
         val speaker = segment.optString("speakerLabel").ifBlank { if (segment.isNull("speaker")) "Unassigned speaker" else segment.getString("speaker") }
         Text(speaker, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
-        TextButton(onClick = { edit = !edit }) { Text(if (edit) "Hide editor" else "Edit and verify segment") }
+        TextButton(onClick = { model.reviewEditorKey = if (edit) null else draftKey }) { Text(if (edit) "Hide editor" else "Edit and verify segment") }
         SelectionContainer { Text(segment.getString("text"), style = MaterialTheme.typography.bodyLarge) }
         Text(segment.getString("verification").replace('_', ' '), style = MaterialTheme.typography.labelSmall)
         Button(onClick = { model.play(actor, transcript.optString("audioArtifactId"), start) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Glyph(R.drawable.ic_play); Spacer(Modifier.width(8.dp)); Text("Play from timestamp") }

@@ -55,12 +55,14 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var reviewDrafts by mutableStateOf<Map<String, ReviewDraft>>(emptyMap()); private set
     var acquisitionTitle by mutableStateOf("")
     var caseQuery by mutableStateOf("")
+    var reviewEditorKey by mutableStateOf<String?>(null)
 
     fun updateReviewDraft(key: String, draft: ReviewDraft) {
         reviewDrafts = reviewDrafts + (key to draft)
     }
     fun resetReviewDraft(key: String) {
         reviewDrafts = reviewDrafts - key
+        if (reviewEditorKey == key) reviewEditorKey = null
     }
 
     init {

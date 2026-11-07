@@ -77,7 +77,7 @@ class OfflineInterfaceTest {
         repeat(7) { run ->
             println("SYNTHETIC INTERFACE WORKFLOW ${run + 1}/7 START")
             if (run > 0) click("Cases", navigation = true)
-            ui.onNodeWithText("Choose audio file").assertIsDisplayed()
+            ui.onNodeWithText("Choose audio file").performScrollTo().assertIsDisplayed()
             if (run == 0) screenshot("ui-cases.png")
             val before = vault.listCases().cases.map { it.getString("caseId") }.toSet()
             val source = File(context.cacheDir, "SYNTHETIC UI RUN ${run + 1} NOT EVIDENCE.wav")
@@ -103,6 +103,8 @@ class OfflineInterfaceTest {
                 ui.onNodeWithText("Case package").performScrollTo().assertIsNotEnabled()
                 click("Transcript", navigation = true)
                 ui.activityRule.scenario.recreate()
+                screenshot("ui-review-after-rotation.png")
+                waitFor("Examiner speaker label", 30000)
                 ui.onNodeWithText("Examiner speaker label").performScrollTo().assertTextContains("Synthetic examiner 1")
             }
             click("I listened to and verified this segment.")
