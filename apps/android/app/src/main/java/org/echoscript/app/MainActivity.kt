@@ -111,10 +111,12 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     }
     val chooseAudio = { importAudio.launch(arrayOf("audio/*", "video/mp4", "video/webm", "application/octet-stream")) }
     val importCase = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { model.importCase(it, actor, expectedHash) { transfer = false; tab = "Cases" } }
+        if (uri != null) model.importCase(uri, actor, expectedHash) { transfer = false; tab = "Cases" }
+        else model.transferPassphrase = ""
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) result.data?.data?.let { model.export(it, actor, ExportFormat.valueOf(exportType)) }
+        val destination = result.data?.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && destination != null) model.export(destination, actor, ExportFormat.valueOf(exportType))
         else model.clearExportSecret()
     }
     DisposableEffect(busy) {

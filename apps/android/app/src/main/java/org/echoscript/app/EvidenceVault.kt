@@ -219,7 +219,13 @@ class EvidenceVault(private val context: Context) {
         require(title.isNotBlank() && title.length <= 256 && title.none { it.code < 32 })
         actorCheck(actor)
         val caseId = uuid(); val artifactId = uuid(); val created = utc(); val folder = caseDir(caseId); folder.mkdirs()
-        val result = writeEncrypted(encryptedFile(caseId, artifactId), associated(caseId, artifactId), input, MAX_SOURCE_BYTES, cancelled, progress)
+        val result = try { writeEncrypted(encryptedFile(caseId, artifactId), associated(caseId, artifactId), input, MAX_SOURCE_BYTES, cancelled, progress) }
+            catch (failure: Exception) {
+                // Handled cancellation removed its pending file. Remove only an
+                // empty acquisition tree; preserve any bytes for recovery review.
+                if (!folder.walkTopDown().any { it.isFile }) folder.deleteRecursively()
+                throw failure
+            }
         val manifest = JSONObject().put("format", "org.echoscript.case/1").put("schemaVersion", 1).put("caseId", caseId).put("title", title).put("createdAtUtc", created)
             .put("software", JSONObject().put("name", "EchoScript").put("version", VERSION)).put("activeArtifact", artifactId)
             .put("artifacts", JSONArray()).put("audit", JSONArray())
@@ -249,7 +255,13 @@ class EvidenceVault(private val context: Context) {
     fun listCases(): VaultListing {
       val warnings = mutableListOf<String>()
       val cases = root.listFiles()?.filter { it.isDirectory && ID.matches(it.name) }?.mapNotNull { folder ->
-        val file = File(folder, "manifests").listFiles()?.filter { it.extension == "enc" }?.maxByOrNull { it.name } ?: return@mapNotNull null
+        val file = File(folder, "manifests").listFiles()?.filter { it.extension == "enc" }?.maxByOrNull { it.name }
+        if (file == null) {
+            if (folder.walkTopDown().any { it.isFile }) warnings.add("Case ${folder.name}: uncommitted acquisition data was preserved after interruption. It is not a complete case. Preserve and review the vault; no evidence was silently repaired or discarded.")
+            return@mapNotNull null
+        }
+        if (folder.walkTopDown().any { it.isFile && it.name.endsWith(".pending") })
+            warnings.add("Case ${folder.name}: interrupted pending data was preserved. The completed snapshot is listed separately; review incomplete work before retrying.")
         try {
             val revision = file.nameWithoutExtension.toInt()
             FileInputStream(file).use { physical ->
@@ -264,6 +276,8 @@ class EvidenceVault(private val context: Context) {
             }
         } catch (_: Exception) { warnings.add("Case ${folder.name}: latest snapshot could not be authenticated or validated. No older snapshot was silently substituted. Preserve the vault for recovery."); null }
       }?.sortedByDescending { it.getString("createdAtUtc") } ?: emptyList()
+      if (File(context.filesDir, "EvidenceVault/staging").walkTopDown().any { it.isFile })
+          warnings.add("Encrypted staging data remains after an interruption. It is not completed evidence; preserve and review it under the recovery policy.")
       return VaultListing(cases, warnings)
     }
     fun open(caseId: String, artifactId: String): InputStream {

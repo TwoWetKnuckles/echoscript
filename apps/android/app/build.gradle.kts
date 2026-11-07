@@ -2,19 +2,36 @@ import org.gradle.process.ExecOperations
 import javax.inject.Inject
 
 plugins { id("com.android.application"); id("org.jetbrains.kotlin.plugin.compose") }
+val ownerSigningNames = listOf("ANDROID_SIGNING_STORE_FILE", "ANDROID_SIGNING_STORE_PASSWORD", "ANDROID_SIGNING_KEY_ALIAS", "ANDROID_SIGNING_KEY_PASSWORD")
+val ownerSigning = ownerSigningNames.associateWith { providers.environmentVariable(it).orNull }
+check(ownerSigning.values.all { it == null } || ownerSigning.values.all { !it.isNullOrBlank() }) {
+    "Provide all owner signing variables, or none for an unsigned development release build"
+}
 android {
     namespace = "org.echoscript.app"
     compileSdk = 36
-    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 5; versionName = "0.4.0-dev"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 6; versionName = "0.5.0-dev"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("androidTest").assets.srcDir("../../../specs/fixtures")
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
+    if (ownerSigning.values.all { !it.isNullOrBlank() }) {
+        signingConfigs.create("ownerRelease") {
+            storeFile = file(checkNotNull(ownerSigning["ANDROID_SIGNING_STORE_FILE"]))
+            storePassword = ownerSigning["ANDROID_SIGNING_STORE_PASSWORD"]
+            keyAlias = ownerSigning["ANDROID_SIGNING_KEY_ALIAS"]
+            keyPassword = ownerSigning["ANDROID_SIGNING_KEY_PASSWORD"]
+        }
+    }
     buildTypes {
         debug {
             applicationIdSuffix = ".preview"
             versionNameSuffix = "-preview"
         }
-        release { isMinifyEnabled = false }
+        release {
+            isMinifyEnabled = false
+            isDebuggable = false
+            signingConfig = signingConfigs.findByName("ownerRelease")
+        }
     }
 }
 dependencies {

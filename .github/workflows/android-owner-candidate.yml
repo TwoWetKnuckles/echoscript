@@ -1,0 +1,71 @@
+name: Owner-signed Android evaluation candidate
+on:
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: owner-android-candidate
+  cancel-in-progress: false
+jobs:
+  signed-candidate:
+    if: github.ref == 'refs/heads/main'
+    environment: android-production
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: "17"
+      - name: Validate owner-provisioned signing inputs
+        env:
+          KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+          EXPECTED_CERT_SHA256: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+        run: |
+          python3 - <<'PY'
+          import os, base64, re
+          from pathlib import Path
+          required = ['KEYSTORE_BASE64', 'ANDROID_SIGNING_STORE_PASSWORD', 'ANDROID_SIGNING_KEY_ALIAS', 'ANDROID_SIGNING_KEY_PASSWORD']
+          if not all(os.environ.get(name) for name in required):
+              raise SystemExit('Owner signing inputs are incomplete; no candidate was signed')
+          if not re.fullmatch('[a-fA-F0-9]{64}', os.environ.get('EXPECTED_CERT_SHA256', '')):
+              raise SystemExit('An independently verified public certificate SHA-256 variable is required')
+          try:
+              encoded = os.environ['KEYSTORE_BASE64']
+              if len(encoded) > 2 * 1024 * 1024: raise ValueError()
+              data = base64.b64decode(encoded, validate=True)
+              if not data: raise ValueError()
+          except ValueError:
+              raise SystemExit('The owner keystore encoding is invalid')
+          path = Path(os.environ['RUNNER_TEMP']) / 'echoscript-owner-signing.keystore'
+          with os.fdopen(os.open(path, os.O_WRONLY | os.O_CREAT | os.O_EXCL, 0o600), 'wb') as output:
+              output.write(data)
+          PY
+      - name: Build non-debug signed evaluation APK with no configuration cache
+        working-directory: apps/android
+        env:
+          ANDROID_SIGNING_STORE_FILE: ${{ runner.temp }}/echoscript-owner-signing.keystore
+          ANDROID_SIGNING_STORE_PASSWORD: ${{ secrets.ANDROID_SIGNING_STORE_PASSWORD }}
+          ANDROID_SIGNING_KEY_ALIAS: ${{ secrets.ANDROID_SIGNING_KEY_ALIAS }}
+          ANDROID_SIGNING_KEY_PASSWORD: ${{ secrets.ANDROID_SIGNING_KEY_PASSWORD }}
+        run: ./gradlew :app:assembleRelease :app:testDebugUnitTest :app:lintRelease --no-daemon --no-configuration-cache
+      - name: Verify certificate, offline boundary and exact APK metadata
+        env:
+          EXPECTED_CERT_SHA256: ${{ vars.ANDROID_RELEASE_CERT_SHA256 }}
+        run: |
+          python3 scripts/verify-owner-apk.py apps/android/app/build/outputs/apk/release/app-release.apk qa-output/owner-candidate
+      - name: Remove temporary signing material
+        if: always()
+        run: rm -f "$RUNNER_TEMP/echoscript-owner-signing.keystore"
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: EchoScript-owner-signed-evaluation-candidate
+          path: qa-output/owner-candidate/
+          if-no-files-found: error
+          retention-days: 7

@@ -13,7 +13,7 @@ async function find(directory) {
     if (entry.isDirectory()) matches.push(...(await find(path)));
     else if (
       entry.isFile() &&
-      /^synthetic-(native|offline-run-[1-7]|ui-run-[1-7]|protected-run-[1-7])\.echocase(?:\.enc)?$/.test(
+      /^synthetic-(native|offline-run-[1-7]|ui-run-[1-7]|(?:ui-)?protected-run-[1-7])\.echocase(?:\.enc)?$/.test(
         entry.name,
       )
     )
@@ -32,6 +32,12 @@ for (let i = 1; i <= 7; i++) {
       path.endsWith(`/synthetic-protected-run-${i}.echocase.enc`),
     ),
     `Missing protected native export ${i}`,
+  );
+  assert.ok(
+    files.some((path) =>
+      path.endsWith(`/synthetic-ui-protected-run-${i}.echocase.enc`),
+    ),
+    `Missing protected interface export ${i}`,
   );
   for (const kind of ["offline", "ui"]) {
     assert.ok(

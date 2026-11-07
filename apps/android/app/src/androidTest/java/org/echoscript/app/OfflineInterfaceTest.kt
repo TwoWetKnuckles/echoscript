@@ -146,33 +146,55 @@ class OfflineInterfaceTest {
             ui.onNodeWithContentDescription("Audit").performClick()
             click("Verify all hashes and custody records")
             waitFor("Source and derivative hashes, authenticated decryption and audit linkage agree. Independent custody and signatures require separate verification.")
+            click("Create device-signed checkpoint")
+            ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodesWithText("Device checkpoint saved.", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            val signed = vault.listCases().cases.single { it.getString("caseId") == id }
+            val fingerprint = signed.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == org.echoscript.security.SignedCheckpoint.ALGORITHM }.operationParameters().getString("keySha256")
             click("Export", navigation = true)
             click("I understand and will protect exported files.")
+            val testPassword = "SYNTHETIC test transfer password 42"
+            ui.onNodeWithText("New transfer passphrase").performScrollTo().performTextReplacement(testPassword)
+            ui.onNodeWithText("Confirm transfer passphrase").performScrollTo().performTextReplacement("SYNTHETIC mismatched password")
+            closeSoftKeyboard()
+            ui.onNodeWithText("Protected case package").performScrollTo().assertIsNotEnabled()
+            ui.onNodeWithText("Confirm transfer passphrase").performScrollTo().performTextReplacement(testPassword)
+            closeSoftKeyboard()
+            if (run == 0) recreateWithoutPersistingDraft(testPassword)
+            val protectedArchive = File(context.cacheDir, "synthetic-ui-protected-run-${run + 1}.echocase.enc")
+            document(Intent.ACTION_CREATE_DOCUMENT, protectedArchive) {
+                click("Protected case package")
+                ui.waitUntil(timeoutMillis = 30000) { protectedArchive.exists() && protectedArchive.length() > 100 && ui.onAllNodesWithText("Export saved. SHA-256 ", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            }
+            ui.runOnIdle {
+                val model = androidx.lifecycle.ViewModelProvider(ui.activity)[VaultModel::class.java]
+                assertEquals("", model.exportPassphrase); assertEquals("", model.exportPassphraseConfirmation)
+            }
+            val protectedHash = EvidenceVault.sha(protectedArchive.readBytes())
             val archive = File(context.cacheDir, "synthetic-ui-run-${run + 1}.echocase")
             document(Intent.ACTION_CREATE_DOCUMENT, archive) {
                 click("Case package")
                 ui.waitUntil(timeoutMillis = 30000) { archive.exists() && archive.length() > 100 && ui.onAllNodesWithText("Export saved. SHA-256 ", substring = true).fetchSemanticsNodes().isNotEmpty() }
             }
-            val hash = archive.inputStream().use { java.security.MessageDigest.getInstance("SHA-256").let { digest ->
-                val buffer = ByteArray(65536)
-                while (true) { val length = it.read(buffer); if (length < 0) break; digest.update(buffer, 0, length) }
-                digest.digest().joinToString("") { byte -> "%02x".format(byte.toInt() and 255) }
-            } }
             assertTrue(File(context.filesDir, "EvidenceVault/cases/$id").deleteRecursively())
             click("Cases", navigation = true)
             click("Transfer case")
-            ui.onNodeWithText("Independently received SHA-256 (optional)").performScrollTo().performTextReplacement(hash)
+            ui.onNodeWithText("Independently received SHA-256 (optional)").performScrollTo().performTextReplacement(protectedHash)
+            ui.onNodeWithText("Transfer passphrase (protected packages)").performScrollTo().performTextReplacement(testPassword)
             closeSoftKeyboard()
-            document(Intent.ACTION_OPEN_DOCUMENT, archive) {
+            document(Intent.ACTION_OPEN_DOCUMENT, protectedArchive) {
                 click("Choose .echocase package")
                 waitFor("Case transferred into the encrypted vault. The independent package hash matched.")
             }
             val imported = vault.listCases().cases.single { it.getString("caseId") == id }
             assertTrue(vault.verify(imported).contains("agree"))
+            assertEquals(fingerprint, vault.verifyCheckpoints(imported).single().keySha256)
+            ui.runOnIdle { assertEquals("", androidx.lifecycle.ViewModelProvider(ui.activity)[VaultModel::class.java].transferPassphrase) }
             assertEquals("HUMAN_VERIFIED", OfflineWorkflow(context, vault).readTranscript(imported, checkNotNull(imported.latestTranscript())).items("segments").first().getString("verification"))
             archive.copyTo(File(output, "synthetic-ui-run-${run + 1}.echocase"), overwrite = true)
+            protectedArchive.copyTo(File(output, "synthetic-ui-protected-run-${run + 1}.echocase.enc"), overwrite = true)
+            File(output, "synthetic-ui-protected-run-${run + 1}.key-sha256.txt").writeText(fingerprint + "\n")
             assertTrue(File(context.filesDir, "EvidenceVault/cases/$id").deleteRecursively())
-            archive.delete(); source.delete()
+            archive.delete(); protectedArchive.delete(); source.delete()
             println("SYNTHETIC INTERFACE WORKFLOW ${run + 1}/7 PASS")
         }
     }

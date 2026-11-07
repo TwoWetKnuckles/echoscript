@@ -37,4 +37,6 @@ Disclaimers never replace integrity/security controls, defect remediation or req
 
 ## Code Review Rules
 
+`specs/release-gates.json` enumerates mandatory acceptance criteria. `node tools/release-gates.mjs RECORD.json SOURCE_COMMIT APK` validates the exact-build declared record and referenced evidence, with nonzero exit for incomplete gates. It cannot establish that human/device/policy declarations are true or legally sufficient. The owner-signing workflow builds an evaluation candidate only; never expose signing secrets in PR workflows, weaken protected environments or equate disposable-key CI with owner enrollment and upgrade acceptance.
+
 Flag source mutation, key exposure/fallback, hidden transmission, destructive history, unbounded untrusted parsing, unsupported verification labels and fabricated QA/legal claims. Prefer a failing behavioral reproduction and the smallest robust correction; preserve the original evidence boundary. Report unresolved mandatory gates explicitly rather than weakening the gate.

@@ -10,6 +10,8 @@ Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Mate
 
 **Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** Read the [installation guide](downloads/android/INSTALL.txt) before installing or upgrading.
 
+The source development line is advancing to **0.5.0-dev**. It adds protected native case transfers, device-key checkpoints and independent signature verification; these are absent from the linked 0.4.0 APK. See [protected transfers and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md), [owner signing setup](docs/android/OWNER-SIGNING.md) and the [mandatory release acceptance matrix](docs/qa/RC-ACCEPTANCE.md). No release gate has been waived.
+
 ## Responsibility and limitations
 
 **The examiner and deploying organization are responsible for lawful use and case-specific evidence handling.** Before each use, determine the recording/access authority, consent requirements, jurisdiction, agency and court rules, confidentiality obligations, retention and legal holds applicable to that particular matter. Preserve originals and independent custody records; control devices, keys and exports; validate the exact build and workflow; independently review all processing, transcription and reports before relying on or submitting them. A hash match establishes byte consistency against a trusted reference, not lawful acquisition, speaker identity, completeness or legal admissibility.
@@ -81,11 +83,11 @@ cd apps/android
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK uses the separate `org.echoscript.app.preview` application ID. The release APK is unsigned until an independently controlled signing configuration is supplied. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
+The debug APK uses the separate `org.echoscript.app.preview` application ID. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
 
-Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Native exports are explicitly **unencrypted and unsigned**; protect their destinations.
+Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. The published 0.4.0 native package is **unencrypted and unsigned**. Current source also offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
 
 ## Verification and QA
 
@@ -94,6 +96,8 @@ node tools/case-verify/index.mjs case.echocase --sha256 INDEPENDENTLY_RETAINED_P
 ```
 
 For encrypted browser packages, supply `ECHOSCRIPT_PACKAGE_PASSPHRASE` through the environment. The verifier never repairs packages. It checks schemas, canonical manifest bytes, SHA-256, inventory, ZIP CRC, provenance and audit linkage. Unsigned hashes do not establish identity or custody against an attacker who can rewrite an entire package. Keep trusted external checkpoints.
+
+For native protected containers, build the [independent Java tool](tools/case-protect/README.md) and supply the same environment variable. Add `--trusted-key-sha256 INDEPENDENT_SIGNER_FINGERPRINT` to require a checkpoint covering all current evidence from an independently trusted key. Signature validity, unsigned tail events, examiner identity and organizational trust are reported separately. Verification does not stage a plaintext native ZIP.
 
 ```sh
 cargo fmt --all --check

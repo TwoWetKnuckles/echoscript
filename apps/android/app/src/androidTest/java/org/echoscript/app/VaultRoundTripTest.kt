@@ -85,8 +85,10 @@ class VaultRoundTripTest {
     @Test fun cancelledAcquisitionNeverCreatesACompleteCaseOrPendingPlaintext() {
         val context = ApplicationProvider.getApplicationContext<Context>(); val vault = EvidenceVault(context)
         val before = vault.listCases().cases.map { it.getString("caseId") }.toSet(); var count = 0L; var failed = false
+        val folders = java.io.File(context.filesDir, "EvidenceVault/cases").listFiles()?.map { it.name }?.toSet() ?: emptySet()
         try { vault.importSource(ByteArray(256 * 1024) { 83 }.inputStream(), "synthetic.bin", "Synthetic cancellation", "TEST", { count >= 65536 }, { count = it }) } catch (_: InterruptedException) { failed = true }
         assertTrue(failed); assertEquals(before, vault.listCases().cases.map { it.getString("caseId") }.toSet())
+        assertEquals(folders, java.io.File(context.filesDir, "EvidenceVault/cases").listFiles()?.map { it.name }?.toSet() ?: emptySet<String>())
         assertFalse(java.io.File(context.filesDir, "EvidenceVault").walkTopDown().any { it.name.endsWith(".pending") })
     }
     @Test fun corruptedCiphertextFailsAndDoesNotLeakOpenDescriptors() {
