@@ -41,6 +41,11 @@ internal data class VaultScreen(
 internal class VaultModel(application: Application) : AndroidViewModel(application) {
     private val mutable = MutableStateFlow(VaultScreen())
     val state = mutable.asStateFlow()
+    // Publish UI state on Main even when a DSP/decoder callback runs on IO.
+    // StateFlow is thread-safe; Compose view work must still stay on Main.
+    private fun updateState(change: (VaultScreen) -> VaultScreen) {
+        viewModelScope.launch(Dispatchers.Main.immediate) { mutable.update(change) }
+    }
     private val cancelled = AtomicBoolean(false)
     private val recordingStop = AtomicBoolean(false)
     private lateinit var vault: EvidenceVault
@@ -65,16 +70,16 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                 workflow = OfflineWorkflow(application, vault)
                 val listing = vault.listCases()
                 val interrupted = preferences.getString("pendingJob", null)
-                mutable.value = VaultScreen(
+                updateState { VaultScreen(
                     ready = true,
                     cases = listing.cases,
                     recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
                         "Interrupted task · $it. Review the saved case before retrying."
                     }),
                     message = "Choose a case or import a recording.",
-                )
+                ) }
             } catch (_: Exception) {
-                mutable.value = VaultScreen(message = "The device vault could not open. Preserve the existing evidence and keys.")
+                updateState { VaultScreen(message = "The device vault could not open. Preserve the existing evidence and keys.") }
             }
         }
     }
@@ -87,8 +92,8 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             "Saved workspace opened."
         }
     }
-    fun cancel() { cancelled.set(true); mutable.update { it.copy(message = "Cancelling after the current block…") } }
-    fun notice(message: String) { mutable.update { it.copy(message = message) } }
+    fun cancel() { cancelled.set(true); updateState { it.copy(message = "Cancelling after the current block…") } }
+    fun notice(message: String) { updateState { it.copy(message = message) } }
     private fun selected(): JSONObject = mutable.value.cases.firstOrNull { it.getString("caseId") == mutable.value.selected }
         ?.let { JSONObject(it.toString()) } ?: error("Select a case first")
 
@@ -100,7 +105,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     ) {
         if (!mutable.value.ready || mutable.value.job != null) return
         stop(); cancelled.set(false)
-        mutable.update { it.copy(job = name, message = name, failed = false) }
+        updateState { it.copy(job = name, message = name, failed = false) }
         viewModelScope.launch(Dispatchers.IO) {
             var succeeded = false
             val message = try {
@@ -119,7 +124,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             }
             preferences.edit().remove("pendingJob").commit()
             withContext(Dispatchers.Main) {
-                mutable.update { current ->
+                updateState { current ->
                     current.copy(
                         cases = listing?.cases ?: current.cases,
                         recoveryWarnings = listing?.warnings ?: current.recoveryWarnings,
@@ -133,12 +138,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     private fun showCase(manifest: JSONObject) {
-        mutable.update { it.copy(selected = manifest.getString("caseId"), analysis = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, transcript = null, transcriptRevision = null) }
     }
     private fun restoreWorkspace(manifest: JSONObject) {
         showCase(manifest)
         val overview = workflow.savedAnalysis(manifest)
-        mutable.update { it.copy(analysis = overview) }
+        updateState { it.copy(analysis = overview) }
         manifest.latestTranscript()?.let { openTranscript(manifest, it) }
     }
     private fun reportProgress(unit: String): (Long) -> Unit {
@@ -147,7 +152,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             val now = System.nanoTime()
             if (now - last >= 500_000_000 && !cancelled.get()) {
                 last = now
-                mutable.update { it.copy(message = "${it.job} · $count $unit") }
+                updateState { it.copy(message = "${it.job} · $count $unit") }
             }
         }
     }
@@ -168,7 +173,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private fun analyzeAcquired(manifest: JSONObject, actor: String): String {
         return try {
             val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("units analyzed"))
-            mutable.update { it.copy(analysis = overview) }
+            updateState { it.copy(analysis = overview) }
             "Original preserved. Waveform and speech candidates are ready."
         } catch (cancelled: InterruptedException) {
             throw cancelled
@@ -202,41 +207,43 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     }
     fun analyze(actor: String) = runJob("Analyzing audio") {
         val overview = workflow.analyze(selected(), actor, cancelled::get, reportProgress("units processed"))
-        mutable.update { it.copy(analysis = overview) }
+        updateState { it.copy(analysis = overview) }
         "Waveform, spectral overview and candidate speech regions are ready."
     }
     fun enhance(actor: String, settings: RenderSettings) = runJob("Rendering audio revision") {
         val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
-        mutable.update { it.copy(analysis = null) }
+        updateState { it.copy(analysis = null) }
         "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
     }
     fun revision(actor: String, id: String) = runJob("Selecting audio revision") {
         val manifest = selected()
         vault.selectRevision(manifest, actor, id)
         val overview = workflow.savedAnalysis(manifest)
-        mutable.update { it.copy(analysis = overview) }
+        updateState { it.copy(analysis = overview) }
         "Active revision changed. Earlier versions remain in the case."
     }
     fun transcribe(actor: String, completed: () -> Unit = {}) = runJob("Transcribing on this device", completed) {
         val case = selected()
         val artifact = workflow.transcribe(case, actor, cancelled::get, reportProgress("units processed"))
         openTranscript(case, artifact)
-        mutable.update { it.copy(analysis = workflow.savedAnalysis(case)) }
+        val overview = workflow.savedAnalysis(case)
+        updateState { it.copy(analysis = overview) }
         "Draft transcript saved. Review the words, timestamps and speaker groups."
     }
     fun renderAndTranscribe(actor: String, settings: RenderSettings, completed: () -> Unit) =
         runJob("Rendering and transcribing", completed) {
             val manifest = selected()
             workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("units rendered"))
-            mutable.update { it.copy(analysis = null, transcript = null, transcriptRevision = null) }
+            updateState { it.copy(analysis = null, transcript = null, transcriptRevision = null) }
             val artifact = workflow.transcribe(manifest, actor, cancelled::get, reportProgress("units transcribed"))
             openTranscript(manifest, artifact)
-            mutable.update { it.copy(analysis = workflow.savedAnalysis(manifest)) }
+            val overview = workflow.savedAnalysis(manifest)
+            updateState { it.copy(analysis = overview) }
             "Draft transcript saved. Review the words, timestamps and speaker groups."
         }
     private fun openTranscript(case: JSONObject, artifact: JSONObject) {
         val transcript = workflow.readTranscript(case, artifact)
-        mutable.update { it.copy(transcript = transcript, transcriptRevision = artifact.getString("id")) }
+        updateState { it.copy(transcript = transcript, transcriptRevision = artifact.getString("id")) }
     }
     fun openTranscript() = runJob("Opening transcript", refreshCases = false) {
         val case = selected(); openTranscript(case, case.latestTranscript() ?: error("This case has no transcript yet"))
@@ -248,7 +255,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             val case = selected()
             val parent = case.artifact(mutable.value.transcriptRevision ?: error("Open a transcript first"))
             val transcript = workflow.review(case, actor, parent, segment, text, label, verified)
-            mutable.update { it.copy(transcript = transcript, transcriptRevision = case.latestTranscript()?.getString("id")) }
+            updateState { it.copy(transcript = transcript, transcriptRevision = case.latestTranscript()?.getString("id")) }
             if (verified) "This segment is marked as reviewed by the examiner." else "Edits saved as a separate revision."
         }
     }
