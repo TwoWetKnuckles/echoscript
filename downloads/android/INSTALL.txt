@@ -10,7 +10,7 @@ Install on the device
 1. Download EchoScript-offline-preview.apk for direct installation. You can
    also download EchoScript-Android-preview.zip for the complete package. In
    Android Files, extract its EchoScript-Android folder.
-2. Open EchoScript-offline-preview.apk in that folder and tap Install. Follow
+2. Open the downloaded or extracted APK and tap Install. Follow
    the Android prompt. If Android requests permission to install from Files,
    allow that source only if your device and organization permit it. Restore
    the permission setting afterward. If device policy blocks the install,

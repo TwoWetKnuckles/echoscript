@@ -28,3 +28,5 @@ This build does not provide remote attestation, qualified electronic signatures,
 Development release blockers include physical-device validation of the native preview, advanced processing and diarization validation, resumable job recovery, qualified remote adapters, team authorization/sync, signatures, complete device/resource/security testing and seven consecutive complete application runs. Local subset passes must remain labeled as subsets. A disclaimer is never accepted as mitigation for a correctable evidence-integrity or security defect.
 
 Native review form text stays in ViewModel memory during navigation and configuration changes. Explicit saves create encrypted immutable transcript artifacts. Activity saved-instance state and preferences exclude transcript draft text. Process death can discard unsaved form edits, so save a revision before relying on it.
+
+Acquisition titles and case search terms also remain in ViewModel memory rather than saved-instance bundles. These inputs survive configuration changes while the app process remains alive; process termination clears them.
