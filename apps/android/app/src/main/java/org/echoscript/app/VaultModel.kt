@@ -160,8 +160,8 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             "Original preserved. Waveform and speech candidates are ready."
         } catch (cancelled: InterruptedException) {
             throw cancelled
-        } catch (_: Exception) {
-            "Original preserved. Choose Analyze audio to retry analysis or review codec and storage limits."
+        } catch (failure: Exception) {
+            "Original preserved. Analysis needs attention. ${failure.message?.take(180) ?: "Review codec and storage limits before retrying."}"
         }
     }
     fun stopRecording() { recordingStop.set(true) }

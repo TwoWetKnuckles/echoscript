@@ -26,10 +26,11 @@ class OfflineInterfaceTest {
         ui.waitUntil(timeoutMillis = timeout) { ui.onAllNodesWithText(text).fetchSemanticsNodes().isNotEmpty() }
     }
     private fun click(text: String, navigation: Boolean = false) {
-        ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodes(hasText(text) and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        waitFor(text, 30000)
         val node = ui.onNodeWithText(text)
         if (!navigation) node.performScrollTo()
-        node.performClick()
+        ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodes(hasText(text) and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
+        node.assertIsDisplayed().performClick()
     }
     private fun document(action: String, file: File, block: () -> Unit) {
         // The platform picker result is controlled. Processing, speech, storage,

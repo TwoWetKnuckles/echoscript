@@ -82,6 +82,7 @@ private fun Acknowledgement(text: String, checked: Boolean, enabled: Boolean = t
 
 @Composable
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 private fun VaultApp(model: VaultModel = viewModel()) {
     val context = LocalContext.current
     val preferences = remember { context.getSharedPreferences("echoscript_preferences", 0) }
@@ -203,10 +204,10 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                         "Settings" -> {
                             Text("Make it yours", style = MaterialTheme.typography.headlineSmall)
                             Section("Appearance") {
-                                Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     for (mode in listOf("Dark", "Light", "System")) FilterChip(appearance == mode, {
                                         appearance = mode; preferences.edit().putString("appearance", mode).apply()
-                                    }, { Text(mode) }, modifier = Modifier.weight(1f))
+                                    }, { Text(mode) }, modifier = Modifier.heightIn(min = 48.dp))
                                 }
                             }
                             Section("Examiner", "This identifier is supplied locally and recorded with your actions.") {
@@ -291,7 +292,7 @@ private fun CasesList(screen: VaultScreen, ready: Boolean, select: (String) -> U
 
 @Composable
 private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSONObject, actor: String, ready: Boolean, transcript: () -> Unit) {
-    var gain by rememberSaveable(screen.selected) { mutableFloatStateOf(3f) }
+    var gain by rememberSaveable(screen.selected) { mutableStateOf("3") }
     var highPass by rememberSaveable(screen.selected) { mutableStateOf("80") }
     var lowPass by rememberSaveable(screen.selected) { mutableStateOf("") }
     var low by rememberSaveable(screen.selected) { mutableStateOf("0") }
@@ -306,7 +307,28 @@ private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSO
     var limiter by rememberSaveable(screen.selected) { mutableStateOf(true) }
     var advanced by rememberSaveable { mutableStateOf(false) }
     var history by rememberSaveable { mutableStateOf(false) }
+    var candidateLimit by rememberSaveable(screen.selected) { mutableIntStateOf(6) }
+    var revisionLimit by rememberSaveable(screen.selected) { mutableIntStateOf(15) }
+    fun settings(): RenderSettings {
+        fun number(value: String) = value.ifBlank { "0" }.toDouble()
+        return RenderSettings(
+            gainDb = gain.toDouble(),
+            lowDb = number(low), midDb = number(mid), highDb = number(high),
+            highPassHz = number(highPass), lowPassHz = number(lowPass),
+            humHz = hum, notchHz = number(notch), notchQ = q.toDouble(),
+            noiseFloorDb = floor.ifBlank { null }?.toDouble(),
+            noiseReductionDb = if (floor.isBlank()) 0.0 else 12.0,
+            limit = limiter,
+            startMs = start.ifBlank { "0" }.toLong(),
+            endMs = end.ifBlank { null }?.toLong(),
+        )
+    }
     Text("Review audio", style = MaterialTheme.typography.headlineSmall)
+    Text("${if (start.isBlank() && end.isBlank()) "Entire recording" else "Selected region"} · gain $gain dB · high-pass ${highPass.ifBlank { "off" }} Hz", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    Button(onClick = {
+        try { model.renderAndTranscribe(actor, settings(), transcript) }
+        catch (_: Exception) { model.notice("Check the filter values and selected interval.") }
+    }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     screen.analysis?.let { analysis ->
         Section("Signal overview", "${clock(analysis.getLong("durationMs"))} · ${"%.1f".format(Locale.ROOT, analysis.getDouble("peakDb"))} dBFS peak · ${analysis.getLong("clippedSamples")} near-full-scale samples") {
             val color = MaterialTheme.colorScheme.primary
@@ -337,10 +359,11 @@ private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSO
         }
         val candidates = analysis.items("events")
         if (candidates.isNotEmpty()) Section("Speech candidates", "Choose a region or process the entire recording. Automatic candidates require review.") {
-            for (event in candidates.take(6)) {
+            for (event in candidates.take(candidateLimit)) {
                 val first = event.getLong("startMs"); val last = event.getLong("endMs")
                 FilterChip(start == first.toString() && end == last.toString(), { start = first.toString(); end = last.toString() }, { Text("${clock(first)} – ${clock(last)}") }, enabled = ready)
             }
+            if (candidates.size > candidateLimit) TextButton(onClick = { candidateLimit += 12 }) { Text("Show more speech candidates") }
             if (start.isNotBlank() || end.isNotBlank()) TextButton(onClick = { start = ""; end = "" }) { Text("Use entire recording") }
         }
     } ?: Button(onClick = { model.analyze(actor) }, enabled = ready) { Text("Analyze audio") }
@@ -348,16 +371,17 @@ private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSO
         Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
             for ((label, hz) in listOf("Speech" to 80, "Gentle" to 60, "Hum 50" to 80)) {
                 OutlinedButton(onClick = {
-                    gain = if (label == "Gentle") 0f else 3f
+                    gain = if (label == "Gentle") "0" else "3"
                     highPass = hz.toString(); hum = if (label == "Hum 50") 50.0 else 0.0
                     low = "0"; mid = "0"; high = "0"; lowPass = ""; notch = ""; q = "25"; floor = ""; limiter = true
                 }, enabled = ready, modifier = Modifier.weight(1f), contentPadding = PaddingValues(horizontal = 8.dp)) { Text(label) }
             }
         }
-        Text("Gain ${"%.0f".format(Locale.ROOT, gain)} dB · high-pass ${highPass.ifBlank { "off" }} Hz", style = MaterialTheme.typography.labelLarge)
-        Slider(value = gain, onValueChange = { gain = it }, valueRange = -12f..24f, steps = 35, enabled = ready)
+        Text("Gain $gain dB · high-pass ${highPass.ifBlank { "off" }} Hz", style = MaterialTheme.typography.labelLarge)
+        Slider(value = gain.toFloatOrNull()?.takeIf { it.isFinite() }?.coerceIn(-30f, 30f) ?: 0f, onValueChange = { gain = "%.0f".format(Locale.ROOT, it) }, valueRange = -30f..30f, steps = 59, enabled = ready)
         TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide filter details" else "Region and filter details") }
         if (advanced) {
+            NumberField(gain, { gain = it }, "Gain dB (-30 to 30)")
             NumberField(highPass, { highPass = it }, "High-pass Hz")
             NumberField(start, { start = it }, "Selection start ms (optional)")
             NumberField(end, { end = it }, "Selection end ms (optional)")
@@ -367,14 +391,6 @@ private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSO
             }
             Acknowledgement("Limit peaks", limiter, ready) { limiter = it }
         }
-        fun settings(): RenderSettings {
-            fun number(value: String) = value.ifBlank { "0" }.toDouble()
-            return RenderSettings(gain.toDouble(), number(low), number(mid), number(high), number(highPass), number(lowPass), hum, number(notch), q.toDouble(), floor.ifBlank { null }?.toDouble(), if (floor.isBlank()) 0.0 else 12.0, limiter, start.ifBlank { "0" }.toLong(), end.ifBlank { null }?.toLong())
-        }
-        Button(onClick = {
-            try { model.renderAndTranscribe(actor, settings(), transcript) }
-            catch (_: Exception) { model.notice("Check the filter values and selected interval.") }
-        }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Render & transcribe") }
         OutlinedButton(onClick = {
             try { model.enhance(actor, settings()) }
             catch (_: Exception) { model.notice("Check the filter values and selected interval.") }
@@ -383,9 +399,11 @@ private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSO
     }
     TextButton(onClick = { history = !history }) { Text(if (history) "Hide audio history" else "Audio revision history") }
     if (history) Section("Audio revisions", "Select a previous revision to compare or branch from it.") {
-        for (artifact in selected.items("artifacts").filter { it.getString("type") in setOf("SOURCE", "DECODE", "ENHANCED_AUDIO") }.asReversed()) {
+        val revisions = selected.items("artifacts").filter { it.getString("type") in setOf("SOURCE", "DECODE", "ENHANCED_AUDIO") }
+        for (artifact in revisions.takeLast(revisionLimit).asReversed()) {
             TextButton(onClick = { model.revision(actor, artifact.getString("id")) }, enabled = ready && artifact.getString("id") != selected.getString("activeArtifact")) { Text("${artifact.getInt("revision")} · ${artifact.getString("name")}") }
         }
+        if (revisions.size > revisionLimit) TextButton(onClick = { revisionLimit += 15 }) { Text("Show earlier audio revisions") }
     }
 }
 
@@ -422,14 +440,14 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     Section("Segment ${current + 1} of ${segments.size}", "${clock((start * 1000).toLong())} – ${clock((end * 1000).toLong())}") {
         val speaker = segment.optString("speakerLabel").ifBlank { if (segment.isNull("speaker")) "Unassigned speaker" else segment.getString("speaker") }
         Text(speaker, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        TextButton(onClick = { edit = !edit }) { Text(if (edit) "Hide editor" else "Edit and verify segment") }
         SelectionContainer { Text(segment.getString("text"), style = MaterialTheme.typography.bodyLarge) }
         Text(segment.getString("verification").replace('_', ' '), style = MaterialTheme.typography.labelSmall)
         Button(onClick = { model.play(actor, transcript.optString("audioArtifactId"), start) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Glyph(R.drawable.ic_play); Spacer(Modifier.width(8.dp)); Text("Play from timestamp") }
-        Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        if (segments.size > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
             TextButton(onClick = { index = current - 1 }, enabled = ready && current > 0 && !dirty) { Text("Previous") }
             TextButton(onClick = { index = current + 1 }, enabled = ready && current < segments.lastIndex && !dirty) { Text("Next") }
         }
-        TextButton(onClick = { edit = !edit }) { Text(if (edit) "Hide editor" else "Edit and verify segment") }
         if (edit) {
             OutlinedTextField(text, { text = it.take(10000) }, label = { Text("Examiner transcript text") }, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(label, { label = it.take(80) }, label = { Text("Examiner speaker label") }, singleLine = true, modifier = Modifier.fillMaxWidth())
