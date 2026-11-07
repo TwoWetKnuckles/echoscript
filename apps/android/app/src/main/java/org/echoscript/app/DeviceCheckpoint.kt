@@ -10,7 +10,7 @@ import java.security.KeyStore
 import java.security.PrivateKey
 import java.security.spec.ECGenParameterSpec
 
-/** Device-key attestation of a snapshot, not a human examiner's legal signature. */
+/** Device-key signature over a snapshot, not a human examiner's legal signature. */
 internal class DeviceCheckpoint(private val context: Context) {
     companion object {
         private const val ALIAS = "echoscript.checkpoint.p256.v1"

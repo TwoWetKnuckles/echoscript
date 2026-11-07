@@ -486,7 +486,7 @@ private fun AuditScreen(model: VaultModel, selected: JSONObject, actor: String, 
         label = { Text("Independently trusted signer SHA-256 (optional)") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
     OutlinedButton(onClick = { model.checkpoint(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Create device-signed checkpoint") }
     selected.items("artifacts").lastOrNull { it.getJSONObject("operation").getString("algorithm") == org.echoscript.security.SignedCheckpoint.ALGORITHM }?.let { artifact ->
-        Section("Device signer SHA-256", "A device key attests the saved snapshot. This does not authenticate the examiner or later audit events. Retain this fingerprint independently.") {
+        Section("Device signer SHA-256", "A device key signs the saved snapshot. This does not authenticate the examiner or later audit events. Retain this fingerprint independently.") {
             SelectionContainer { Text(artifact.operationParameters().getString("keySha256"), style = MaterialTheme.typography.bodySmall) }
         }
     }

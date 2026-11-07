@@ -169,6 +169,10 @@ class OfflineInterfaceTest {
                 val model = androidx.lifecycle.ViewModelProvider(ui.activity)[VaultModel::class.java]
                 assertEquals("", model.exportPassphrase); assertEquals("", model.exportPassphraseConfirmation)
             }
+            if (run == 0) {
+                ui.onNodeWithText("Protect a case transfer").performScrollTo()
+                screenshot("ui-protected-export.png")
+            }
             val protectedHash = EvidenceVault.sha(protectedArchive.readBytes())
             val archive = File(context.cacheDir, "synthetic-ui-run-${run + 1}.echocase")
             document(Intent.ACTION_CREATE_DOCUMENT, archive) {

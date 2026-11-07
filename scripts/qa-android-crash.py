@@ -4,12 +4,28 @@ from pathlib import Path
 import subprocess
 import time
 
+root = Path(__file__).resolve().parents[1]
 package = "org.echoscript.app.preview"
 runner = package + ".test/androidx.test.runner.AndroidJUnitRunner"
 test_class = "org.echoscript.app.CrashRecoveryTest#checkpointAndInterrupt"
 device_output = f"/sdcard/Android/data/{package}/files/synthetic-crash-qa"
 output = Path("qa-output/android-crash")
 output.mkdir(parents=True, exist_ok=True)
+
+# AGP's unified test platform removes its instrumentation installation after
+# connectedDebugAndroidTest. Reinstall the exact built pair for separate phases.
+# Refuse a physical/user device: this harness is disposable-emulator-only.
+qemu = subprocess.check_output(["adb", "shell", "getprop", "ro.kernel.qemu"], text=True, timeout=5).strip()
+if qemu != "1":
+    raise RuntimeError("Synthetic crash harness requires a disposable Android emulator")
+for relative in ["app/build/outputs/apk/debug/app-debug.apk", "app/build/outputs/apk/androidTest/debug/app-debug-androidTest.apk"]:
+    apk = root / "apps/android" / relative
+    if not apk.is_file():
+        raise RuntimeError("Build both application and instrumentation APKs before the crash harness")
+    subprocess.run(["adb", "install", "-r", "-t", str(apk)], check=True, timeout=60, stdout=subprocess.DEVNULL)
+instrumentations = subprocess.check_output(["adb", "shell", "pm", "list", "instrumentation"], text=True, timeout=5)
+if runner not in instrumentations:
+    raise RuntimeError("The exact synthetic instrumentation runner was not installed")
 
 
 def command(phase):
