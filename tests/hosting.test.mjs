@@ -44,6 +44,9 @@ test("static host serves modules and rejects traversal, symlink escape and write
     assert.match(module.headers["content-type"], /javascript/);
     for (const path of [
       "/%2e%2e/private.txt",
+      "/%2e%2e%2fprivate.txt",
+      "/%2f..%2fprivate.txt",
+      "/%252e%252e/private.txt",
       "/%5c../private.txt",
       "/escape.txt",
       "/.env",
