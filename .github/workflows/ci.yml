@@ -74,24 +74,6 @@ jobs:
       - name: Compile, unit test, lint, instrumentation APK and unsigned release
         working-directory: apps/android
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest :app:assembleRelease --no-daemon
-      - name: Verify and stage the installable offline preview
-        run: |
-          apk=apps/android/app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
-          if "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions "$apk" | rg -q 'android.permission.INTERNET'; then
-            exit 1
-          fi
-          mkdir -p qa-output/android-preview
-          cp "$apk" qa-output/android-preview/EchoScript-offline-preview.apk
-          cd qa-output/android-preview
-          sha256sum EchoScript-offline-preview.apk > SHA256SUMS.txt
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: github.event_name != 'pull_request'
-        with:
-          name: EchoScript-offline-Android-preview
-          path: qa-output/android-preview/
-          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -136,6 +118,33 @@ jobs:
           script: |
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }}
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
+      - name: Verify and stage the Android 16 emulator build
+        if: matrix.api == 36 && github.event_name != 'pull_request'
+        run: |
+          apk=apps/android/app/build/outputs/apk/debug/app-debug.apk
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$tools/apksigner" verify --verbose "$apk"
+          "$tools/zipalign" -c -P 16 4 "$apk"
+          permissions=$("$tools/aapt" dump permissions "$apk")
+          if printf '%s\n' "$permissions" | rg -q 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)'; then
+            exit 1
+          fi
+          folder=qa-output/android-preview/EchoScript-Android
+          mkdir -p "$folder"
+          cp "$apk" "$folder/EchoScript-offline-preview.apk"
+          cp downloads/android/INSTALL.txt "$folder/"
+          cp LICENSE "$folder/LICENSE.txt"
+          cp NOTICE "$folder/NOTICE.txt"
+          printf 'Source commit %s\nQuality checks %s/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$folder/BUILD.txt"
+          cd "$folder"
+          sha256sum EchoScript-offline-preview.apk > SHA256SUMS.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: matrix.api == 36 && github.event_name != 'pull_request'
+        with:
+          name: EchoScript-offline-Android-preview
+          path: qa-output/android-preview/
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:

@@ -53,6 +53,16 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return checkNotNull(artifact)
     }
 
+    fun savedAnalysis(manifest: JSONObject): JSONObject? {
+        val audio = manifest.getString("activeArtifact")
+        val artifact = manifest.items("artifacts").lastOrNull {
+            it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
+                it.getJSONObject("operation").getString("algorithm") == "bounded-envelope-spectrum-and-speech-candidates" &&
+                it.getJSONObject("operation").getString("version") == "1"
+        } ?: return null
+        return readJson(manifest, artifact, 1024 * 1024)
+    }
+
     fun analyze(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val audio = prepareAudio(manifest, actor, cancelled, progress)
         val (analysis, format) = withWave(manifest, audio) { overview(it, cancelled, progress) to it.format }

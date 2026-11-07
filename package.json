@@ -21,9 +21,8 @@
   "dependencies": {
     "@noble/hashes": "2.4.0",
     "ajv": "8.20.0",
-    "fastify": "5.12.7",
+    "fastify": "5.12.8",
     "fflate": "0.8.3",
-    "jose": "6.2.14",
     "json-canonicalize": "3.0.1",
     "jspdf": "4.2.1",
     "yauzl": "3.4.0"
@@ -36,5 +35,13 @@
     "globals": "17.14.0",
     "prettier": "3.9.10",
     "typescript": "7.0.2"
+  },
+  "overrides": {
+    "eslint": {
+      "minimatch": "11.0.1"
+    },
+    "@eslint/config-array": {
+      "minimatch": "11.0.1"
+    }
   }
 }

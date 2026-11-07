@@ -7,7 +7,10 @@
 - `services/api/`: local provider mediation. `crates/audio-core/`: streaming Rust utility, not the native Android DSP path. `tools/case-verify/`: Android-independent verifier.
 - Node 24: `npm ci --ignore-scripts`, `npm run build`, `npm run lint`, `npm test`. Format touched files with Prettier. `npm run qa:local` needs the verified Vosk model, Python dependencies and environment described in README.
 - Android (JDK 17 / SDK 36 / Python 3.11+ on the build host): from `apps/android/`, `./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleRelease`; use `:app:connectedDebugAndroidTest` with an API 29/36 emulator/device. Synthetic codec fixtures have committed hashes and provenance. `python3 scripts/android-qa-fixtures.py` regenerates them on a build host with FFmpeg. The APK bundles pinned models and excludes Internet access.
+- Keep `downloads/android/INSTALL.txt` and the landing-page APK and ZIP links aligned with the published preview. Publish binaries as GitHub Release assets and verify the exact tested APK, install guide, SHA-256, license notices and build record. Keep the development preview labeled for synthetic evaluation.
 - Rust: `cargo fmt --all --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace --locked`, `cargo build --workspace --release --locked`. `python3 tools/qa-stress.py` requires the built Rust utility and Node dependencies.
+
+Native UI changes must retain accessible touch targets, export acknowledgement and explicit examiner verification. Check dark/light rendering, saved form state and the seven synthetic interface workflows. Report controlled picker responses separately from physical-device picker testing.
 
 Keep `main` buildable, use focused conventional commits and existing module conventions/strict types. Run checks appropriate to the affected behavior; record actual results and limits in `docs/IMPLEMENTATION.md` / `docs/qa/STATUS.md`. Do not invent tests executed in an unavailable environment.
 

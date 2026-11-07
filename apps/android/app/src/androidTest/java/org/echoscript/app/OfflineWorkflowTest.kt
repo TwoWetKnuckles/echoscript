@@ -27,6 +27,9 @@ class OfflineWorkflowTest {
             }
             assertEquals(speechHash, case.activeAudio().getString("sha256"))
             val analysis = workflow.analyze(case, actor, { false }, {})
+            val artifactCount = case.getJSONArray("artifacts").length()
+            assertArrayEquals(EvidenceVault.canonical(analysis), EvidenceVault.canonical(checkNotNull(workflow.savedAnalysis(case))))
+            assertEquals(artifactCount, case.getJSONArray("artifacts").length())
             assertTrue(analysis.getJSONArray("peaks").length() > 0)
             assertTrue(analysis.getJSONArray("spectrum").length() > 0)
             val enhanced = workflow.enhance(case, actor, RenderSettings(gainDb = 3.0, highPassHz = 70.0), { false }, {})
