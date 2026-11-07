@@ -191,7 +191,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                                 OutlinedTextField(expectedHash, { expectedHash = it.take(64) }, label = { Text("Independently received SHA-256 (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
                                 Button(onClick = { importCase.launch(arrayOf("application/zip", "application/octet-stream")) }, enabled = ready) { Text("Choose .echocase package") }
                             }
-                            CasesList(screen, ready) { model.select(it); tab = "Analyze" }
+                            CasesList(model, screen, ready) { model.select(it); tab = "Analyze" }
                             OutlinedButton(onClick = { model.sample(actor) { tab = "Analyze" } }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Load synthetic speech sample") }
                             Text("On device · English speech model included", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
@@ -256,8 +256,8 @@ private fun StatusCard(screen: VaultScreen, model: VaultModel) {
 }
 
 @Composable
-private fun CasesList(screen: VaultScreen, ready: Boolean, select: (String) -> Unit) {
-    var query by rememberSaveable { mutableStateOf("") }
+private fun CasesList(model: VaultModel, screen: VaultScreen, ready: Boolean, select: (String) -> Unit) {
+    val query = model.caseQuery
     var visible by rememberSaveable(query) { mutableIntStateOf(25) }
     if (screen.cases.isEmpty()) {
         Section("Start with a recording", "Waveform and speech candidates appear automatically after import.") {
@@ -265,7 +265,7 @@ private fun CasesList(screen: VaultScreen, ready: Boolean, select: (String) -> U
         }
         return
     }
-    OutlinedTextField(query, { query = it }, placeholder = { Text("Search cases") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(query, { model.caseQuery = it.take(256) }, placeholder = { Text("Search cases") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
     val cases = remember(screen.cases, query) { screen.cases.filter { it.getString("title").contains(query, ignoreCase = true) } }
     Text("${cases.size} cases on this device", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
     for (case in cases.take(visible)) {

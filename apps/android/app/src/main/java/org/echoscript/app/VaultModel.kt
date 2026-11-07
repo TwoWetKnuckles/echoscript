@@ -49,6 +49,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var player by mutableStateOf<ExoPlayer?>(null); private set
     var reviewDrafts by mutableStateOf<Map<String, ReviewDraft>>(emptyMap()); private set
     var acquisitionTitle by mutableStateOf("")
+    var caseQuery by mutableStateOf("")
 
     fun updateReviewDraft(key: String, draft: ReviewDraft) {
         reviewDrafts = reviewDrafts + (key to draft)
