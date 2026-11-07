@@ -75,6 +75,7 @@ class OfflineInterfaceTest {
         val vault = EvidenceVault(context)
         val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it) } ?: context.cacheDir
         repeat(7) { run ->
+            println("SYNTHETIC INTERFACE WORKFLOW ${run + 1}/7 START")
             if (run > 0) click("Cases", navigation = true)
             ui.onNodeWithText("Choose audio file").assertIsDisplayed()
             if (run == 0) screenshot("ui-cases.png")
@@ -137,6 +138,7 @@ class OfflineInterfaceTest {
             archive.copyTo(File(output, "synthetic-ui-run-${run + 1}.echocase"), overwrite = true)
             assertTrue(File(context.filesDir, "EvidenceVault/cases/$id").deleteRecursively())
             archive.delete(); source.delete()
+            println("SYNTHETIC INTERFACE WORKFLOW ${run + 1}/7 PASS")
         }
     }
 }

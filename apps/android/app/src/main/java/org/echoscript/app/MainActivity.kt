@@ -94,7 +94,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     val busy = screen.job != null
     val selected = screen.cases.firstOrNull { it.getString("caseId") == screen.selected }
     var tab by rememberSaveable { mutableStateOf("Cases") }
-    var title by rememberSaveable { mutableStateOf("") }
+    val title = model.acquisitionTitle
     var expectedHash by rememberSaveable { mutableStateOf("") }
     var transfer by rememberSaveable { mutableStateOf(false) }
     var exportType by rememberSaveable { mutableStateOf(ExportFormat.CASE.name) }
@@ -196,7 +196,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             Text("On device · English speech model included", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                         }
                         "Acquire" -> Section("Acquire a recording", "Your examiner identifier is saved in Settings. File names supply the case title when left blank.") {
-                            OutlinedTextField(title, { title = it.take(256) }, label = { Text("Case title (optional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            OutlinedTextField(title, { model.acquisitionTitle = it.take(256) }, label = { Text("Case title (optional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                             Button(onClick = chooseAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose audio file") }
                             OutlinedButton(onClick = { microphone.launch(android.Manifest.permission.RECORD_AUDIO) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Record from microphone") }
                             Text("Source preservation up to 4 GiB. Processing up to 750 MB, subject to codec and private storage limits.", style = MaterialTheme.typography.bodySmall)
@@ -431,11 +431,13 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     val current = index.coerceIn(0, segments.lastIndex)
     val segment = segments[current]
     val start = segment.getDouble("start"); val end = segment.getDouble("end"); val id = segment.getString("id")
-    var text by rememberSaveable(screen.selected, screen.transcriptRevision, id) { mutableStateOf(segment.getString("text")) }
-    var label by rememberSaveable(screen.selected, screen.transcriptRevision, id) { mutableStateOf(segment.optString("speakerLabel", "")) }
-    var verified by rememberSaveable(screen.selected, screen.transcriptRevision, id) { mutableStateOf(false) }
-    var edit by rememberSaveable { mutableStateOf(false) }
-    var details by rememberSaveable { mutableStateOf(false) }
+    val draftKey = "${screen.selected}/${screen.transcriptRevision}/$id"
+    val draft = model.reviewDrafts[draftKey] ?: ReviewDraft(segment.getString("text"), segment.optString("speakerLabel", ""))
+    val text = draft.text
+    val label = draft.label
+    val verified = draft.verified
+    var edit by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    var details by rememberSaveable(screen.selected) { mutableStateOf(false) }
     val dirty = text != segment.getString("text") || label != segment.optString("speakerLabel", "") || verified
     Section("Segment ${current + 1} of ${segments.size}", "${clock((start * 1000).toLong())} – ${clock((end * 1000).toLong())}") {
         val speaker = segment.optString("speakerLabel").ifBlank { if (segment.isNull("speaker")) "Unassigned speaker" else segment.getString("speaker") }
@@ -449,11 +451,12 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
             TextButton(onClick = { index = current + 1 }, enabled = ready && current < segments.lastIndex && !dirty) { Text("Next") }
         }
         if (edit) {
-            OutlinedTextField(text, { text = it.take(10000) }, label = { Text("Examiner transcript text") }, modifier = Modifier.fillMaxWidth())
-            OutlinedTextField(label, { label = it.take(80) }, label = { Text("Examiner speaker label") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-            Acknowledgement("I listened to and verified this segment.", verified, ready) { verified = it }
+            OutlinedTextField(text, { model.updateReviewDraft(draftKey, draft.copy(text = it.take(10000))) }, label = { Text("Examiner transcript text") }, enabled = ready, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(label, { model.updateReviewDraft(draftKey, draft.copy(label = it.take(80))) }, label = { Text("Examiner speaker label") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Acknowledgement("I listened to and verified this segment.", verified, ready) { model.updateReviewDraft(draftKey, draft.copy(verified = it)) }
             Button(onClick = { model.review(actor, id, text, label, verified) }, enabled = ready) { Text("Save examiner revision") }
-            if (dirty) TextButton(onClick = { text = segment.getString("text"); label = segment.optString("speakerLabel", ""); verified = false }) { Text("Reset unsaved edits") }
+            Text("Save a revision to retain edits through an app or process restart.", style = MaterialTheme.typography.bodySmall)
+            if (dirty) TextButton(onClick = { model.resetReviewDraft(draftKey) }, enabled = ready) { Text("Reset unsaved edits") }
         }
         if (dirty) Text("Save or reset edits before changing segments.", style = MaterialTheme.typography.bodySmall)
         TextButton(onClick = { details = !details }) { Text(if (details) "Hide acoustic details" else "Acoustic details") }

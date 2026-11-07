@@ -22,6 +22,8 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
+internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false)
+
 internal data class VaultScreen(
     val ready: Boolean = false,
     val cases: List<JSONObject> = emptyList(),
@@ -45,6 +47,15 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private lateinit var workflow: OfflineWorkflow
     private val preferences = application.getSharedPreferences("echoscript_workspace", 0)
     var player by mutableStateOf<ExoPlayer?>(null); private set
+    var reviewDrafts by mutableStateOf<Map<String, ReviewDraft>>(emptyMap()); private set
+    var acquisitionTitle by mutableStateOf("")
+
+    fun updateReviewDraft(key: String, draft: ReviewDraft) {
+        reviewDrafts = reviewDrafts + (key to draft)
+    }
+    fun resetReviewDraft(key: String) {
+        reviewDrafts = reviewDrafts - key
+    }
 
     init {
         viewModelScope.launch(Dispatchers.IO) {
@@ -230,12 +241,15 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         val case = selected(); openTranscript(case, case.latestTranscript() ?: error("This case has no transcript yet"))
         "Saved transcript opened."
     }
-    fun review(actor: String, segment: String, text: String, label: String, verified: Boolean) = runJob("Saving examiner revision") {
-        val case = selected()
-        val parent = case.artifact(mutable.value.transcriptRevision ?: error("Open a transcript first"))
-        val transcript = workflow.review(case, actor, parent, segment, text, label, verified)
-        mutable.update { it.copy(transcript = transcript, transcriptRevision = case.latestTranscript()?.getString("id")) }
-        if (verified) "This segment is marked as reviewed by the examiner." else "Edits saved as a separate revision."
+    fun review(actor: String, segment: String, text: String, label: String, verified: Boolean) {
+        val draftKey = "${mutable.value.selected}/${mutable.value.transcriptRevision}/$segment"
+        runJob("Saving examiner revision", completed = { resetReviewDraft(draftKey) }) {
+            val case = selected()
+            val parent = case.artifact(mutable.value.transcriptRevision ?: error("Open a transcript first"))
+            val transcript = workflow.review(case, actor, parent, segment, text, label, verified)
+            mutable.update { it.copy(transcript = transcript, transcriptRevision = case.latestTranscript()?.getString("id")) }
+            if (verified) "This segment is marked as reviewed by the examiner." else "Edits saved as a separate revision."
+        }
     }
     fun workload(actor: String, status: String) = runJob("Saving workload state") {
         require(status in setOf("NEW", "IN_REVIEW", "COMPLETE"))

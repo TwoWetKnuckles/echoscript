@@ -2,7 +2,7 @@
 
 ## Android preview 0.4.0
 
-**[Download the Android preview ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.4.0) · [Plain-text install instructions](android/INSTALL.txt)
+**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.4.0) · [Plain-text install instructions](android/INSTALL.txt)
 
 Android 10 or later. Extract the `EchoScript-Android` folder, open `EchoScript-offline-preview.apk`, then choose **Load synthetic speech sample** in **Cases**. The APK includes its speech models. The dark Material interface offers automatic import analysis, **Render & transcribe**, saved examiner settings and review edits that survive navigation and rotation. The ZIP includes `INSTALL.txt`, `SHA256SUMS.txt`, build provenance and license notices.
 

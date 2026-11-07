@@ -4,7 +4,7 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Download the Android preview ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
+**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
 
 Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Material interface defaults to a dark graphite theme with cyan accents. In **Cases**, choose **Load synthetic speech sample** to try the workflow. Import prepares the waveform automatically, and **Render & transcribe** opens the resulting draft for review. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
 
