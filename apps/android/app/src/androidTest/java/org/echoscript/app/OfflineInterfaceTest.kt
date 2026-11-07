@@ -1,10 +1,13 @@
 package org.echoscript.app
 
 import android.app.Activity
+import android.app.Application
 import android.app.Instrumentation.ActivityResult
 import android.content.Context
 import android.content.Intent
 import android.net.Uri
+import android.os.Bundle
+import android.os.Parcel
 import android.graphics.Bitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
@@ -48,6 +51,36 @@ class OfflineInterfaceTest {
         val image = checkNotNull(InstrumentationRegistry.getInstrumentation().uiAutomation.takeScreenshot())
         try { File(folder, name).outputStream().use { assertTrue(image.compress(Bitmap.CompressFormat.PNG, 100, it)) } }
         finally { image.recycle() }
+    }
+
+    private fun recreateWithoutPersistingDraft(draft: String) {
+        val application = ui.activity.application
+        val saved = java.util.concurrent.atomic.AtomicReference<ByteArray>()
+        val observer = object : Application.ActivityLifecycleCallbacks {
+            override fun onActivitySaveInstanceState(activity: Activity, state: Bundle) {
+                if (activity !is MainActivity) return
+                val parcel = Parcel.obtain()
+                try { parcel.writeBundle(state); saved.set(parcel.marshall()) }
+                finally { parcel.recycle() }
+            }
+            override fun onActivityCreated(activity: Activity, state: Bundle?) {}
+            override fun onActivityStarted(activity: Activity) {}
+            override fun onActivityResumed(activity: Activity) {}
+            override fun onActivityPaused(activity: Activity) {}
+            override fun onActivityStopped(activity: Activity) {}
+            override fun onActivityDestroyed(activity: Activity) {}
+        }
+        application.registerActivityLifecycleCallbacks(observer)
+        try {
+            ui.activityRule.scenario.recreate()
+            val bytes = checkNotNull(saved.get()) { "No actual saved-instance callback observed" }
+            for (encoding in listOf(Charsets.UTF_8, Charsets.UTF_16LE, Charsets.UTF_16BE)) {
+                val needle = draft.toByteArray(encoding)
+                assertFalse("Unsaved review text reached a saved-instance bundle", (0..bytes.size - needle.size).any { offset ->
+                    needle.indices.all { bytes[offset + it] == needle[it] }
+                })
+            }
+        } finally { application.unregisterActivityLifecycleCallbacks(observer) }
     }
 
     @Test fun appearanceAndExaminerSettingsSurviveRecreation() {
@@ -102,7 +135,7 @@ class OfflineInterfaceTest {
                 click("Export", navigation = true)
                 ui.onNodeWithText("Case package").performScrollTo().assertIsNotEnabled()
                 click("Transcript", navigation = true)
-                ui.activityRule.scenario.recreate()
+                recreateWithoutPersistingDraft("Synthetic examiner 1")
                 screenshot("ui-review-after-rotation.png")
                 waitFor("Examiner speaker label", 30000)
                 ui.onNodeWithText("Examiner speaker label").performScrollTo().assertTextContains("Synthetic examiner 1")
