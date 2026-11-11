@@ -156,7 +156,7 @@ jobs:
           script: |
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }}
             cd ../.. && python3 scripts/qa-android-crash.py
-            node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
+            cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
       - name: Verify and stage the Android 16 emulator build
         if: matrix.api == 36 && github.event_name != 'pull_request'
         run: |
