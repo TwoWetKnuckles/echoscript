@@ -37,7 +37,7 @@ def execute(phase):
     result = subprocess.run(command(phase), capture_output=True, text=True, timeout=60)
     (output / f"synthetic-{phase}.txt").write_text(result.stdout + result.stderr, encoding="utf-8")
     if result.returncode or "OK (1 test)" not in result.stdout:
-        raise RuntimeError(f"Synthetic recovery {phase} did not complete successfully")
+        raise RuntimeError(f"Synthetic recovery {phase} did not complete successfully:\n{result.stdout}\n{result.stderr}")
 
 
 execute("prepare")
