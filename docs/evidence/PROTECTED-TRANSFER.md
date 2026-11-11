@@ -1,6 +1,6 @@
 # Protected transfers and device checkpoints
 
-Preview 0.5.0 includes opt-in protected native case export and device-key checkpoints. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
+Preview 0.5.1 includes opt-in protected native case export and device-key checkpoints. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
 
 ## Native workflow
 

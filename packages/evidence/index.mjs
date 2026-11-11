@@ -4,7 +4,7 @@ import { canonicalize } from "json-canonicalize";
 import { zipSync, unzipSync, strToU8 } from "fflate";
 import validateSchema from "./schema-validator.cjs";
 
-export const VERSION = "0.5.0-preview";
+export const VERSION = "0.5.1-preview";
 export const FORMAT = "org.echoscript.case/1";
 export const MAX_BROWSER_BYTES = 64 * 1024 * 1024;
 export const ZERO = "0".repeat(64);

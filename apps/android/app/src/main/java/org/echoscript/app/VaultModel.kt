@@ -13,6 +13,7 @@ import androidx.media3.common.PlaybackException
 import androidx.media3.common.Player
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.ProgressiveMediaSource
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -35,6 +36,9 @@ internal data class VaultScreen(
     val transcript: JSONObject? = null,
     val transcriptRevision: String? = null,
     val failed: Boolean = false,
+    val importPending: Boolean = false,
+    val importName: String? = null,
+    val importedCaseId: String? = null,
 )
 
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -46,6 +50,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private fun updateState(change: (VaultScreen) -> VaultScreen) {
         viewModelScope.launch(Dispatchers.Main.immediate) { mutable.update(change) }
     }
+    private val vaultOpened = CompletableDeferred<Boolean>()
     private val cancelled = AtomicBoolean(false)
     private val recordingStop = AtomicBoolean(false)
     private lateinit var vault: EvidenceVault
@@ -78,16 +83,22 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                 workflow = OfflineWorkflow(application, vault)
                 val listing = vault.listCases()
                 val interrupted = preferences.getString("pendingJob", null)
-                updateState { VaultScreen(
-                    ready = true,
-                    cases = listing.cases,
-                    recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
-                        "Interrupted task · $it. Review the saved case before retrying."
-                    }),
-                    message = "Choose a case or import a recording.",
-                ) }
+                withContext(Dispatchers.Main) {
+                    mutable.update { current -> current.copy(
+                        ready = true,
+                        cases = listing.cases,
+                        recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
+                            "Interrupted task · $it. Review the saved case before retrying."
+                        }),
+                        message = if (current.importPending) "Recording selected. Waiting for the encrypted vault…" else "Choose a case or import a recording.",
+                    ) }
+                    vaultOpened.complete(true)
+                }
             } catch (_: Exception) {
-                updateState { VaultScreen(message = "The device vault could not open. Preserve the existing evidence and keys.") }
+                withContext(Dispatchers.Main) {
+                    mutable.update { it.copy(message = "The device vault could not open. Preserve the existing evidence and keys.", failed = true, importPending = false) }
+                    vaultOpened.complete(false)
+                }
             }
         }
     }
@@ -113,7 +124,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     ) {
         if (!mutable.value.ready || mutable.value.job != null) return
         stop(); cancelled.set(false)
-        updateState { it.copy(job = name, message = name, failed = false) }
+        updateState { it.copy(job = name, message = name, failed = false, importPending = false) }
         viewModelScope.launch(Dispatchers.IO) {
             var succeeded = false
             val message = try {
@@ -164,19 +175,44 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             }
         }
     }
-    fun importAudio(uri: Uri, title: String, actor: String, completed: () -> Unit) = runJob("Preserving source", completed) {
-        val resolver = getApplication<Application>().contentResolver
-        val filename = try {
-            resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
-                if (it.moveToFirst()) it.getString(0) else null
+    fun acknowledgeImportedCase(id: String) {
+        updateState { if (it.importedCaseId == id) it.copy(importedCaseId = null) else it }
+    }
+    fun importAudio(uri: Uri, title: String, actor: String, completed: () -> Unit = {}) {
+        // Result delivery can precede vault initialization after Android recreates
+        // this process while a document picker is open. Never drop that result.
+        viewModelScope.launch(Dispatchers.Main.immediate) {
+            if (mutable.value.job != null || mutable.value.importPending) {
+                notice("Another operation is active. Wait for it to finish, then choose the recording again.")
+                return@launch
             }
-        } catch (_: Exception) { null } ?: "source-audio"
-        val name = filename.filter { it.code >= 32 }.take(256).ifBlank { "source-audio" }
-        val manifest = checkNotNull(resolver.openInputStream(uri)) { "The selected recording could not be opened" }.use {
-            vault.importSource(it, name, title.ifBlank { name }, actor, cancelled::get, reportProgress("bytes preserved"))
+            mutable.update { it.copy(importPending = true, importName = "Recording selected", failed = false,
+                message = "Recording selected. Opening the encrypted vault…") }
+            if (!vaultOpened.await()) {
+                mutable.update { it.copy(importPending = false, failed = true,
+                    message = "The selected recording was not imported because the vault could not open. Preserve the vault and choose the file again after recovery.") }
+                return@launch
+            }
+            runJob("Preserving selected recording", {
+                mutable.update { it.copy(importedCaseId = it.selected) }
+                completed()
+            }) {
+                val resolver = getApplication<Application>().contentResolver
+                val filename = try {
+                    resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                        val column = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (column >= 0 && it.moveToFirst()) it.getString(column) else null
+                    }
+                } catch (_: Exception) { null } ?: "source-audio"
+                val name = filename.filter { it.code >= 32 }.take(256).ifBlank { "source-audio" }
+                updateState { it.copy(importName = name, message = "Importing $name into the encrypted vault…") }
+                val manifest = checkNotNull(resolver.openInputStream(uri)) { "The selected file could not be read. Choose it again or try the other file picker." }.use {
+                    vault.importSource(it, name, title.ifBlank { name }, actor, cancelled::get, reportProgress("bytes preserved"))
+                }
+                showCase(manifest)
+                analyzeAcquired(manifest, actor)
+            }
         }
-        showCase(manifest)
-        analyzeAcquired(manifest, actor)
     }
     private fun analyzeAcquired(manifest: JSONObject, actor: String): String {
         return try {

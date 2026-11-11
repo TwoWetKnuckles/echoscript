@@ -5,6 +5,11 @@ import android.app.Application
 import android.app.Instrumentation.ActivityResult
 import android.content.Context
 import android.content.Intent
+import android.content.ContentValues
+import android.provider.MediaStore
+import androidx.test.uiautomator.By
+import androidx.test.uiautomator.UiDevice
+import androidx.test.uiautomator.Until
 import android.net.Uri
 import android.os.Bundle
 import android.os.Parcel
@@ -81,6 +86,55 @@ class OfflineInterfaceTest {
                 })
             }
         } finally { application.unregisterActivityLifecycleCallbacks(observer) }
+    }
+
+    @Test fun actualDevicePickerImportsContentUriAndCancellationIsVisible() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val resolver = context.contentResolver
+        val filename = "ECHOSCRIPT-SYNTHETIC-PICKER.bin"
+        val uri = checkNotNull(resolver.insert(MediaStore.Downloads.EXTERNAL_CONTENT_URI, ContentValues().apply {
+            put(MediaStore.MediaColumns.DISPLAY_NAME, filename)
+            put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
+            put(MediaStore.MediaColumns.IS_PENDING, 1)
+        }))
+        val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+        val vault = EvidenceVault(context)
+        val baseline = vault.listCases().cases.map { it.getString("caseId") }.toSet()
+        try {
+            context.assets.open("synthetic-speech.wav").use { input -> checkNotNull(resolver.openOutputStream(uri)).use { input.copyTo(it) } }
+            resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
+            click("Choose audio file")
+            // No Espresso Intents interception: exercise actual DocumentsUI,
+            // the Downloads provider, a content URI and Android's grant/result.
+            var file = device.wait(Until.findObject(By.text(filename)), 10000)
+            if (file == null) {
+                val roots = device.findObject(By.desc("Show roots")) ?: device.findObject(By.desc("Show navigation drawer"))
+                checkNotNull(roots) { "System file picker navigation unavailable" }.click()
+                checkNotNull(device.wait(Until.findObject(By.text("Downloads")), 10000)).click()
+                file = device.wait(Until.findObject(By.text(filename)), 10000)
+            }
+            val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it) }
+            if (output != null) { output.mkdirs(); assertTrue(device.takeScreenshot(File(output, "ui-real-picker.png"))) }
+            checkNotNull(file) { "Synthetic Downloads document not visible in actual picker" }.click()
+            waitFor("Original preserved. Waveform and speech candidates are ready.")
+            ui.onNodeWithText("Selected recording").performScrollTo().assertIsDisplayed()
+            assertTrue(ui.onAllNodesWithText(filename).fetchSemanticsNodes().isNotEmpty())
+            ui.onNodeWithTag("waveform").performScrollTo().assertIsDisplayed()
+            val imported = vault.listCases().cases.single { it.getString("caseId") !in baseline }
+            assertEquals("9d17a3309b89246c14ecc5a7b9a0f9bf398de0d93824037ddaff4412b35af2bd", imported.items("artifacts").first { it.getString("type") == "SOURCE" }.getString("sha256"))
+            assertTrue(vault.verify(imported).contains("agree"))
+            screenshot("ui-real-picker-imported.png")
+            click("Cases", navigation = true)
+            click("Choose audio file")
+            assertTrue(device.wait(Until.hasObject(By.desc("Show roots")), 10000) || device.hasObject(By.text("Downloads")))
+            device.pressBack()
+            waitFor("No recording was selected. Choose a file or try the other file picker.")
+            assertEquals(1, vault.listCases().cases.count { it.getString("caseId") !in baseline })
+        } finally {
+            resolver.delete(uri, null, null)
+            for (case in vault.listCases().cases.filter { it.getString("caseId") !in baseline })
+                assertTrue(File(context.filesDir, "EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively())
+        }
     }
 
     @Test fun appearanceAndExaminerSettingsSurviveRecreation() {

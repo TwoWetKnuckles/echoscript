@@ -95,7 +95,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     val screen by model.state.collectAsStateWithLifecycle()
     val activity = LocalActivity.current as? ComponentActivity
     val view = LocalView.current
-    val busy = screen.job != null
+    val busy = screen.job != null || screen.importPending
     val selected = screen.cases.firstOrNull { it.getString("caseId") == screen.selected }
     var tab by rememberSaveable { mutableStateOf("Cases") }
     val title = model.acquisitionTitle
@@ -109,10 +109,27 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         if (granted) model.record(title.ifBlank { "Microphone ${EvidenceVault.utc()}" }, actor) { tab = "Analyze" }
         else model.notice("Microphone permission was declined. Choose audio file to import a recording.")
     }
-    val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { model.importAudio(it, if (tab == "Acquire") title else "", actor) { tab = "Analyze" } }
+    val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            model.notice("No recording was selected. Choose a file or try the other file picker.")
+        } else try {
+            val uri = selectedAudioUri(result.data)
+            if (uri == null) model.notice("The file picker returned no recording. Try Choose with another file picker.")
+            else model.importAudio(uri, if (tab == "Acquire") title else "", actor)
+        } catch (failure: IllegalArgumentException) {
+            model.notice(failure.message ?: "Choose one recording at a time.")
+        }
     }
-    val chooseAudio = { importAudio.launch(arrayOf("audio/*", "video/mp4", "video/webm", "application/octet-stream")) }
+    // Providers sometimes omit or mislabel audio MIME types. Select any openable
+    // file; actual decoding validates the bytes after original preservation.
+    val chooseAudio = {
+        try { importAudio.launch(audioPickerIntent(Intent.ACTION_OPEN_DOCUMENT)) }
+        catch (_: android.content.ActivityNotFoundException) { model.notice("No document picker is available. Try Choose with another file picker.") }
+    }
+    val chooseOtherAudio = {
+        try { importAudio.launch(audioPickerIntent(Intent.ACTION_GET_CONTENT)) }
+        catch (_: android.content.ActivityNotFoundException) { model.notice("No compatible file picker is installed or permitted on this device.") }
+    }
     val importCase = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) model.importCase(uri, actor, expectedHash) { transfer = false; tab = "Cases" }
         else model.transferPassphrase = ""
@@ -132,6 +149,9 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         }
         activity?.lifecycle?.addObserver(observer)
         onDispose { activity?.lifecycle?.removeObserver(observer); model.stopRecording(); model.stop() }
+    }
+    LaunchedEffect(screen.importedCaseId) {
+        screen.importedCaseId?.let { id -> tab = "Analyze"; model.acknowledgeImportedCase(id) }
     }
     LaunchedEffect(tab, screen.selected, screen.ready) {
         if (tab == "Transcript" && screen.ready && !busy && screen.transcript == null && selected?.latestTranscript() != null) model.openTranscript()
@@ -177,7 +197,10 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                 ) {
                     val ready = screen.ready && !busy && actor.isNotBlank()
                     for (warning in screen.recoveryWarnings) Text(warning, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
-                    if (screen.job != null || screen.message != "Choose a case or import a recording.") {
+                    screen.importName?.let { name ->
+                        if (tab in listOf("Cases", "Acquire", "Analyze")) Section("Selected recording") { SelectionContainer { Text(name) } }
+                    }
+                    if (screen.job != null || screen.importPending || screen.message != "Choose a case or import a recording.") {
                         StatusCard(screen, model)
                     }
                     val activePlayer = model.player
@@ -192,6 +215,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             Button(onClick = chooseAudio, enabled = ready, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
                                 Glyph(R.drawable.ic_add); Spacer(Modifier.width(10.dp)); Text("Choose audio file")
                             }
+                            TextButton(onClick = chooseOtherAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose with another file picker") }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 TextButton(onClick = { tab = "Acquire" }, enabled = ready) { Text("Record audio") }
                                 TextButton(onClick = { transfer = !transfer; if (!transfer) model.transferPassphrase = "" }, enabled = ready) { Text("Transfer case") }
@@ -208,6 +232,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                         "Acquire" -> Section("Acquire a recording", "Your examiner identifier is saved in Settings. File names supply the case title when left blank.") {
                             OutlinedTextField(title, { model.acquisitionTitle = it.take(256) }, label = { Text("Case title (optional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
                             Button(onClick = chooseAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose audio file") }
+                            TextButton(onClick = chooseOtherAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose with another file picker") }
                             OutlinedButton(onClick = { microphone.launch(android.Manifest.permission.RECORD_AUDIO) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Record from microphone") }
                             Text("Source preservation up to 4 GiB. Processing up to 750 MB, subject to codec and private storage limits.", style = MaterialTheme.typography.bodySmall)
                         }
@@ -254,6 +279,7 @@ private fun StatusCard(screen: VaultScreen, model: VaultModel) {
     Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectionContainer { Text(screen.message, style = MaterialTheme.typography.bodySmall) }
+            if (screen.importPending) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (screen.job != null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
                 Row {

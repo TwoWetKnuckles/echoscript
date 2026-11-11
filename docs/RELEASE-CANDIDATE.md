@@ -1,6 +1,6 @@
 # Release candidate gates
 
-EchoScript 0.5.0 is a development preview advancing the native Android workflow. The published release records its exact source commit, CI run, APK and ZIP hashes. **BETA GATE: NOT PASSED.** Evaluate with synthetic, non-sensitive recordings.
+EchoScript 0.5.1 is a development preview advancing the native Android workflow. The published release records its exact source commit, CI run, APK and ZIP hashes. **BETA GATE: NOT PASSED.** Evaluate with synthetic, non-sensitive recordings.
 
 | Area                  | Current implementation                                                                                                                                                                         | Remaining acceptance work                                                                                                                             |
 | --------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -20,7 +20,7 @@ A successful emulator or speech subset is recorded as that subset. A defect rese
 
 ## Evidence controls and remaining acceptance
 
-Preview 0.5.0 adds opt-in native streaming protected transfers, Keystore P-256 historical checkpoints and an independent JVM/Node verification path. See [the exact format, trust and recovery boundaries](evidence/PROTECTED-TRANSFER.md). These controls are not an authenticated examiner identity, revocation/attestation infrastructure, a trusted timestamp service or an approved recovery policy.
+Preview 0.5.1 adds opt-in native streaming protected transfers, Keystore P-256 historical checkpoints and an independent JVM/Node verification path. See [the exact format, trust and recovery boundaries](evidence/PROTECTED-TRANSFER.md). These controls are not an authenticated examiner identity, revocation/attestation infrastructure, a trusted timestamp service or an approved recovery policy.
 
 Desktop validation includes 30 Node tests, 9 JVM tests with the cross-runtime fixture enabled, and a real Tink-encrypted JVM-to-Node interoperability run, including wrong-passphrase, tag-tamper and no-clobber failures. Android compilation/emulator validation for these additions must be recorded against the resulting commit before claiming native success. CI now requires independent verification of seven native protected exports in addition to the existing core and interface subsets.
 

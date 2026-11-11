@@ -1,10 +1,10 @@
-EchoScript Android preview 0.5.0
+EchoScript Android preview 0.5.1
 ================================
 Android 10 or later. Use synthetic, non-sensitive recordings for evaluation.
 BETA GATE: NOT PASSED. This package uses a debuggable development build.
 
 Official download
-https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.5.0
+https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.5.1
 
 Install on the device
 1. Download EchoScript-offline-preview.apk for direct installation. You can
@@ -18,6 +18,11 @@ Install on the device
 3. Open EchoScript. In Cases, choose Load synthetic speech sample to try the
    workflow or Choose audio file to import your own synthetic recording. The
    speech models are included. All processing runs inside the app.
+   If the device picker does not return a file, use Choose with another file
+   picker. All openable files are listed so mislabeled audio remains selectable.
+   After selection, Selected recording and progress confirm the handoff. The
+   vault preserves the original before analysis. Cancellation and read errors
+   produce a visible message; retry the selection if needed.
 4. Analyze shows the waveform automatically after import. Select a speech
    candidate or keep the full recording, choose a filter preset and gain, then
    tap Render & transcribe. Render enhanced revision saves WAV separately.
@@ -49,7 +54,7 @@ may differ. Preserve the original and export any cases to protected storage
 before removing or resetting an earlier preview. Uninstalling can erase the
 vault. Test the export and independently preserve its SHA-256 before relying on
 it. A fresh preview uses its own local vault. Preview 0.4.0 exports were plaintext
-and unsigned. Preview 0.5.0 adds protected transfers and optional device-signed
+and unsigned. Preview 0.5.1 adds protected transfers and optional device-signed
 historical checkpoints. Individual files and legacy ZIPs remain plaintext.
 New edits after a checkpoint require a new checkpoint to cover those revisions.
 Verify an exported snapshot before relying on it for recovery; no automatic

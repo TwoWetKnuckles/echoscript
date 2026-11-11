@@ -4,13 +4,17 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.0/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
+**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
 
 Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Material interface defaults to a dark graphite theme with cyan accents. In **Cases**, choose **Load synthetic speech sample** to try the workflow. Import prepares the waveform automatically, and **Render & transcribe** opens the resulting draft for review. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
 
 **Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** Read the [installation guide](downloads/android/INSTALL.txt) before installing or upgrading.
 
-**Preview 0.5.0** adds passphrase-protected native case transfers, device-key checkpoints and independent signature verification. Create a checkpoint directly in Export, then save a protected case package. Passphrase fields offer Show/Hide and hide again after rotation or navigation. See [protected transfers and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md), [owner signing setup](docs/android/OWNER-SIGNING.md) and the [mandatory release acceptance matrix](docs/qa/RC-ACCEPTANCE.md). No release gate has been waived.
+**Preview 0.5.1** adds passphrase-protected native case transfers, device-key checkpoints and independent signature verification. Create a checkpoint directly in Export, then save a protected case package. Passphrase fields offer Show/Hide and hide again after rotation or navigation. See [protected transfers and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md), [owner signing setup](docs/android/OWNER-SIGNING.md) and the [mandatory release acceptance matrix](docs/qa/RC-ACCEPTANCE.md). No release gate has been waived.
+
+### File selection in 0.5.1
+
+Choose audio file opens Android's document picker with all openable files visible, including recordings with missing or incorrect MIME labels. Choose with another file picker uses the alternate device picker. The app shows Selected recording and import progress, preserves the exact original bytes, then opens Analyze. Cancellation, missing results and unreadable files produce visible messages. A selection returned while the vault is still opening waits for initialization instead of being discarded. The decoder still determines supported audio from its contents; listing all files does not add new codecs.
 
 ## Responsibility and limitations
 
@@ -87,7 +91,7 @@ The debug APK uses the separate `org.echoscript.app.preview` application ID. The
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
 
-Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Preview 0.5.0 offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
+Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Preview 0.5.1 offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
 
 ## Verification and QA
 
