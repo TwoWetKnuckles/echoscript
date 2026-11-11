@@ -51,7 +51,7 @@ await writeFile(
   "apps/web/dist/build.json",
   JSON.stringify(
     {
-      version: "0.2.0-dev",
+      version: "0.5.0-preview",
       evidenceFormat: "org.echoscript.case/1",
       betaGate: "NOT PASSED",
     },

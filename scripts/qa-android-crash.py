@@ -8,7 +8,7 @@ root = Path(__file__).resolve().parents[1]
 package = "org.echoscript.app.preview"
 runner = package + ".test/androidx.test.runner.AndroidJUnitRunner"
 test_class = "org.echoscript.app.CrashRecoveryTest#checkpointAndInterrupt"
-device_output = f"/sdcard/Android/data/{package}/files/synthetic-crash-qa"
+device_report = "files/synthetic-crash-qa/process-kill-import.json"
 output = Path("qa-output/android-crash")
 output.mkdir(parents=True, exist_ok=True)
 
@@ -30,7 +30,7 @@ if runner not in instrumentations:
 
 def command(phase):
     return ["adb", "shell", "am", "instrument", "-w", "-r", "-e", "class", test_class,
-            "-e", "recoveryPhase", phase, "-e", "additionalTestOutputDir", device_output, runner]
+            "-e", "recoveryPhase", phase, runner]
 
 
 def execute(phase):
@@ -71,7 +71,8 @@ finally:
     if probe is not None:
         (output / "synthetic-readiness-probe.txt").write_bytes(probe.stdout + probe.stderr)
 execute("verify")
-subprocess.run(["adb", "pull", device_output + "/process-kill-import.json", str(output / "process-kill-import.json")], check=True, timeout=15, stdout=subprocess.DEVNULL)
+report = subprocess.check_output(["adb", "shell", "run-as", package, "cat", device_report], timeout=15)
+(output / "process-kill-import.json").write_bytes(report)
 result = json.loads((output / "process-kill-import.json").read_text())
 if result.get("result") != "PASS" or not result.get("originalPreserved") or result.get("falseCompleteCase") is not False:
     raise RuntimeError("Synthetic crash evidence did not substantiate the subset checks")

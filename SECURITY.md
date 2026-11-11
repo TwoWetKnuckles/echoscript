@@ -4,10 +4,10 @@
 
 ## Versions and maintenance
 
-| Version                                                                                         | Status                                                                                            |
-| ----------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| Current source (`0.2.0-dev` web, `0.5.0-dev` Android) and published `0.4.0-dev-preview` Android | Reports may be submitted for review; no stable or production-supported release has been announced |
-| Historical commits, forks and third-party deployments                                           | No maintenance or backport commitment from this project; contact their operator for its policy    |
+| Version                                               | Status                                                                                            |
+| ----------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
+| Preview `0.5.0-preview` (Android and web source)      | Reports may be submitted for review; no stable or production-supported release has been announced |
+| Historical commits, forks and third-party deployments | No maintenance or backport commitment from this project; contact their operator for its policy    |
 
 No guaranteed acknowledgement, remediation deadline, continued support, bounty or service level is offered. An operator is responsible for monitoring its dependencies and advisories and choosing a maintenance plan. Separate authorized written support agreements, if any, govern their own obligations.
 
@@ -24,8 +24,8 @@ Testing must stay within systems/data you own or have permission to assess. Do n
 ## Controls and trust boundaries
 
 - Android source bytes are hashed before decode and stored using maintained Tink Streaming AEAD with a Keystore-protected keyset in persistent app-private storage. Backup/device transfer are excluded. Loss of keys/device reset can make the vault unrecoverable. A compromised unlocked device remains outside the vault's protection.
-- Browser working evidence is bounded session memory, not a persistent Android-equivalent vault. Encrypted case exports depend on the chosen passphrase. Source 0.5 adds opt-in Tink streaming protected native case export; published 0.4 native cases, legacy ZIPs and individual audio/documents are plaintext. Protect destinations, recipients and passphrase custody; no password reset or key escrow is provided.
-- Artifacts, revisions, canonical audit linkage and the independent verifier detect defined inconsistencies. Unsigned hashes/chains can be rewritten together; preserve trusted external references. Source 0.5 device-key P-256 checkpoints authenticate historical prefixes and disclose later unsigned events. They are not examiner identities, attestation or trusted timestamps. Independently enroll/revoke fingerprints and validate the recovery policy. See [protected transfer/signature scope](docs/evidence/PROTECTED-TRANSFER.md).
+- Browser working evidence is bounded session memory, not a persistent Android-equivalent vault. Encrypted case exports depend on the chosen passphrase. Preview 0.5.0 includes opt-in Tink streaming protected native case export; legacy ZIPs and individual audio/documents are plaintext. Protect destinations, recipients and passphrase custody; no password reset or key escrow is provided.
+- Artifacts, revisions, canonical audit linkage and the independent verifier detect defined inconsistencies. Unsigned hashes/chains can be rewritten together; preserve trusted external references. Preview 0.5.0 device-key P-256 checkpoints authenticate historical prefixes and disclose later unsigned events. They are not examiner identities, attestation or trusted timestamps. Independently enroll/revoke fingerprints and validate the recovery policy. See [protected transfer/signature scope](docs/evidence/PROTECTED-TRANSFER.md).
 - The browser companion uses an authenticated loopback-only Vosk service, with origin/consent/replay controls and bounded jobs. The offline Android preview runs bundled Vosk models in-process and excludes Internet permission. The loopback bearer token is for development. The downloadable Android preview is debuggable and development-signed. Evaluate it on approved test devices with synthetic material. OIDC/roles, cloud adapters and approved profile/workload sync remain unfinished. No evidence is synchronized to Supabase by the current application.
 - Imported archives, media and provider responses are untrusted. The implemented paths enforce schema/path/size/hash checks and finite job limits. Those checks do not establish safety against every malformed input or host compromise.
 

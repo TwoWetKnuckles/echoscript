@@ -34,8 +34,11 @@ import androidx.compose.ui.platform.LocalView
 import androidx.compose.ui.platform.testTag
 import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.text.input.KeyboardType
 import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
@@ -191,7 +194,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             }
                             Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
                                 TextButton(onClick = { tab = "Acquire" }, enabled = ready) { Text("Record audio") }
-                                TextButton(onClick = { transfer = !transfer }, enabled = ready) { Text("Transfer case") }
+                                TextButton(onClick = { transfer = !transfer; if (!transfer) model.transferPassphrase = "" }, enabled = ready) { Text("Transfer case") }
                             }
                             if (transfer) Section("Open a case package", "Choose protected storage and retain a separate package hash.") {
                                 OutlinedTextField(expectedHash, { expectedHash = it.take(64) }, label = { Text("Independently received SHA-256 (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
@@ -231,7 +234,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             "Analyze" -> AnalysisScreen(model, screen, selected, actor, ready) { tab = "Transcript" }
                             "Transcript" -> TranscriptScreen(model, screen, selected, actor, ready) { tab = "Export" }
                             "Audit" -> AuditScreen(model, selected, actor, ready)
-                            "Export" -> ExportScreen(model, selected, ready) { format ->
+                            "Export" -> ExportScreen(model, selected, actor, ready) { format ->
                                 exportType = format.name
                                 val basename = selected.getString("caseId").take(8)
                                 export.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(format.mime).putExtra(Intent.EXTRA_TITLE, "echoscript-$basename.${format.extension}"))
@@ -507,11 +510,13 @@ private fun AuditScreen(model: VaultModel, selected: JSONObject, actor: String, 
 }
 
 @Composable
-private fun ExportScreen(model: VaultModel, selected: JSONObject, ready: Boolean, export: (ExportFormat) -> Unit) {
+private fun ExportScreen(model: VaultModel, selected: JSONObject, actor: String, ready: Boolean, export: (ExportFormat) -> Unit) {
     var acknowledge by rememberSaveable(selected.getString("caseId")) { mutableStateOf(false) }
     var expanded by remember { mutableStateOf(false) }
     Text("Save your work", style = MaterialTheme.typography.headlineSmall)
     Section("Protect a case transfer", "Passphrase-protected streaming encryption. Save the passphrase and package hash through separate trusted channels. Losing the passphrase makes this export unavailable.") {
+        OutlinedButton(onClick = { model.checkpoint(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Create device-signed checkpoint") }
+        Text("Optional: sign the saved revisions before transfer. Retain the signer fingerprint independently; a device signature does not identify the examiner.", style = MaterialTheme.typography.bodySmall)
         Acknowledgement("I understand and will protect exported files.", acknowledge, ready) { acknowledge = it }
         SecretField(model.exportPassphrase, { model.exportPassphrase = it }, "New transfer passphrase", ready)
         SecretField(model.exportPassphraseConfirmation, { model.exportPassphraseConfirmation = it }, "Confirm transfer passphrase", ready)
@@ -534,8 +539,16 @@ private fun ExportScreen(model: VaultModel, selected: JSONObject, ready: Boolean
 
 @Composable
 private fun SecretField(value: String, change: (String) -> Unit, label: String, enabled: Boolean) {
+    // Visibility is deliberately not saved: rotation or navigation hides it again.
+    var visible by remember { mutableStateOf(false) }
     OutlinedTextField(value, { change(it.take(1024)) }, label = { Text(label) }, enabled = enabled,
-        singleLine = true, visualTransformation = PasswordVisualTransformation(),
+        singleLine = true, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            TextButton(onClick = { visible = !visible }, enabled = enabled,
+                modifier = Modifier.semantics { contentDescription = "${if (visible) "Hide" else "Show"} $label" }) {
+                Text(if (visible) "Hide" else "Show")
+            }
+        },
         keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
         modifier = Modifier.fillMaxWidth())
 }

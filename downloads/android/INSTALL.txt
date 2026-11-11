@@ -1,10 +1,10 @@
-EchoScript Android preview 0.4.0
+EchoScript Android preview 0.5.0
 ================================
 Android 10 or later. Use synthetic, non-sensitive recordings for evaluation.
 BETA GATE: NOT PASSED. This package uses a debuggable development build.
 
 Official download
-https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.4.0
+https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.5.0
 
 Install on the device
 1. Download EchoScript-offline-preview.apk for direct installation. You can
@@ -25,7 +25,18 @@ Install on the device
 5. In Transcript, listen at the timestamps. Open Edit and verify segment to
    review words and draft speaker groups. Save
    examiner revisions when needed. Use Audit to verify. Export writes WAV,
-   transcripts, reports or a .echocase to a destination you choose.
+   transcripts, reports or a case package to a destination you choose.
+6. For a protected transfer, save revisions, then choose Create device-signed
+   checkpoint in Export (also available in Audit). Retain the public-key
+   fingerprint independently. Enter and confirm an unpredictable passphrase
+   of at least 16 characters, acknowledge export handling and choose Protected
+   case package. Show/Hide can help check typing; visibility resets after
+   rotation/navigation. Keep the passphrase and completed package SHA-256
+   separately. There is no password reset.
+7. To receive a protected case, choose Transfer case in Cases, enter its
+   passphrase and independently received hash, then select the package.
+   In Audit, supply the independently trusted signer fingerprint to verify
+   checkpoint coverage. Device signatures do not authenticate examiner identity.
 
 Verification and upgrades
 SHA256SUMS.txt contains the APK hash. Compare it to the value on the release
@@ -37,7 +48,12 @@ If Android rejects an update to an earlier preview, the signing identities
 may differ. Preserve the original and export any cases to protected storage
 before removing or resetting an earlier preview. Uninstalling can erase the
 vault. Test the export and independently preserve its SHA-256 before relying on
-it. A fresh preview uses its own local vault. Exports are plaintext and unsigned.
+it. A fresh preview uses its own local vault. Preview 0.4.0 exports were plaintext
+and unsigned. Preview 0.5.0 adds protected transfers and optional device-signed
+historical checkpoints. Individual files and legacy ZIPs remain plaintext.
+New edits after a checkpoint require a new checkpoint to cover those revisions.
+Verify an exported snapshot before relying on it for recovery; no automatic
+vault backup or resumable-job recovery is provided.
 
 Android guide and verified limits
 https://github.com/TwoWetKnuckles/echoscript/blob/main/docs/android/OFFLINE.md

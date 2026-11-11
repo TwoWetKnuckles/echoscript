@@ -146,11 +146,11 @@ class OfflineInterfaceTest {
             ui.onNodeWithContentDescription("Audit").performClick()
             click("Verify all hashes and custody records")
             waitFor("Source and derivative hashes, authenticated decryption and audit linkage agree. Independent custody and signatures require separate verification.")
+            click("Export", navigation = true)
             click("Create device-signed checkpoint")
             ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodesWithText("Device checkpoint saved.", substring = true).fetchSemanticsNodes().isNotEmpty() }
             val signed = vault.listCases().cases.single { it.getString("caseId") == id }
             val fingerprint = signed.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == org.echoscript.security.SignedCheckpoint.ALGORITHM }.operationParameters().getString("keySha256")
-            click("Export", navigation = true)
             click("I understand and will protect exported files.")
             val testPassword = "SYNTHETIC test transfer password 42"
             ui.onNodeWithText("New transfer passphrase").performScrollTo().performTextReplacement(testPassword)
@@ -159,7 +159,12 @@ class OfflineInterfaceTest {
             ui.onNodeWithText("Protected case package").performScrollTo().assertIsNotEnabled()
             ui.onNodeWithText("Confirm transfer passphrase").performScrollTo().performTextReplacement(testPassword)
             closeSoftKeyboard()
-            if (run == 0) recreateWithoutPersistingDraft(testPassword)
+            if (run == 0) {
+                ui.onNodeWithContentDescription("Show New transfer passphrase").performScrollTo().performClick()
+                ui.onNodeWithContentDescription("Hide New transfer passphrase").assertIsDisplayed()
+                recreateWithoutPersistingDraft(testPassword)
+                ui.onNodeWithContentDescription("Show New transfer passphrase").performScrollTo().assertIsDisplayed()
+            }
             val protectedArchive = File(context.cacheDir, "synthetic-ui-protected-run-${run + 1}.echocase.enc")
             document(Intent.ACTION_CREATE_DOCUMENT, protectedArchive) {
                 click("Protected case package")

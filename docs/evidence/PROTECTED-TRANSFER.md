@@ -1,11 +1,11 @@
 # Protected transfers and device checkpoints
 
-This source revision introduces an opt-in protected native case export and a device-key checkpoint. The published 0.4.0 preview predates these changes. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
+Preview 0.5.0 includes opt-in protected native case export and device-key checkpoints. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
 
 ## Native workflow
 
 1. Finish and save the intended audio/transcript/document revisions.
-2. In Audit, create a device-signed checkpoint. Record its public-key SHA-256 through an independently trusted organizational channel. The displayed examiner label is supplied locally; it is not an authenticated identity.
+2. In Export (or Audit), create a device-signed checkpoint. Record its public-key SHA-256 through an independently trusted organizational channel. The displayed examiner label is supplied locally; it is not an authenticated identity.
 3. In Export, acknowledge responsibility for the destination. Enter and confirm an unpredictable transfer passphrase of 16–1024 characters. Choose **Protected case package** and a protected destination.
 4. Preserve the completed outer ciphertext SHA-256 separately. Send the passphrase through a separate authorized channel. Protect the recipient, destination, retention period and access rights under the applicable case policy.
 5. On the receiving device, enter the passphrase and, when available, the independently retained ciphertext hash before choosing the package. Existing cases are never replaced. In Audit, supply the independently trusted public-key fingerprint before verification.

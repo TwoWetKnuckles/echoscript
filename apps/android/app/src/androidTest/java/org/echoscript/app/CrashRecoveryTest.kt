@@ -68,7 +68,11 @@ class CrashRecoveryTest {
                 val listing = vault.listCases()
                 assertFalse(listing.cases.any { it.getString("caseId") == orphan.name })
                 assertTrue(listing.warnings.any { it.contains(orphan.name) && it.contains("not a complete case") })
-                val output = File(checkNotNull(InstrumentationRegistry.getArguments().getString("additionalTestOutputDir"))).apply { mkdirs() }
+                // This standalone harness is outside AGP's managed output grant.
+                // Keep its synthetic report private; the host retrieves only this
+                // known file with run-as after successful instrumentation.
+                val output = File(context.filesDir, "synthetic-crash-qa")
+                check(output.mkdirs() || output.isDirectory) { "Synthetic report directory unavailable" }
                 File(output, "process-kill-import.json").writeText(JSONObject().put("check", "ANDROID_ACTUAL_PROCESS_KILL_IMPORT_SUBSET")
                     .put("result", "PASS").put("originalPreserved", true).put("falseCompleteCase", false)
                     .put("interruptedEncryptedBytesPreservedAndReported", true)

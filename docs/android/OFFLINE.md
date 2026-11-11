@@ -4,7 +4,7 @@ EchoScript's Android workbench runs on Android 10 and later. GitHub builds and t
 
 **Development preview. BETA GATE: NOT PASSED.** Evaluate the current build with synthetic, non-sensitive recordings. See [responsibility and limitations](../../DISCLAIMER.md) and [executed checks](../qa/STATUS.md).
 
-The linked published 0.4.0 preview predates the protected-transfer/checkpoint additions in the 0.5.0 source line. For a build containing those controls, use [the protected native workflow](../evidence/PROTECTED-TRANSFER.md): save revisions, explicitly create a device checkpoint in Audit, retain its fingerprint independently, then acknowledge Export and enter/confirm an unpredictable passphrase for **Protected case package**. Supply the passphrase and independently retained ciphertext hash for intake. Legacy ZIP and individual audio/documents remain plaintext. A device signature is a historical byte commitment, not an authenticated examiner identity.
+Preview 0.5.0 includes protected transfers and device checkpoints. Use [the protected native workflow](../evidence/PROTECTED-TRANSFER.md): save revisions, explicitly create a device checkpoint in Export or Audit, retain its fingerprint independently, then acknowledge Export and enter/confirm an unpredictable passphrase for **Protected case package**. Supply the passphrase and independently retained ciphertext hash for intake. Legacy ZIP and individual audio/documents remain plaintext. A device signature is a historical byte commitment, not an authenticated examiner identity.
 
 ## Install and use the preview
 

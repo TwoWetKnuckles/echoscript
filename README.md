@@ -4,13 +4,13 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
+**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.0/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
 
 Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Material interface defaults to a dark graphite theme with cyan accents. In **Cases**, choose **Load synthetic speech sample** to try the workflow. Import prepares the waveform automatically, and **Render & transcribe** opens the resulting draft for review. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
 
 **Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** Read the [installation guide](downloads/android/INSTALL.txt) before installing or upgrading.
 
-The source development line is advancing to **0.5.0-dev**. It adds protected native case transfers, device-key checkpoints and independent signature verification; these are absent from the linked 0.4.0 APK. See [protected transfers and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md), [owner signing setup](docs/android/OWNER-SIGNING.md) and the [mandatory release acceptance matrix](docs/qa/RC-ACCEPTANCE.md). No release gate has been waived.
+**Preview 0.5.0** adds passphrase-protected native case transfers, device-key checkpoints and independent signature verification. Create a checkpoint directly in Export, then save a protected case package. Passphrase fields offer Show/Hide and hide again after rotation or navigation. See [protected transfers and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md), [owner signing setup](docs/android/OWNER-SIGNING.md) and the [mandatory release acceptance matrix](docs/qa/RC-ACCEPTANCE.md). No release gate has been waived.
 
 ## Responsibility and limitations
 
@@ -22,12 +22,12 @@ Read the [responsibility and disclaimer notice](DISCLAIMER.md), [licensing guide
 
 ## What works
 
-| Component                   | Available in the development preview                                                                                                                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Android 10+                 | Encrypted original intake, waveform/spectral overview, speech-region candidates, non-destructive WAV rendering, offline English transcription, draft speaker groups, examiner revisions, audit and explicit case transfer |
-| Browser companion           | Session-only PCM WAV workbench with time-frequency selections, deterministic DSP and revision comparisons. Real Vosk speech is available through the separately started loopback service                                  |
-| Android and browser exports | WAV, transcript and document formats, case package and SHA-256. The native case package is plaintext and unsigned. The browser offers encrypted case export and processing-history bundles                                |
-| Independent tools           | Streaming Node case verifier and bounded-buffer Rust PCM16 renderer for development and independent checks                                                                                                                |
+| Component                   | Available in the development preview                                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android 10+                 | Encrypted original intake, waveform/spectral overview, speech-region candidates, non-destructive WAV rendering, offline English transcription, draft speaker groups, examiner revisions, audit and explicit case transfer                                           |
+| Browser companion           | Session-only PCM WAV workbench with time-frequency selections, deterministic DSP and revision comparisons. Real Vosk speech is available through the separately started loopback service                                                                            |
+| Android and browser exports | WAV, transcript and document formats, case package and SHA-256. Native protected case containers and optional device-signed historical checkpoints; individual files and legacy ZIPs remain plaintext. Browser encrypted case export and processing-history bundles |
+| Independent tools           | Streaming Node case verifier and bounded-buffer Rust PCM16 renderer for development and independent checks                                                                                                                                                          |
 
 The [Android guide](docs/android/OFFLINE.md) lists native filters, codecs and device limits. Draft speaker groups are local acoustic estimates. The loopback web adapter leaves speaker identity unassigned. Both paths preserve returned score semantics and alternatives when available. CTM requires genuine word alignment. Human text edits invalidate that alignment.
 
@@ -87,7 +87,7 @@ The debug APK uses the separate `org.echoscript.app.preview` application ID. The
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
 
-Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. The published 0.4.0 native package is **unencrypted and unsigned**. Current source also offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
+Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Preview 0.5.0 offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
 
 ## Verification and QA
 
