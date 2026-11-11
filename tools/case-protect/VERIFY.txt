@@ -22,7 +22,12 @@ node tools/case-verify/index.mjs CASE.echocase.enc --sha256 HASH --trusted-key-s
 HASH is the independently retained outer ciphertext SHA-256. PIN is the
 independently trusted signer SPKI SHA-256. Embedded public keys are not trusted
 identity. All hashes are 64 hexadecimal characters. ECHOSCRIPT_CASE_PROTECT_LIB
-can point to this distribution's lib directory. Review unsigned-tail limits.
+can point to this distribution's lib directory. Node sends the passphrase to
+its private range-reader through a bounded strict UTF-8 pipe, not child argv
+or environment. This preserves non-ASCII characters independently of the JVM
+locale. The standalone console/environment conversion command is separate;
+use a UTF-8 process locale for non-ASCII environment credentials.
+Review unsigned-tail limits.
 Signatures, encryption and hashes do not establish lawful acquisition,
 examiner identity, legal admissibility or organizational compliance.
 

@@ -110,7 +110,12 @@ if (process.argv[2] === "prepare") {
       {
         encoding: "utf8",
         timeout: 60000,
-        env: { ...process.env, ECHOSCRIPT_PACKAGE_PASSPHRASE: passphrase },
+        env: {
+          ...process.env,
+          LANG: "C.UTF-8",
+          LC_ALL: "C.UTF-8",
+          ECHOSCRIPT_PACKAGE_PASSPHRASE: passphrase,
+        },
       },
     );
   assert.equal(
@@ -124,6 +129,24 @@ if (process.argv[2] === "prepare") {
   assert.equal(result.packageSha256, digest(await readFile(protectedPath)));
   await assert.rejects(
     verifyProtectedFile(protectedPath, "WRONG synthetic password", options),
+  );
+  // Fixture generation has an explicit UTF-8 locale. The isolated verifier JVM
+  // receives no locale or credential environment: its private pipe must preserve
+  // non-ASCII/astral characters exactly, without normalization.
+  const unicodePassword = "SYNTHETIC test 密码 é 😀 42";
+  const unicodePath = join(directory, "unicode.echocase.enc");
+  assert.equal(
+    invoke(["encrypt", archive, unicodePath], unicodePassword).status,
+    0,
+  );
+  const unicodeResult = await verifyProtectedFile(
+    unicodePath,
+    unicodePassword,
+    options,
+  );
+  assert.equal(unicodeResult.trustedCheckpointCoversAllEvidence, true);
+  await assert.rejects(
+    verifyProtectedFile(unicodePath, unicodePassword.normalize("NFD"), options),
   );
   const tampered = new Uint8Array(await readFile(protectedPath));
   tampered[tampered.length - 1] ^= 1;
@@ -152,6 +175,8 @@ if (process.argv[2] === "prepare") {
         result: "PASS",
         packageSha256: result.packageSha256,
         wrongPasswordRejected: true,
+        unicodePassphrasePipeVerified: true,
+        silentNormalizationRejected: true,
         tagTamperRejected: true,
         existingDestinationPreserved: true,
         plaintextStaging: false,

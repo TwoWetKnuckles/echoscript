@@ -77,23 +77,30 @@ public final class CaseProtect {
         return result.toString();
     }
 
-    private static String request(BufferedReader input) throws Exception {
+    private static String request(BufferedReader input, int limit) throws Exception {
         StringBuilder line = new StringBuilder();
         while (true) {
             int c = input.read();
             if (c < 0) { if (line.length() != 0) throw new IllegalArgumentException("Truncated request"); return null; }
             if (c == '\n') return line.toString();
-            if (line.length() >= 512) throw new IllegalArgumentException("Oversized request");
+            if (line.length() >= limit) throw new IllegalArgumentException("Oversized request");
             line.append((char) c);
         }
     }
 
     /** Bounded authenticated byte ranges consumed by the Node ZIP verifier. */
     private static void serve(Path input) throws Exception {
-        String value = System.getenv("ECHOSCRIPT_PACKAGE_PASSPHRASE");
-        if (value == null) throw new IllegalArgumentException("Passphrase required");
-        char[] password = value.toCharArray();
+        // The private Node/JVM protocol sends credentials only over this local
+        // UTF-8 pipe; native environment decoding can corrupt Unicode on C locales.
+        var decoder = java.nio.charset.StandardCharsets.UTF_8.newDecoder()
+            .onMalformedInput(java.nio.charset.CodingErrorAction.REPORT)
+            .onUnmappableCharacter(java.nio.charset.CodingErrorAction.REPORT);
+        BufferedReader commands = new BufferedReader(new InputStreamReader(System.in, decoder));
+        String credential = request(commands, 8192);
+        if (credential == null) throw new IllegalArgumentException("Passphrase required");
+        char[] password = new JSONObject(credential).getString("passphrase").toCharArray();
         try {
+            ProtectedCase.validatePassphrase(password);
             BasicFileAttributes before = Files.readAttributes(input, BasicFileAttributes.class, LinkOption.NOFOLLOW_LINKS);
             if (!before.isRegularFile() || before.size() > ProtectedCase.MAX_CONTAINER_BYTES)
                 throw new IllegalArgumentException("Unsupported protected input");
@@ -102,9 +109,8 @@ public final class CaseProtect {
                 try (SeekableByteChannel clear = ProtectedCase.decryptingChannel(raw, password)) {
                     long size = clear.size();
                     System.out.println(new JSONObject().put("size", size).put("packageSha256", cipherHash));
-                    BufferedReader commands = new BufferedReader(new InputStreamReader(System.in, java.nio.charset.StandardCharsets.UTF_8));
                     while (true) {
-                        String line = request(commands);
+                        String line = request(commands, 512);
                         if (line == null) throw new IllegalArgumentException("Verification ended without a final integrity check");
                         JSONObject command = new JSONObject(line);
                         if (command.optBoolean("finish", false)) {

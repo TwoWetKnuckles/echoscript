@@ -34,11 +34,13 @@ export class ProtectedReader {
           ...(process.env.SystemRoot
             ? { SystemRoot: process.env.SystemRoot }
             : {}),
-          ECHOSCRIPT_PACKAGE_PASSPHRASE: passphrase,
         },
         stdio: ["pipe", "pipe", "pipe"],
       },
     );
+    // UTF-8 pipe input avoids Java's locale-dependent environment decoding.
+    // Never put a credential in argv, diagnostics or the range-request logs.
+    this.#child.stdin.write(JSON.stringify({ passphrase }) + "\n");
     this.#exit = new Promise((resolve) =>
       this.#child.once("close", (code) => {
         if (
