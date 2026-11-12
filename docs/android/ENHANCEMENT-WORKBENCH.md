@@ -2,16 +2,18 @@
 
 Galaxy S22+ is the reported user device. Physical-device acceptance remains required.
 
-The recording timeline shows the full-duration waveform and a bounded Hann/FFT256 spectral overview (128 time tiles). Tap to seek; Play/Pause/Resume and the position slider control authenticated playback. Drag to select a time interval, or enter exact start/end milliseconds. Create clip from selection saves a separate PCM16 artifact with a shortened duration; the original remains immutable. This overview is not a high-resolution frequency-selection editor.
+The recording timeline shows the full-duration waveform and a bounded Hann/FFT256 spectral overview (128 time tiles). Tap to seek; Play/Pause/Resume and the position slider control authenticated playback. Drag to select a time interval, or enter exact start/end milliseconds. Create clip from selection saves a separate PCM16 artifact with a shortened duration; the original remains immutable. The full-file overview samples brief windows and can miss events between them; it is not a continuous high-resolution spectrogram.
 
 Five one-touch presets populate draft controls: Speech band, Rumble, Hum 50 Hz, Hum 60 Hz, Gentle denoise. Tap the selected preset to restore the preceding controls. Render commits an immutable derivative; toggling draft controls does not modify an existing render. Start from a prior revision or edit its stored recipe to replace a render without stacking the same effects twice.
 
-Every effect has an enable switch, integer slider and numerical input from −100 through 0 to +100. Disabled and zero-strength processing are neutral with the optional limiter off. Actual parameter mapping is displayed beside each control and recorded with the software algorithm version. Ordered processing: time shift, short-plateau interpolation, preamp, low/mid/high EQ, speech band, hum notches, buzz notch, short room reflections, estimated echo, envelope gate, granular pitch, stereo width, optional soft peak limiter.
+Every effect has an enable switch, integer slider and numerical input from −100 through 0 to +100. Disabled and zero-strength processing are neutral with the optional limiter off. Actual parameter mapping is displayed beside each control and recorded with the software algorithm version. Ordered processing: time shift, short-plateau interpolation, preamp, low/mid/high EQ, parametric EQ, selected frequency band, speech band, hum notches, buzz notch, short room reflections, estimated echo, envelope gate, granular pitch, stereo width, optional soft peak limiter.
 
 | Control                | Mapping / interpretation                                                                                                           |
 | ---------------------- | ---------------------------------------------------------------------------------------------------------------------------------- |
 | Preamp                 | ±30 dB                                                                                                                             |
 | Low / speech / high EQ | ±18 dB; 180 / 1000 / up to 4000 Hz                                                                                                 |
+| Parametric EQ          | Adjustable center frequency and Q; ±18 dB. Center must be below Nyquist.                                                        |
+| Selected band          | Adjustable low/high frequencies; positive blends an isolated band, negative emphasizes its removed residue.                    |
 | Speech band            | Signed wet mix of 100–4000 Hz band; negative adds removed residue                                                                  |
 | Hum                    | Four notches at 50/60 Hz harmonics; negative emphasizes residue                                                                    |
 | Buzz                   | Adjustable 100–20000 Hz notch, strictly below Nyquist; negative emphasizes residue                                                 |
@@ -35,6 +37,13 @@ Without regions the rack applies to the typed selection or whole file. Clipping 
 
 ## Processing changelog and restoration
 
-Each derivative records actual signed controls, physical parameter mappings, interval, parent identity/hash linkage, result SHA-256, algorithm version, overload count and full workbench recipe. Revision history displays the operation and permits Restore; Undo/Redo navigate saved audio revisions in creation order (branches remain visible). Restoring moves the active pointer and appends a custody event without deleting later renders. Restored workbench recipes repopulate controls/regions and retain their base artifact. Old-format renders remain playable but do not have reconstructable rack recipes.
+Each derivative records actual signed controls, physical parameter mappings, interval, parent identity/hash linkage, result SHA-256, algorithm version, overload count and full workbench recipe. Revision history displays the operation and permits Restore; Undo follows the recorded audio parent, and redo presents saved child branches. Restoring moves the active pointer and appends a custody event without deleting later renders. Restored workbench recipes repopulate controls/regions and retain their base artifact. Old-format renders remain playable but do not have reconstructable rack recipes.
 
 Saved renders are read from the encrypted vault; undo is not an in-memory audio cache. Rendering checks available storage and uses fixed PCM/delay buffers. Missing/corrupt media, unsupported decoders, device/key loss, thermal limits and available storage can prevent playback or rerender. No history eviction or silent deletion is performed. Physical S22+ performance, headphones/listening evaluation and the full release gates remain open.
+
+
+## Detailed spectral inspection under development
+
+A draft detail view computes consecutive Hann or Hamming windows over a selected short interval, with selectable FFT size, hop, frequency scale and display floor. It retains a bounded number of windows and may require a shorter selection. Display bands aggregate strongest channel/bin magnitude, not speech probability or power spectral density; log display cannot add FFT resolution, and the final partial hop is not padded. Time/frequency dragging enables the separate band-isolation effect in the draft; other effects still operate over the whole selected time interval. The full-file overview remains a sampled overview. Synthetic signal, UI and physical-device validation of this draft remain pending.
+
+The window/hop terminology follows the [SciPy ShortTimeFFT documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ShortTimeFFT.html). EchoScript records its own parameters and display scaling; it does not use SciPy at runtime.

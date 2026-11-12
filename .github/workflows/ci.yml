@@ -176,7 +176,7 @@ jobs:
           cp NOTICE "$folder/NOTICE.txt"
           printf 'Source commit %s\nQuality checks %s/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$folder/BUILD.txt"
           cd "$folder"
-          sha256sum EchoScript-offline-preview.apk > SHA256SUMS.txt
+          sha256sum EchoScript-offline-preview.apk INSTALL.txt LICENSE.txt NOTICE.txt BUILD.txt > SHA256SUMS.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: matrix.api == 36 && github.event_name != 'pull_request'
         with:

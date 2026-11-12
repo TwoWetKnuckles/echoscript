@@ -96,6 +96,34 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return payload
     }
 
+    fun inspectSpectrum(manifest: JSONObject, actor: String, settings: DetailSpectrumSettings,
+        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.activeAudio()
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Analyze this audio before inspecting a time range" }
+        val detail = withWave(manifest, audio) { detailSpectrum(it, settings, cancelled, progress) }
+        val parameters = JSONObject().put("startMs", settings.startMs).put("endMs", settings.endMs)
+            .put("fftSize", settings.fftSize).put("hopSize", settings.hopSize).put("window", settings.window)
+            .put("scale", settings.scale).put("floorDb", settings.floorDb).put("sampleRate", detail.sampleRate)
+            .put("channels", detail.channels).put("displayBands", 128).put("channelCombination", "strongest-channel-per-bin")
+            .put("windowDefinition", "symmetric-n-minus-one").put("aggregation", "peak-magnitude-per-display-band")
+            .put("normalization", "window-coherent-gain-onesided-amplitude").put("displayQuantizationDb", 0.1)
+            .put("lastPartialHop", "not-padded")
+        val payload = JSONObject().put("audioArtifactId", audio.getString("id"))
+            .put("settings", parameters).put("startFrame", detail.startFrame).put("endFrame", detail.endFrame)
+            .put("analyzedThroughFrame", detail.analyzedThroughFrame).put("firstCenterFrame", detail.firstCenterFrame)
+            .put("lowHz", detail.lowHz).put("highHz", detail.highHz)
+            .put("peaks", JSONArray(detail.peaks)).put("columns", JSONArray(detail.columns.map { JSONArray(it) }))
+        vault.addDerivative(manifest, actor, "ANALYSIS", listOf(audio.getString("id")), "Detailed spectrum.json",
+            "windowed-stft-inspection", "1", warnings = listOf(
+                "Display bands show peak bins from the strongest channel; they are not power spectral density or evidence of speech.",
+                "Windowing limits time/frequency resolution; the final incomplete hop is not padded."
+            ), maxBytes = 4L * 1024 * 1024) { out ->
+            if (cancelled()) throw InterruptedException("Spectral inspection cancelled")
+            out.write(EvidenceVault.canonical(payload)); parameters
+        }
+        return payload
+    }
+
     fun enhance(manifest: JSONObject, actor: String, settings: RenderSettings, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val parent = prepareAudio(manifest, actor, cancelled, progress)
         return withWave(manifest, parent) { wave ->

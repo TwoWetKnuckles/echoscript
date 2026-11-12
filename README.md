@@ -16,7 +16,7 @@ Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Mate
 
 [Owner-confirmed working scope](docs/WORKING-SCOPE.md) includes items 1–20 and 23–28; browser parity and Termux are deferred, with physical-device/final workflow acceptance pending.
 
-The 0.6.0 candidate adds presets, signed effect controls, region/overlap rendering, a playback/selection timeline, clips and restorable processing recipes. [Capabilities and limitations](docs/android/ENHANCEMENT-WORKBENCH.md). Published APK links above remain 0.5.1 until validation completes. The working draft also changes file intake: selecting a recording shows its name and an explicit **Import selected audio** action, with visible progress and retry. This draft is not yet in the published APK and needs device validation.
+The 0.6.0 candidate adds presets, signed effect controls, region/overlap rendering, a playback/selection timeline, short-range spectral inspection, clips and restorable processing recipes. [Capabilities and limitations](docs/android/ENHANCEMENT-WORKBENCH.md). Published APK links above remain 0.5.1 until validation completes. The working draft also changes file intake: selecting a recording shows its name and an explicit **Import selected audio** action, with visible progress and retry. This draft is not yet in the published APK and needs device validation.
 
 ### File selection in 0.5.1
 

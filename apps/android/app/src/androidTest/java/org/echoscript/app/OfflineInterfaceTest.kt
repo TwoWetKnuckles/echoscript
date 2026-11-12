@@ -120,6 +120,7 @@ class OfflineInterfaceTest {
             waitFor(filename)
             ui.onNodeWithText("Selected recording").assertIsDisplayed()
             ui.onNodeWithText(filename).assertIsDisplayed()
+            screenshot("ui-selected-ready.png")
             assertEquals(0, vault.listCases().cases.count { it.getString("caseId") !in baseline })
             // Rotation must not drop the pending provider URI or its visible action.
             ui.activityRule.scenario.recreate()
@@ -178,6 +179,74 @@ class OfflineInterfaceTest {
                 ui.onNodeWithText("Selected recording").assertDoesNotExist()
             }
         } finally { source.delete() }
+    }
+
+    @Test fun detailedSpectrumInspectsAndZoomsWithoutChangingOriginal() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val vault = EvidenceVault(context)
+        val before = vault.listCases().cases.map { it.getString("caseId") }.toSet()
+        click("Load synthetic speech sample")
+        waitFor("Original preserved. Waveform and speech candidates are ready.")
+        val case = vault.listCases().cases.single { it.getString("caseId") !in before }
+        val sourceHash = case.items("artifacts").first().getString("sha256")
+        try {
+            ui.onNodeWithText("Selection start ms").performScrollTo().performTextReplacement("0")
+            ui.onNodeWithText("Selection end ms").performScrollTo().performTextReplacement("5000")
+            closeSoftKeyboard()
+            click("Open detailed spectrum")
+            click("256")
+            click("64 samples")
+            click("Inspect selected interval")
+            waitFor("Choose a shorter selection or a larger hop for this sample rate and channel count")
+            ui.onNodeWithText("Selection start ms").performScrollTo().performTextReplacement("200")
+            ui.onNodeWithText("Selection end ms").performScrollTo().performTextReplacement("1000")
+            closeSoftKeyboard()
+            click("1024")
+            click("512 samples")
+            click("Inspect selected interval")
+            waitFor("Detailed spectrum saved for the selected interval.")
+            ui.onNodeWithTag("detailed-spectrum").performScrollTo().assertIsDisplayed()
+            var saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            val first = saved.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == "windowed-stft-inspection" }
+            assertEquals(200L, first.operationParameters().getLong("startMs"))
+            assertEquals(1000L, first.operationParameters().getLong("endMs"))
+            assertEquals(1024, first.operationParameters().getInt("fftSize"))
+            assertEquals(512, first.operationParameters().getInt("hopSize"))
+            click("Zoom in")
+            ui.waitUntil(timeoutMillis = 120000) {
+                vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.items("artifacts")
+                    .count { it.getJSONObject("operation").getString("algorithm") == "windowed-stft-inspection" } == 2
+            }
+            saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            val zoomed = saved.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == "windowed-stft-inspection" }
+            assertEquals(400L, zoomed.operationParameters().getLong("startMs"))
+            assertEquals(800L, zoomed.operationParameters().getLong("endMs"))
+            ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodesWithText("400–800 ms", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            click("Select a frequency band by dragging on the spectrum")
+            ui.onNodeWithTag("detailed-spectrum").performScrollTo().performTouchInput {
+                swipe(androidx.compose.ui.geometry.Offset(width * .25f, height * .55f), androidx.compose.ui.geometry.Offset(width * .75f, height * .85f), 600)
+            }
+            waitFor("Frequency isolation enabled in draft. Render to apply the selected band.")
+            click("Render enhanced revision")
+            waitFor("Effect plan rendered. Earlier audio and settings remain in revision history.")
+            saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            val rendered = saved.items("artifacts").last { it.getString("type") == "ENHANCED_AUDIO" }
+            val params = rendered.operationParameters(); val rack = params.getJSONObject("effectRack")
+            assertTrue(params.getLong("startMs") in 495L..505L); assertTrue(params.getLong("endMs") in 695L..705L)
+            assertTrue(rack.getDouble("bandLowHz") in 1700.0..2000.0); assertTrue(rack.getDouble("bandHighHz") in 5300.0..5700.0)
+            assertTrue(rack.getJSONArray("effects").let { effects -> (0 until effects.length()).map(effects::getJSONObject).any { it.getString("id") == "frequency" && it.getBoolean("enabled") } })
+            assertEquals(sourceHash, saved.items("artifacts").first().getString("sha256"))
+            assertTrue(vault.verify(saved).contains("agree"))
+            val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it).apply { mkdirs() } } ?: context.cacheDir
+            val archive = File(output, "synthetic-detail-spectrum.echocase")
+            val archiveHash = archive.outputStream().use { vault.exportPackage(saved, it, "SYNTHETIC_QA") }
+            val folder = File(context.filesDir,"EvidenceVault/cases/${case.getString("caseId")}")
+            assertTrue(folder.deleteRecursively())
+            val reopened = archive.inputStream().use { vault.importPackage(it, "SYNTHETIC_QA", archiveHash, { false }, {}) }
+            assertTrue(vault.verify(reopened).contains("agree"))
+            assertTrue(reopened.items("artifacts").any { it.getJSONObject("operation").getString("algorithm") == "windowed-stft-inspection" })
+            assertEquals(sourceHash, reopened.items("artifacts").first().getString("sha256"))
+        } finally { assertTrue(File(context.filesDir,"EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively()) }
     }
 
     @Test fun effectPresetsRegionsAndRestorableRecipe() {
