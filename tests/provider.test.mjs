@@ -163,3 +163,30 @@ test("missing provider executable returns bounded failure without transcript lea
     await app.close();
   }
 });
+
+test("OpenAI transmission requires explicit model consent, exact hash, and one-use authorization", async () => {
+  let requests = 0;
+  const app = server({ openAiEnabled: true, openAiApiKey: "synthetic-secret", openAiFetch: async (url, options) => {
+    requests++;
+    assert.equal(url, "https://api.openai.com/v1/audio/transcriptions");
+    assert.equal(options.redirect, "error");
+    assert.equal(options.body.get("model"), "whisper-1");
+    return new Response(JSON.stringify({ text: "synthetic example", words: [] }), {status: 200});
+  }});
+  const payload=Buffer.from(toneBytes());
+  const create = (extra={})=>app.inject({method:"POST",url:"/v1/consents",headers,payload:{artifactHash:digest(payload),duration:1,approved:true,provider:"openai-whisper",model:"whisper-1",acknowledgedExternal:true,...extra}});
+  try {
+    assert.equal((await create({acknowledgedExternal:false})).statusCode,403);
+    assert.equal((await create({model:"other"})).statusCode,403);
+    const consent=(await create()).json().consentId;
+    const h={...headers,"content-type":"audio/wav","x-consent-id":consent};
+    const altered=Buffer.from(payload);altered[44]^=1;
+    assert.equal((await app.inject({method:"POST",url:"/v1/transcriptions/openai-whisper",headers:h,payload:altered})).statusCode,400);
+    assert.equal(requests,0);
+    assert.equal((await app.inject({method:"POST",url:"/v1/transcriptions",headers:h,payload})).statusCode,403);
+    const response=await app.inject({method:"POST",url:"/v1/transcriptions/openai-whisper",headers:h,payload});
+    assert.equal(response.statusCode,200);assert.equal(response.json().text,"synthetic example");
+    assert.equal((await app.inject({method:"POST",url:"/v1/transcriptions/openai-whisper",headers:h,payload})).statusCode,403);
+    assert.equal(requests,1);
+  } finally { await app.close(); }
+});

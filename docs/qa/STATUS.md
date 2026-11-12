@@ -103,3 +103,7 @@ New regressions cover deterministic pre-initialization result delivery, actual M
 ## 0.6.0 enhancement workbench candidate
 
 Adds five togglable presets, fourteen signed effect controls with numerical entry, bounded deterministic native processing, full-duration waveform/spectral timeline with seek/pause/resume and drag or typed selections, ordered/overlapping region plans, separate clips and immutable recipe/history restoration. See [workbench details](../android/ENHANCEMENT-WORKBENCH.md) for mappings and algorithm limits. New measured DSP and UI/recipe regressions require execution against the final source/APK; no pass is claimed yet. Existing 0.5.1 remains the published download until this candidate is validated. Galaxy S22+ physical acceptance remains outstanding. No new runtime dependency or network permission is introduced.
+
+## OpenAI adapter work in progress
+
+The opt-in loopback server adds a separate Whisper endpoint with explicit provider/model/external consent, hash/duration validation, one-use authorization, bounded response handling and no credential forwarding to the Vosk child. Synthetic mock-transport tests require execution. No Android integration, live OpenAI request, deployment approval or provider qualification is claimed.

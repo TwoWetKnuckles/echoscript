@@ -6,7 +6,7 @@ type Consent = {
   artifactHash: string;
   duration: number;
   expires: number;
-  provider: "vosk-local";
+  provider: "vosk-local" | "openai-whisper";
 };
 export type ServerOptions = {
   token: string;
@@ -16,6 +16,10 @@ export type ServerOptions = {
   providerEnabled?: boolean;
   timeoutMs?: number;
   workerPath?: string;
+  // External processing is opt-in. This key remains on the server only.
+  openAiApiKey?: string;
+  openAiEnabled?: boolean;
+  openAiFetch?: typeof fetch;
 };
 export function buildServer(options: ServerOptions) {
   if (options.token.length < 32)
@@ -80,6 +84,8 @@ export function buildServer(options: ServerOptions) {
       duration: number;
       approved: boolean;
       provider: string;
+      model?: string;
+      acknowledgedExternal?: boolean;
     };
   }>(
     "/v1/consents",
@@ -93,7 +99,9 @@ export function buildServer(options: ServerOptions) {
             artifactHash: { type: "string", pattern: "^[a-f0-9]{64}$" },
             duration: { type: "number", exclusiveMinimum: 0, maximum: 750 },
             approved: { const: true },
-            provider: { const: "vosk-local" },
+            provider: { enum: ["vosk-local", "openai-whisper"] },
+            model: { type: "string", maxLength: 64 },
+            acknowledgedExternal: { type: "boolean" },
           },
         },
       },
@@ -101,6 +109,9 @@ export function buildServer(options: ServerOptions) {
     async (req, reply) => {
       if (options.providerEnabled === false)
         return reply.code(403).send({ error: "PROVIDER_DISABLED" });
+      if (req.body.provider === "openai-whisper" &&
+          (!options.openAiEnabled || !options.openAiApiKey || req.body.model !== "whisper-1" || req.body.acknowledgedExternal !== true))
+        return reply.code(403).send({ error: "EXTERNAL_PROVIDER_DISABLED_OR_NOT_ACKNOWLEDGED" });
       for (const [key, c] of consents)
         if (c.expires < Date.now()) consents.delete(key);
       if (consents.size >= 1000)
@@ -109,7 +120,7 @@ export function buildServer(options: ServerOptions) {
       consents.set(consentId, {
         artifactHash: req.body.artifactHash,
         duration: req.body.duration,
-        provider: "vosk-local",
+        provider: req.body.provider as Consent["provider"],
         expires: Date.now() + 5 * 60 * 1000,
       });
       return { consentId, expiresInSeconds: 300 };
@@ -121,7 +132,7 @@ export function buildServer(options: ServerOptions) {
     const consentId = req.headers["x-consent-id"];
     const c =
       typeof consentId === "string" ? consents.get(consentId) : undefined;
-    if (!c || c.expires < Date.now())
+    if (!c || c.provider !== "vosk-local" || c.expires < Date.now())
       return reply.code(403).send({ error: "CONSENT_REQUIRED_OR_EXPIRED" });
     if (!Buffer.isBuffer(req.body) || req.body.length < 44)
       return reply.code(400).send({ error: "INVALID_AUDIO" });
@@ -161,7 +172,7 @@ export function buildServer(options: ServerOptions) {
               ),
           ],
           {
-            env: { ...process.env, VOSK_MODEL_PATH: options.modelPath },
+            env: { PATH: process.env.PATH, VOSK_MODEL_PATH: options.modelPath },
             stdio: ["pipe", "pipe", "pipe"],
             shell: false,
           },
@@ -212,6 +223,47 @@ export function buildServer(options: ServerOptions) {
     } finally {
       running = false;
     }
+  });
+  // External endpoint accepts only a separately approved canonical transmission.
+  app.post<{ Body: Buffer }>("/v1/transcriptions/openai-whisper", async (req, reply) => {
+    if (!options.openAiEnabled || !options.openAiApiKey) return reply.code(403).send({ error: "EXTERNAL_PROVIDER_DISABLED" });
+    const consentId = req.headers["x-consent-id"];
+    const c = typeof consentId === "string" ? consents.get(consentId) : undefined;
+    if (!c || c.provider !== "openai-whisper" || c.expires < Date.now()) return reply.code(403).send({ error: "CONSENT_REQUIRED_OR_EXPIRED" });
+    const b = req.body;
+    if (!Buffer.isBuffer(b) || b.length < 44 || b.length > 24 * 1024 * 1024) return reply.code(400).send({ error: "INVALID_AUDIO" });
+    if (createHash("sha256").update(b).digest("hex") !== c.artifactHash) return reply.code(400).send({ error: "TRANSMISSION_HASH_MISMATCH" });
+    if (b.toString("ascii",0,4)!=="RIFF" || b.toString("ascii",8,12)!=="WAVE" || b.toString("ascii",36,40)!=="data" || b.readUInt16LE(20)!==1 || b.readUInt16LE(22)!==1 || b.readUInt32LE(24)!==16000 || b.readUInt16LE(34)!==16 || b.readUInt32LE(40)!==b.length-44 || Math.abs((b.length-44)/32000-c.duration)>.001)
+      return reply.code(400).send({ error: "CANONICAL_MONO_PCM16_REQUIRED" });
+    if (running) return reply.code(429).send({ error: "PROVIDER_BUSY" });
+    consents.delete(consentId as string); running = true;
+    const controller = new AbortController();
+    const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 60000);
+    req.raw.once("aborted", () => controller.abort());
+    try {
+      const form = new FormData();
+      form.append("file", new Blob([new Uint8Array(b).buffer], { type: "audio/wav" }), "transmission.wav");
+      form.append("model", "whisper-1"); form.append("response_format", "verbose_json");
+      form.append("timestamp_granularities[]", "word");
+      const response = await (options.openAiFetch ?? fetch)("https://api.openai.com/v1/audio/transcriptions", {
+        method: "POST", redirect: "error", signal: controller.signal,
+        headers: { Authorization: `Bearer ${options.openAiApiKey}` }, body: form,
+      });
+      if (!response.ok || !response.body) return reply.code(502).send({ error: "OPENAI_REQUEST_FAILED", providerStatus: response.status });
+      const reader = response.body.getReader(); const chunks: Uint8Array[] = []; let length = 0;
+      while (true) {
+        const { done, value } = await reader.read(); if (done) break;
+        length += value.byteLength;
+        if (length > 8 * 1024 * 1024) { await reader.cancel(); return reply.code(502).send({ error: "PROVIDER_RESPONSE_TOO_LARGE" }); }
+        chunks.push(value);
+      }
+      const raw = Buffer.concat(chunks); let parsed: unknown;
+      try { parsed = JSON.parse(raw.toString("utf8")); } catch { return reply.code(502).send({ error: "PROVIDER_SCHEMA_MISMATCH" }); }
+      if (!parsed || typeof parsed !== "object" || !("text" in parsed) || typeof parsed.text !== "string") return reply.code(502).send({ error: "PROVIDER_SCHEMA_MISMATCH" });
+      return reply.type("application/json").send(raw);
+    } catch {
+      return reply.code(controller.signal.aborted ? 504 : 502).send({ error: controller.signal.aborted ? "PROVIDER_TIMEOUT_OR_CANCELLED" : "PROVIDER_UNAVAILABLE" });
+    } finally { clearTimeout(timer); running = false; }
   });
   return app;
 }
