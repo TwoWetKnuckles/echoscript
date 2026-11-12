@@ -238,7 +238,7 @@ class OfflineInterfaceTest {
             ui.activityRule.scenario.recreate()
             waitFor("Measure selected noise floor")
             ui.onAllNodesWithText("Measured gate threshold:", substring = true).assertCountEquals(0)
-            ui.onNodeWithText("Noise gate threshold dBFS (−90 to −10)").performScrollTo().assertTextContains("-30")
+            ui.onNodeWithText("Noise gate threshold dBFS (−90 to −10)").performScrollTo().assertTextContains("-30", substring = true)
             click("Measure selected noise floor")
             ui.waitUntil(timeoutMillis = 120000) {
                 vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.items("artifacts")
