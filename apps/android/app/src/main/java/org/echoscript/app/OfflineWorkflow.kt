@@ -85,14 +85,15 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         val parent = prepareAudio(manifest, actor, cancelled, progress)
         return withWave(manifest, parent) { wave ->
             require(context.filesDir.usableSpace > wave.dataBytes + 16 * 1024 * 1024) { "Insufficient private storage for another audio revision" }
-            vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", listOf(parent.getString("id")), "Enhanced PCM16.wav", "native-pcm16-iir-enhancement", "1",
-                warnings = listOf("Enhancement changes a derivative. Retain the original and examine artifacts independently."), active = true) { out ->
+            vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", listOf(parent.getString("id")), "Enhanced PCM16.wav", if (settings.rack == null) "native-pcm16-iir-enhancement" else "bounded-native-effect-rack", if (settings.rack == null) "1" else "1",
+                warnings = listOf("Enhancement changes a derivative. Retain the original and examine artifacts independently.") + if (settings.rack != null) listOf("Approximate restoration and granular pitch can introduce artifacts/latency. Declip does not recover lost peaks; envelope gating is not source isolation. Time shifts use silence padding.") else emptyList(), active = true) { out ->
                 val stats = renderWave(wave, out, settings, cancelled, progress)
                 JSONObject().put("gainDb", settings.gainDb).put("lowDb", settings.lowDb).put("midDb", settings.midDb).put("highDb", settings.highDb)
                     .put("highPassHz", settings.highPassHz).put("lowPassHz", settings.lowPassHz).put("humHz", settings.humHz)
                     .put("humHarmonics", if (settings.humHz == 0.0) 0 else 4).put("notchHz", settings.notchHz).put("notchQ", settings.notchQ)
                     .put("noiseFloorDb", settings.noiseFloorDb ?: JSONObject.NULL).put("noiseReductionDb", settings.noiseReductionDb)
                     .put("limiter", settings.limit).put("startMs", settings.startMs).put("endMs", settings.endMs ?: JSONObject.NULL)
+                    .put("effectRack", settings.rack?.json() ?: JSONObject.NULL).put("trim", settings.trim).put("workbenchPlan", settings.workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL)
                     .put("selectedFrames", stats.selectedFrames).put("overloadSampleCount", stats.clippedSamples)
                     .put("sampleRate", wave.format.sampleRate).put("channels", wave.format.channels).put("frames", wave.frames)
             }

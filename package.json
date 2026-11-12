@@ -1,6 +1,6 @@
 {
   "name": "echoscript",
-  "version": "0.5.1-preview",
+  "version": "0.6.0-preview",
   "license": "Apache-2.0",
   "private": true,
   "type": "module",

@@ -12,6 +12,12 @@ Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Mate
 
 **Preview 0.5.1** adds passphrase-protected native case transfers, device-key checkpoints and independent signature verification. Create a checkpoint directly in Export, then save a protected case package. Passphrase fields offer Show/Hide and hide again after rotation or navigation. See [protected transfers and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md), [owner signing setup](docs/android/OWNER-SIGNING.md) and the [mandatory release acceptance matrix](docs/qa/RC-ACCEPTANCE.md). No release gate has been waived.
 
+### Next update: enhancement workbench
+
+[Owner-confirmed working scope](docs/WORKING-SCOPE.md) includes items 1–20 and 23–28; browser parity and Termux are deferred, with physical-device/final workflow acceptance pending.
+
+The 0.6.0 candidate adds presets, signed effect controls, region/overlap rendering, a playback/selection timeline, clips and restorable processing recipes. [Capabilities and limitations](docs/android/ENHANCEMENT-WORKBENCH.md). Published APK links above remain 0.5.1 until validation completes.
+
 ### File selection in 0.5.1
 
 Choose audio file opens Android's document picker with all openable files visible, including recordings with missing or incorrect MIME labels. Choose with another file picker uses the alternate device picker. The app shows Selected recording and import progress, preserves the exact original bytes, then opens Analyze. Cancellation, missing results and unreadable files produce visible messages. A selection returned while the vault is still opening waits for initialization instead of being discarded. The decoder still determines supported audio from its contents; listing all files does not add new codecs.

@@ -263,6 +263,26 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(analysis = overview) }
         "Waveform, spectral overview and candidate speech regions are ready."
     }
+    fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) = runJob("Rendering effect plan", completed) {
+        require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
+        val manifest = selected()
+        vault.selectRevision(manifest, actor, baseId)
+        for (settings in regions) {
+            if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
+            workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("frames rendered"))
+        }
+        val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
+        updateState { it.copy(analysis = overview, transcript = null, transcriptRevision = null) }
+        "Effect plan rendered. Earlier audio and settings remain in revision history."
+    }
+    fun playbackAt(actor: String, millis: Long) {
+        val p = player
+        if (p == null) play(actor, startSeconds = millis / 1000.0) else p.seekTo(millis)
+    }
+    fun togglePlayback(actor: String) {
+        val p = player
+        if (p == null) play(actor) else if (p.isPlaying) p.pause() else p.play()
+    }
     fun enhance(actor: String, settings: RenderSettings) = runJob("Rendering audio revision") {
         val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
         updateState { it.copy(analysis = null) }

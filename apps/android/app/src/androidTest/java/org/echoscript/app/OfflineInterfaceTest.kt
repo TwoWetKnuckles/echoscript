@@ -137,6 +137,46 @@ class OfflineInterfaceTest {
         }
     }
 
+    @Test fun effectPresetsRegionsAndRestorableRecipe() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val vault = EvidenceVault(context)
+        val before = vault.listCases().cases.map { it.getString("caseId") }.toSet()
+        click("Load synthetic speech sample")
+        waitFor("Original preserved. Waveform and speech candidates are ready.")
+        val case = vault.listCases().cases.single { it.getString("caseId") !in before }
+        try {
+            ui.onNodeWithTag("waveform").performScrollTo().performTouchInput {
+                swipe(androidx.compose.ui.geometry.Offset(width * .2f, height * .5f), androidx.compose.ui.geometry.Offset(width * .6f, height * .5f), 600)
+            }
+            click("Speech band")
+            ui.onNodeWithText("Speech band").assertIsSelected()
+            click("Speech band")
+            ui.onNodeWithText("Speech band").assertIsNotSelected()
+            click("Hum 60 Hz")
+            ui.onNodeWithText("Selection start ms").performScrollTo().performTextReplacement("200")
+            ui.onNodeWithText("Selection end ms").performScrollTo().performTextReplacement("1000")
+            closeSoftKeyboard()
+            click("Add selection with these effects")
+            ui.onNodeWithText("1: 200–1000 ms").performScrollTo().assertIsDisplayed()
+            click("Render enhanced revision")
+            waitFor("Effect plan rendered. Earlier audio and settings remain in revision history.")
+            val saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            val rendered = saved.items("artifacts").last { it.getString("type") == "ENHANCED_AUDIO" }
+            assertEquals(200L, rendered.operationParameters().getLong("startMs"))
+            assertEquals(1000L, rendered.operationParameters().getLong("endMs"))
+            assertTrue(rendered.operationParameters().getJSONObject("effectRack").getJSONArray("effects").length() >= 14)
+            assertEquals(1, rendered.operationParameters().getJSONObject("workbenchPlan").getJSONArray("regions").length())
+            ui.activityRule.scenario.recreate()
+            ui.onNodeWithText("1: 200–1000 ms").performScrollTo().assertIsDisplayed()
+            click("Audio revision history")
+            screenshot("ui-effect-history.png")
+            click("Undo")
+            waitFor("Active revision changed. Earlier versions remain in the case.")
+            assertNotEquals(rendered.getString("id"), vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.getString("activeArtifact"))
+            assertTrue(vault.verify(vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }).contains("agree"))
+        } finally { assertTrue(File(context.filesDir,"EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively()) }
+    }
+
     @Test fun appearanceAndExaminerSettingsSurviveRecreation() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodes(hasContentDescription("Settings") and isEnabled()).fetchSemanticsNodes().isNotEmpty() }

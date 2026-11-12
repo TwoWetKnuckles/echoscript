@@ -101,13 +101,13 @@ try:
     artifact = {"id": artifact_id, "caseId": case_id, "type": "SOURCE", "parents": [],
                 "name": "SYNTHETIC TEST DATA - NOT EVIDENCE", "path": "artifacts/" + artifact_id,
                 "bytes": source.stat().st_size, "sha256": source_hash, "timestampUtc": "2026-11-01T00:00:00.000Z",
-                "actor": "SYNTHETIC_QA", "revision": 1, "softwareVersion": "0.5.1-preview",
+                "actor": "SYNTHETIC_QA", "revision": 1, "softwareVersion": "0.6.0-preview",
                 "operation": {"algorithm": "synthetic-tone-vector", "version": "1",
                               "parameters": {"sampleRate": 16000, "seconds": seconds}}, "warnings": []}
     audit_event("ARTIFACT_COMMIT", {"artifactId": artifact_id, "sha256": source_hash, "type": "SOURCE", "parents": []})
     manifest = {"format": "org.echoscript.case/1", "schemaVersion": 1, "caseId": case_id,
                 "title": "SYNTHETIC TEST DATA - NOT EVIDENCE", "createdAtUtc": "2026-11-01T00:00:00.000Z",
-                "software": {"name": "EchoScript", "version": "0.5.1-preview"}, "artifacts": [artifact],
+                "software": {"name": "EchoScript", "version": "0.6.0-preview"}, "artifacts": [artifact],
                 "audit": audit, "activeArtifact": artifact_id}
     metadata = canonical(manifest)
     with zipfile.ZipFile(package, "w", compression=zipfile.ZIP_STORED, allowZip64=True) as archive:
