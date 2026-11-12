@@ -55,12 +55,14 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var limit by rememberSaveable { mutableStateOf(false) }
     var historyCount by rememberSaveable { mutableIntStateOf(15) }
+    var candidateCount by rememberSaveable(screen.selected) { mutableIntStateOf(32) }
     var position by remember { mutableLongStateOf(0) }
     var playing by remember { mutableStateOf(false) }
     var seek by remember { mutableFloatStateOf(0f) }
     var scrubbing by remember { mutableStateOf(false) }
     var loop by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
+    var selectedEventId by remember(screen.selected) { mutableStateOf<String?>(null) }
     var comparisonId by rememberSaveable(screen.selected) { mutableStateOf("") }
     var comparisonMode by remember { mutableStateOf(false) }
     val rack = remember(draft) { EffectRack.fromJson(JSONObject(draft)) }
@@ -88,9 +90,9 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
         }
         start = if (plan != null && plan.optLong("startMs",0) > 0) plan.getLong("startMs").toString() else ""
         end = if (plan != null && !plan.isNull("endMs")) plan.getLong("endMs").toString() else ""
-        chosen = -1; presetName = ""; presetBackup = ""
+        chosen = -1; presetName = ""; presetBackup = ""; selectedEventId = null
         } catch (_: Exception) {
-            baseId = active; draft = EffectRack().json().toString(); regionsJson = "[]"; start = ""; end = ""; chosen = -1
+            baseId = active; draft = EffectRack().json().toString(); regionsJson = "[]"; start = ""; end = ""; chosen = -1; selectedEventId = null
             model.notice("This revision has an unsupported effect recipe. Audio is retained; start a new recipe or restore an earlier revision.")
         }
     }
@@ -182,9 +184,12 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
             OutlinedButton(onClick={try{val(a,b)=selection();model.timelineNote(actor,a,b,note);note=""}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready&&note.isNotBlank()) { Text("Note selection") }
         }
         OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160))}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Mark selected speech candidate") }
-        for(event in screen.analysis?.items("events").orEmpty().take(32)) FilterChip(false,{
-            start=event.getLong("startMs").toString();end=event.getLong("endMs").toString();chosen=-1
+        val speechEvents=screen.analysis?.items("events").orEmpty()
+        for(event in speechEvents.take(candidateCount)) FilterChip(selectedEventId==event.getString("eventId"),{
+            selectedEventId=event.getString("eventId");start=event.getLong("startMs").toString();end=event.getLong("endMs").toString();note=event.optString("label");chosen=-1
         },{Text("Candidate ${event.getLong("startMs")}–${event.getLong("endMs")} ms ${event.optString("label")}")},enabled=ready)
+        if (speechEvents.size>candidateCount) TextButton(onClick={candidateCount+=32}) { Text("Show more candidates") }
+        if (selectedEventId != null) OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160),selectedEventId)}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Save candidate adjustment") }
         for(event in selected.items("audit").filter{it.optString("action") in setOf("BOOKMARK","ANNOTATION")}.takeLast(32).asReversed()) {
             val d=event.optJSONObject("details")?:continue
             if(d.optString("audioArtifactId")==active) TextButton(onClick={model.playbackAt(actor,d.getLong("startMs"))},enabled=ready) { Text("${d.getLong("startMs")} ms · ${d.optString("text")}") }

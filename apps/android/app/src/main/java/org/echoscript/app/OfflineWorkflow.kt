@@ -16,6 +16,21 @@ internal fun JSONObject.activeAudio(): JSONObject = artifact(getString("activeAr
 internal fun JSONObject.latestTranscript(): JSONObject? = items("artifacts").lastOrNull { it.getString("type") in setOf("NORMALIZED_TRANSCRIPT", "HUMAN_TRANSCRIPT") }
 internal fun JSONObject.operationParameters(): JSONObject = getJSONObject("operation").getJSONObject("parameters")
 
+// Keep the prior analysis immutable; adjustment records retain the event identity.
+internal fun reviseSpeechCandidate(analysis: JSONObject, startMs: Long, endMs: Long, label: String, eventId: String?, newId: String): JSONObject {
+    require(startMs >= 0 && endMs > startMs && endMs <= analysis.getLong("durationMs") && label.length <= 160)
+    val result = JSONObject(analysis.toString())
+    val events = result.getJSONArray("events")
+    val index = if (eventId == null) -1 else (0 until events.length()).firstOrNull { events.getJSONObject(it).getString("eventId") == eventId }
+        ?: error("Speech candidate is no longer present; reopen analysis")
+    if (eventId == null) require(events.length() < 256) { "At most 256 candidates per analysis revision" }
+    val event = JSONObject().put("eventId", eventId ?: newId).put("startMs", startMs).put("endMs", endMs)
+        .put("sourceAlgorithm", if (eventId == null) "examiner-marked/1" else "examiner-adjusted/1")
+        .put("label", label).put("warning", "Examiner-marked candidate; no speech probability inferred")
+    if (index < 0) events.put(event) else events.put(index, event)
+    return result
+}
+
 internal class OfflineWorkflow(private val context: Context, private val vault: EvidenceVault) {
     private inline fun <T> withWave(manifest: JSONObject, audio: JSONObject, block: (WaveReader) -> T): T =
         vault.open(manifest.getString("caseId"), audio.getString("id")).use { stream ->
