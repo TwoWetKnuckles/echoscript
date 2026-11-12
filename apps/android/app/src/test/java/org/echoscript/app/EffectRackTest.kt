@@ -23,7 +23,7 @@ class EffectRackTest {
     @Test fun signedGainRegionsOverlapAndClipRetainCoordinateSemantics() {
         val s=audio{_,_->1000}; val gain=mapOf("gain" to EffectValue(true,20))
         val a=render(s,gain,100,500);val b=render(a,gain,300,700)
-        assertEquals(1000,pcm16(b,44));assertEquals(1995,pcm16(b,44+3200*2));assertEquals(3980,pcm16(b,44+6400*2));assertEquals(1995,pcm16(b,44+9600*2));assertEquals(1000,pcm16(b,44+14400*2))
+        assertEquals(1000,pcm16(b,44));assertEquals(1995,pcm16(b,44+3200*2));assertEquals(3981,pcm16(b,44+6400*2));assertEquals(1995,pcm16(b,44+9600*2));assertEquals(1000,pcm16(b,44+14400*2))
         val clip=render(s,start=250,end=500,trim=true)
         WaveReader(clip.inputStream(),clip.size.toLong()).use{assertEquals(4000L,it.frames)}
         assertArrayEquals(s,render(s))
@@ -64,8 +64,16 @@ class EffectRackTest {
         val s=audio(frames=32000){n,_->(3000*sin(2*PI*440*n/16000)).toInt()}
         val effects=mapOf("pitch" to EffectValue(true,100));val r=render(s,effects)
         assertEquals(s.size,r.size);assertArrayEquals(r,render(s,effects))
-        fun amplitude(hz:Int)=abs((16000 until 32000).sumOf{n->pcm16(r,44+2*n)*sin(2*PI*hz*n/16000)}/8000)
-        assertTrue(amplitude(880)>amplitude(440)*3)
+        fun amplitude(hz:Int): Double {
+            val re=(16000 until 32000).sumOf{n->pcm16(r,44+2*n)*cos(2*PI*hz*n/16000)}
+            val im=(16000 until 32000).sumOf{n->pcm16(r,44+2*n)*sin(2*PI*hz*n/16000)}
+            return hypot(re,im)/8000
+        }
+        // The documented 40 ms granular delay introduces 25 Hz sidebands.
+        // Measure the shifted spectral peak, not a phase-sensitive single bin.
+        val dominant=(850..910).maxBy { amplitude(it) }
+        assertTrue("Expected octave-up spectral peak, got $dominant Hz", abs(dominant-880)<=25)
+        assertTrue(amplitude(dominant)>amplitude(440)*3)
     }
     @Test fun cancellationAndInvalidParametersFailBeforeFalseCompletion() {
         assertThrows(IllegalArgumentException::class.java){EffectValue(true,101)}

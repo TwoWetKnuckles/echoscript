@@ -351,7 +351,18 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     }
     val segments = transcript.items("segments")
     if (segments.isEmpty()) { Text("The decoder returned no words. Listen to the audio and assess it independently."); return }
+    var search by remember(screen.selected) { mutableStateOf("") }
+    var flaggedOnly by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    var lowScores by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var index by rememberSaveable(screen.selected) { mutableIntStateOf(0) }
+    OutlinedTextField(search,{search=it.take(256)},label={Text("Find transcript text")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+    Row { FilterChip(flaggedOnly,{flaggedOnly=!flaggedOnly},{Text("Flagged only")}); Spacer(Modifier.width(8.dp)); FilterChip(lowScores,{lowScores=!lowScores},{Text("Low returned scores")}) }
+    val matches=segments.indices.filter { i ->
+        val item=segments[i]; val score=item.optJSONObject("confidence")?.optDouble("value",Double.NaN)?:Double.NaN
+        item.getString("text").contains(search,ignoreCase=true) && (!flaggedOnly || item.optJSONArray("flags")?.length()?.let{it>0}==true) && (!lowScores || (score.isFinite()&&score<.7))
+    }
+    Text("${matches.size} matching segments; returned scores are not calibrated probabilities.",style=MaterialTheme.typography.bodySmall)
+    for(i in matches.take(30)) TextButton(onClick={if(model.reviewDrafts.isEmpty()) index=i else model.notice("Save or reset the current review draft before jumping")},enabled=ready) { Text("${i+1}: ${segments[i].getString("text").take(80)}") }
     val current = index.coerceIn(0, segments.lastIndex)
     val segment = segments[current]
     val start = segment.getDouble("start"); val end = segment.getDouble("end"); val id = segment.getString("id")
@@ -377,6 +388,9 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
         if (edit) {
             OutlinedTextField(text, { model.updateReviewDraft(draftKey, draft.copy(text = it.take(10000))) }, label = { Text("Examiner transcript text") }, enabled = ready, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(label, { model.updateReviewDraft(draftKey, draft.copy(label = it.take(80))) }, label = { Text("Examiner speaker label") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                for(token in listOf("[inaudible]","[unintelligible]","[crosstalk]","[pause]","[background noise]")) TextButton(onClick={model.updateReviewDraft(draftKey,draft.copy(text=(text+" "+token).trim().take(10000)))},enabled=ready) { Text(token) }
+            }
             Acknowledgement("I listened to and verified this segment.", verified, ready) { model.updateReviewDraft(draftKey, draft.copy(verified = it)) }
             Button(onClick = { model.review(actor, id, text, label, verified) }, enabled = ready) { Text("Save examiner revision") }
             Text("Save a revision to retain edits through an app or process restart.", style = MaterialTheme.typography.bodySmall)

@@ -51,11 +51,20 @@ import kotlin.math.*
     var position by remember { mutableLongStateOf(0) }
     var playing by remember { mutableStateOf(false) }
     var seek by remember { mutableFloatStateOf(0f) }
+    var loop by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    var note by remember { mutableStateOf("") }
+    var comparisonId by rememberSaveable(screen.selected) { mutableStateOf("") }
+    var comparisonMode by remember { mutableStateOf(false) }
     val rack = remember(draft) { EffectRack.fromJson(JSONObject(draft)) }
     val regions = JSONArray(regionsJson)
     val duration = screen.analysis?.optLong("durationMs", 0) ?: 0L
-    LaunchedEffect(model.player) {
-        while (true) { position = model.player?.currentPosition ?: 0; playing = model.player?.isPlaying ?: false; delay(100) }
+    LaunchedEffect(model.player,loop,start,end) {
+        while (true) {
+            position = model.player?.currentPosition ?: 0; playing = model.player?.isPlaying ?: false
+            val a=start.toLongOrNull(); val b=end.toLongOrNull()
+            if (loop && playing && a!=null && b!=null && b>a && (position>=b || position<a)) model.player?.seekTo(a)
+            delay(50)
+        }
     }
     LaunchedEffect(active) {
         try {
@@ -140,10 +149,37 @@ import kotlin.math.*
             OutlinedButton(onClick={model.stop()},enabled=ready) { Text("Stop") }
         }
         Text("${position} / ${duration} ms")
+        Row { Checkbox(loop,{loop=it},enabled=ready&&start.toLongOrNull()!=null&&end.toLongOrNull()!=null); Text("Loop selection while this workbench is open") }
+        val audioRevisions=selected.items("artifacts").filter{it.getString("type") in setOf("SOURCE","DECODE","ENHANCED_AUDIO")}
+        Text("A/B comparison reference")
+        for(a in audioRevisions.takeLast(8)) FilterChip(comparisonId==a.getString("id"),{comparisonId=a.getString("id")},{Text("Revision ${a.getInt("revision")}")},enabled=ready)
+        OutlinedButton(onClick={
+            val reference=comparisonId.ifBlank{audioRevisions.first().getString("id")}
+            val time=model.player?.currentPosition?:position
+            val next=if(comparisonMode) active else reference
+            comparisonMode=!comparisonMode
+            model.play(actor,next,time/1000.0)
+        },enabled=ready) { Text(if(comparisonMode) "A/B: hear active render" else "A/B: hear reference") }
+        Text("A/B seeks the same millisecond position. Pitch/echo/time-shift processing can alter alignment.",style=MaterialTheme.typography.bodySmall)
         Slider(value=if(playing) position.toFloat().coerceIn(0f,duration.coerceAtLeast(1).toFloat()) else seek.coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={seek=it},onValueChangeFinished={model.playbackAt(actor,seek.toLong())},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=ready&&duration>0,modifier=Modifier.semantics { contentDescription="Playback position" })
         Numeric(start,{start=it},"Selection start ms",ready); Numeric(end,{end=it},"Selection end ms",ready)
         TextButton(onClick={start="";end="";chosen=-1},enabled=ready) { Text("Use entire recording") }
         OutlinedButton(onClick={render(trim=true)},enabled=ready&&start.isNotBlank()&&end.isNotBlank()) { Text("Create clip from selection") }
+    }
+    WorkCard("Markers and speech candidates") {
+        OutlinedTextField(note,{note=it.take(4000)},label={Text("Examiner note / candidate label")},enabled=ready,modifier=Modifier.fillMaxWidth())
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick={model.timelineNote(actor,position,null,note);note=""},enabled=ready&&note.isNotBlank()) { Text("Bookmark cursor") }
+            OutlinedButton(onClick={try{val(a,b)=selection();model.timelineNote(actor,a,b,note);note=""}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready&&note.isNotBlank()) { Text("Note selection") }
+        }
+        OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160))}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Mark selected speech candidate") }
+        for(event in screen.analysis?.items("events").orEmpty().take(32)) FilterChip(false,{
+            start=event.getLong("startMs").toString();end=event.getLong("endMs").toString();chosen=-1
+        },{Text("Candidate ${event.getLong("startMs")}–${event.getLong("endMs")} ms ${event.optString("label")}")},enabled=ready)
+        for(event in selected.items("audit").filter{it.optString("action") in setOf("BOOKMARK","ANNOTATION")}.takeLast(32).asReversed()) {
+            val d=event.optJSONObject("details")?:continue
+            if(d.optString("audioArtifactId")==active) TextButton(onClick={model.playbackAt(actor,d.getLong("startMs"))},enabled=ready) { Text("${d.getLong("startMs")} ms · ${d.optString("text")}") }
+        }
     }
     Text("Review audio",style=MaterialTheme.typography.headlineSmall)
     Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }

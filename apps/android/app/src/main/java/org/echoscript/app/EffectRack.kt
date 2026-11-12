@@ -55,10 +55,12 @@ internal data class EffectRack(
             val effects = json.getJSONArray("effects")
             require(effects.length() <= effectSpecs.size)
             val values = mutableMapOf<String, EffectValue>()
+            val seen = mutableSetOf<String>()
             for (i in 0 until effects.length()) {
                 val e = effects.getJSONObject(i); val id = e.getString("id")
-                require(id !in values)
-                values[id] = EffectValue(e.getBoolean("enabled"), e.getInt("strength"))
+                require(seen.add(id))
+                val value = EffectValue(e.getBoolean("enabled"), e.getInt("strength"))
+                if (value != EffectValue()) values[id] = value
             }
             return EffectRack(values, json.getInt("humHz"), json.getDouble("buzzHz"), json.getInt("echoMs"))
         }

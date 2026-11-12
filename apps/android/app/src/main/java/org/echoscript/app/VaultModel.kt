@@ -275,6 +275,29 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(analysis = overview, transcript = null, transcriptRevision = null) }
         "Effect plan rendered. Earlier audio and settings remain in revision history."
     }
+    fun timelineNote(actor: String, startMs: Long, endMs: Long?, text: String) = runJob("Saving timeline annotation") {
+        val manifest = selected()
+        require(startMs >= 0 && (endMs == null || endMs > startMs) && text.isNotBlank() && text.length <= 4000)
+        vault.recordEvent(manifest, actor, if (endMs == null) "BOOKMARK" else "ANNOTATION", JSONObject()
+            .put("audioArtifactId", manifest.getString("activeArtifact")).put("startMs", startMs)
+            .put("endMs", endMs ?: JSONObject.NULL).put("text", text))
+        "Timeline annotation saved in custody history."
+    }
+    fun saveSpeechCandidate(actor: String, startMs: Long, endMs: Long, label: String) = runJob("Saving speech candidate revision") {
+        val manifest = selected()
+        val analysis = workflow.savedAnalysis(manifest) ?: error("Analyze this revision first")
+        require(startMs >= 0 && endMs > startMs && endMs <= analysis.getLong("durationMs") && label.length <= 160)
+        val events = analysis.getJSONArray("events")
+        require(events.length() < 256) { "At most 256 candidates per analysis revision" }
+        events.put(JSONObject().put("eventId", "manual-${java.util.UUID.randomUUID()}").put("startMs", startMs).put("endMs", endMs)
+            .put("sourceAlgorithm", "examiner-marked/1").put("label", label).put("warning", "Manually marked candidate; no speech probability inferred"))
+        val parent = manifest.items("artifacts").last { it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == manifest.getString("activeArtifact") }
+        vault.addDerivative(manifest, actor, "ANALYSIS", listOf(manifest.getString("activeArtifact"),parent.getString("id")), "Examiner speech regions.json", "examiner-speech-region-edit", "1", maxBytes=1024*1024) { out ->
+            out.write(EvidenceVault.canonical(analysis)); JSONObject().put("startMs",startMs).put("endMs",endMs).put("label",label)
+        }
+        updateState { it.copy(analysis=analysis) }
+        "Speech candidate saved as a new analysis revision."
+    }
     fun playbackAt(actor: String, millis: Long) {
         val p = player
         if (p == null) play(actor, startSeconds = millis / 1000.0) else p.seekTo(millis)

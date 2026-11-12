@@ -57,7 +57,7 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         val audio = manifest.getString("activeArtifact")
         val artifact = manifest.items("artifacts").lastOrNull {
             it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
-                it.getJSONObject("operation").getString("algorithm") == "bounded-envelope-spectrum-and-speech-candidates" &&
+                it.getJSONObject("operation").getString("algorithm") in setOf("bounded-envelope-spectrum-and-speech-candidates", "examiner-speech-region-edit") &&
                 it.getJSONObject("operation").getString("version") == "1"
         } ?: return null
         return readJson(manifest, artifact, 1024 * 1024)
