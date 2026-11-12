@@ -30,7 +30,9 @@ internal data class WorkbenchDraftMemory(
     val caseId: String, val revisionId: String, val draft: String, val regions: String,
     val baseId: String, val start: String, val end: String, val chosen: Int,
     val presetBackup: String, val presetName: String, val limit: Boolean,
-    val showEffects: Boolean, val appliedNoiseMeasurement: String,
+    val showEffects: Boolean, val effectCategory: String, val selectedEffect: String, val appliedNoiseMeasurement: String,
+    val showComparison: Boolean, val comparisonId: String, val showDetail: Boolean, val selectFrequency: Boolean,
+    val detailFft: Int, val detailOverlap: Int, val detailWindow: String, val detailScale: String, val detailFloor: Int,
 )
 internal const val INTERRUPTED_AUDIO_SELECTION = "A file selection or import was interrupted. Check Cases for a preserved copy, then choose the recording again if needed."
 

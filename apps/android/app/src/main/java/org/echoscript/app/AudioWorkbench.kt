@@ -48,13 +48,23 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     }
 }
 
+private val effectGroups = linkedMapOf(
+    "Gain & EQ" to setOf("gain", "bass", "presence", "treble", "parametric"),
+    "Filters" to setOf("frequency", "band", "hum", "buzz"),
+    "Restore" to setOf("declip", "noise"),
+    "Time & space" to setOf("room", "echo", "shift"),
+    "Pitch & stereo" to setOf("pitch", "width"),
+)
+
 @Composable private fun WorkCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium); content()
     } }
 }
-@Composable private fun Numeric(value: String, change: (String) -> Unit, label: String, enabled: Boolean, signed: Boolean = false) {
+@Composable private fun Numeric(value: String, change: (String) -> Unit, label: String, enabled: Boolean, signed: Boolean = false, errorMessage: String? = null) {
+    val support: (@Composable () -> Unit)? = if (errorMessage == null) null else { { Text(errorMessage) } }
     OutlinedTextField(value, change, label = { Text(label) }, enabled = enabled, singleLine = true,
+        isError = errorMessage != null, supportingText = support,
         keyboardOptions = KeyboardOptions(keyboardType = if (signed) KeyboardType.Text else KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
 }
 
@@ -70,7 +80,9 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     var chosen by rememberSaveable(screen.selected) { mutableIntStateOf(-1) }
     var presetBackup by rememberSaveable(screen.selected) { mutableStateOf("") }
     var presetName by rememberSaveable(screen.selected) { mutableStateOf("") }
-    var showEffects by rememberSaveable { mutableStateOf(false) }
+    var showEffects by rememberSaveable { mutableStateOf(true) }
+    var effectCategory by rememberSaveable(screen.selected) { mutableStateOf("Gain & EQ") }
+    var selectedEffect by rememberSaveable(screen.selected) { mutableStateOf("gain") }
     var showHistory by rememberSaveable { mutableStateOf(false) }
     var limit by rememberSaveable { mutableStateOf(false) }
     var historyCount by rememberSaveable { mutableIntStateOf(15) }
@@ -83,6 +95,7 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     var note by remember { mutableStateOf("") }
     var selectedEventId by remember(screen.selected) { mutableStateOf<String?>(null) }
     var comparisonId by rememberSaveable(screen.selected) { mutableStateOf("") }
+    var showComparison by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var comparisonMode by remember { mutableStateOf(false) }
     var detailFft by rememberSaveable(screen.selected) { mutableIntStateOf(1024) }
     var detailOverlap by rememberSaveable(screen.selected) { mutableIntStateOf(2) }
@@ -121,7 +134,11 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             draft=restored.draft; regionsJson=restored.regions; baseId=restored.baseId
             start=restored.start; end=restored.end; chosen=restored.chosen
             presetBackup=restored.presetBackup; presetName=restored.presetName; limit=restored.limit
-            showEffects=restored.showEffects; appliedNoiseMeasurement=restored.appliedNoiseMeasurement
+            showEffects=restored.showEffects; effectCategory=restored.effectCategory; selectedEffect=restored.selectedEffect; appliedNoiseMeasurement=restored.appliedNoiseMeasurement
+            showComparison=restored.showComparison; comparisonId=restored.comparisonId
+            showDetail=restored.showDetail; selectFrequency=restored.selectFrequency
+            detailFft=restored.detailFft; detailOverlap=restored.detailOverlap; detailWindow=restored.detailWindow
+            detailScale=restored.detailScale; detailFloor=restored.detailFloor
             loadedRevision=active; workbenchLoaded=true
             return@LaunchedEffect
         }
@@ -149,8 +166,12 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     }
     SideEffect {
         if (workbenchLoaded && loadedRevision == active) model.rememberWorkbenchDraft(WorkbenchDraftMemory(
-            selected.getString("caseId"), active, draft, regionsJson, baseId, start, end, chosen,
-            presetBackup, presetName, limit, showEffects, appliedNoiseMeasurement,
+            caseId=selected.getString("caseId"), revisionId=active, draft=draft, regions=regionsJson,
+            baseId=baseId, start=start, end=end, chosen=chosen, presetBackup=presetBackup, presetName=presetName,
+            limit=limit, showEffects=showEffects, effectCategory=effectCategory, selectedEffect=selectedEffect,
+            appliedNoiseMeasurement=appliedNoiseMeasurement, showComparison=showComparison, comparisonId=comparisonId,
+            showDetail=showDetail, selectFrequency=selectFrequency, detailFft=detailFft, detailOverlap=detailOverlap,
+            detailWindow=detailWindow, detailScale=detailScale, detailFloor=detailFloor,
         ))
     }
     fun update(next: EffectRack) { draft = next.json().toString(); presetName = "" }
@@ -164,7 +185,7 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
                 noiseReference = NoiseFloorReference(reference.getString("artifactId"), reference.getString("sha256")),
                 values = current.values + ("noise" to EffectValue(true, if (noise.strength == 0) 50 else noise.strength))))
             appliedNoiseMeasurement = reference.getString("artifactId")
-            showEffects = true
+            effectCategory = "Restore"; selectedEffect = "noise"; showEffects = true
         }
     }
     fun selection(): Pair<Long, Long> {
@@ -195,15 +216,25 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
         if (analysis != null) {
             val peaks = analysis.getJSONArray("peaks"); val spectrum = analysis.getJSONArray("spectrum")
             val color = MaterialTheme.colorScheme.primary
-            var dragStart by remember { mutableFloatStateOf(0f) }
+            var dragAnchor by remember { mutableLongStateOf(0L) }
             val selectionStart = start.toLongOrNull(); val selectionEnd = end.toLongOrNull()
-            Canvas(Modifier.fillMaxWidth().height(190.dp).testTag("waveform").semantics { contentDescription = "Full recording waveform and spectrogram; use time fields for precise accessible selection" }
+            val latestStart by rememberUpdatedState(selectionStart); val latestEnd by rememberUpdatedState(selectionEnd)
+            Canvas(Modifier.fillMaxWidth().height(190.dp).testTag("waveform").semantics { contentDescription = "Full recording waveform and sampled spectrogram; drag to select or adjust selection edges, or use time fields for precision" }
                 .pointerInput(duration, ready) { detectTapGestures { point -> if (ready && duration > 0) model.playbackAt(actor, (point.x / size.width * duration).toLong().coerceIn(0, duration)) } }
-                .pointerInput(duration, ready) { detectDragGestures(orientationLock = null, onDragStart = { down, _, _ -> dragStart = down.position.x }, onDrag = { change, _ ->
+                .pointerInput(duration, ready) { detectDragGestures(orientationLock = null, onDragStart = { down, _, _ ->
+                    val at = (down.position.x / size.width * duration).toLong().coerceIn(0, duration)
+                    val a=latestStart; val b=latestEnd
+                    val left=if(a!=null && duration>0) size.width*a.toFloat()/duration else Float.NEGATIVE_INFINITY
+                    val right=if(b!=null && duration>0) size.width*b.toFloat()/duration else Float.NEGATIVE_INFINITY
+                    val leftDistance=abs(down.position.x-left); val rightDistance=abs(down.position.x-right)
+                    dragAnchor = if (a!=null && b!=null && b>a && min(leftDistance,rightDistance)<=24.dp.toPx()) {
+                        if(leftDistance<=rightDistance) b else a
+                    } else at
+                }, onDrag = { change, _ ->
                     if (ready && duration > 0) {
                         change.consume()
-                        val a = (min(dragStart, change.position.x) / size.width * duration).toLong().coerceIn(0, duration)
-                        val b = (max(dragStart, change.position.x) / size.width * duration).toLong().coerceIn(0, duration)
+                        val at = (change.position.x / size.width * duration).toLong().coerceIn(0, duration)
+                        val a = min(dragAnchor, at); val b = max(dragAnchor, at)
                         start = a.toString(); end = b.toString(); chosen = -1
                     }
                 }) }) {
@@ -225,19 +256,33 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
                 }
                 fun shade(a: Long, b: Long, shade: Color) { drawRect(shade,Offset(size.width*a/duration.coerceAtLeast(1),0f),Size(size.width*(b-a)/duration.coerceAtLeast(1),size.height)) }
                 for (i in 0 until regions.length()) { val r=regions.getJSONObject(i); shade(r.getLong("startMs"),r.getLong("endMs"),Color(0xFFBB86FC).copy(alpha=.15f)) }
-                if (selectionStart != null && selectionEnd != null && selectionEnd > selectionStart) shade(selectionStart,selectionEnd,color.copy(alpha=.25f))
+                if (selectionStart != null && selectionEnd != null && selectionEnd > selectionStart) {
+                    shade(selectionStart,selectionEnd,color.copy(alpha=.25f))
+                    for (edge in listOf(selectionStart,selectionEnd)) {
+                        val x=(size.width*edge/duration.coerceAtLeast(1)).coerceIn(0f,size.width)
+                        drawLine(color,Offset(x,0f),Offset(x,size.height),2.dp.toPx())
+                        drawCircle(color,4.dp.toPx(),Offset(x,5.dp.toPx()))
+                    }
+                }
                 val cursor = size.width * position / duration.coerceAtLeast(1)
+                drawLine(Color.Black,Offset(cursor,0f),Offset(cursor,size.height),4f)
                 drawLine(Color.White,Offset(cursor,0f),Offset(cursor,size.height),2f)
             }
             Text("Spectral overview · up to 128 brief Hann-window snapshots across the file, not continuous. Events between snapshots can be missed; use precise time fields and listen to the recording.", modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
             Text("Active revision: peak ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("peakDb"))} dBFS · RMS ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("rmsDb"))} dBFS · ${analysis.getLong("clippedSamples")} near-full-scale samples. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
         } else OutlinedButton(onClick={model.analyze(actor)},enabled=ready) { Text("Analyze audio") }
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             Button(onClick={model.togglePlayback(actor)},enabled=ready) { Text(if(playing) "Pause" else if(model.player!=null) "Resume" else "Play") }
             OutlinedButton(onClick={model.stop()},enabled=ready) { Text("Stop") }
+            OutlinedButton(onClick={render(trim=true)},enabled=ready&&start.isNotBlank()&&end.isNotBlank()) { Text("Create clip from selection") }
+            TextButton(onClick={start="";end="";chosen=-1},enabled=ready) { Text("Use entire recording") }
         }
         Text("${position} / ${duration} ms")
+        Slider(value=(if(scrubbing) seek else position.toFloat()).coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={seek=it;scrubbing=true},onValueChangeFinished={model.playbackAt(actor,seek.toLong());scrubbing=false},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=ready&&duration>0,modifier=Modifier.semantics { contentDescription="Playback position" })
         Row { Checkbox(loop,{loop=it},enabled=ready&&start.toLongOrNull()!=null&&end.toLongOrNull()!=null); Text("Loop selection while this workbench is open") }
+        Numeric(start,{start=it},"Selection start ms",ready); Numeric(end,{end=it},"Selection end ms",ready)
+        TextButton(onClick={showComparison=!showComparison}) { Text(if(showComparison) "Hide A/B comparison" else "Show A/B comparison") }
+        if(showComparison) {
         val audioRevisions=selected.items("artifacts").filter{it.getString("type") in setOf("SOURCE","DECODE","ENHANCED_AUDIO")}
         Text("A/B comparison reference")
         for(a in audioRevisions.takeLast(8)) FilterChip(comparisonId==a.getString("id"),{comparisonId=a.getString("id")},{Text("Revision ${a.getInt("revision")}")},enabled=ready)
@@ -261,10 +306,7 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             model.play(actor,next,time/1000.0)
         },enabled=ready) { Text(if(comparisonMode) "A/B: hear active render" else "A/B: hear reference") }
         Text("A/B seeks the same millisecond position. Pitch/echo/time-shift processing can alter alignment.",style=MaterialTheme.typography.bodySmall)
-        Slider(value=(if(scrubbing) seek else position.toFloat()).coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={seek=it;scrubbing=true},onValueChangeFinished={model.playbackAt(actor,seek.toLong());scrubbing=false},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=ready&&duration>0,modifier=Modifier.semantics { contentDescription="Playback position" })
-        Numeric(start,{start=it},"Selection start ms",ready); Numeric(end,{end=it},"Selection end ms",ready)
-        TextButton(onClick={start="";end="";chosen=-1},enabled=ready) { Text("Use entire recording") }
-        OutlinedButton(onClick={render(trim=true)},enabled=ready&&start.isNotBlank()&&end.isNotBlank()) { Text("Create clip from selection") }
+        }
     }
     WorkCard("Inspect a time range") {
         TextButton(onClick={showDetail=!showDetail}) { Text(if(showDetail) "Hide detailed spectrum" else "Open detailed spectrum") }
@@ -320,34 +362,45 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
                 selectFrequencyBand={low,high->
                     val value=rack.values["frequency"]?:EffectValue()
                     update(rack.copy(bandLowHz=low,bandHighHz=high,values=rack.values+("frequency" to EffectValue(true,if(value.strength==0) 100 else value.strength))))
+                    effectCategory="Filters";selectedEffect="frequency";showEffects=true
                     model.notice("Frequency isolation enabled in draft. Render to apply the selected band.")
                 })
             Text("Tap to seek; drag to select time. Spectral colors show the strongest channel/bin, not speech certainty or power density. Edge samples and the final incomplete hop have no centered window. Other effects operate across the selected time range, not only within the frequency band.",style=MaterialTheme.typography.bodySmall)
         }
         }
     }
-    WorkCard("Markers and speech candidates") {
-        OutlinedTextField(note,{note=it.take(4000)},label={Text("Examiner note / candidate label")},enabled=ready,modifier=Modifier.fillMaxWidth())
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick={model.timelineNote(actor,position,null,note);note=""},enabled=ready&&note.isNotBlank()) { Text("Bookmark cursor") }
-            OutlinedButton(onClick={try{val(a,b)=selection();model.timelineNote(actor,a,b,note);note=""}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready&&note.isNotBlank()) { Text("Note selection") }
-        }
-        OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160))}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Mark selected speech candidate") }
-        val speechEvents=screen.analysis?.items("events").orEmpty()
-        for(event in speechEvents.take(candidateCount)) FilterChip(selectedEventId==event.getString("eventId"),{
-            selectedEventId=event.getString("eventId");start=event.getLong("startMs").toString();end=event.getLong("endMs").toString();note=event.optString("label");chosen=-1
-        },{Text("Candidate ${event.getLong("startMs")}–${event.getLong("endMs")} ms ${event.optString("label")}")},enabled=ready)
-        if (speechEvents.size>candidateCount) TextButton(onClick={candidateCount+=32}) { Text("Show more candidates") }
-        if (selectedEventId != null) OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160),selectedEventId)}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Save candidate adjustment") }
-        for(event in selected.items("audit").filter{it.optString("action") in setOf("BOOKMARK","ANNOTATION")}.takeLast(32).asReversed()) {
-            val d=event.optJSONObject("details")?:continue
-            if(d.optString("audioArtifactId")==active) TextButton(onClick={model.playbackAt(actor,d.getLong("startMs"))},enabled=ready) { Text("${d.getLong("startMs")} ms · ${d.optString("text")}") }
-        }
-    }
     Text("Review audio",style=MaterialTheme.typography.headlineSmall)
     Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Quick enhancement presets") {
+        val overviewPeaks=screen.analysis?.optJSONArray("peaks")
+        if (overviewPeaks != null && overviewPeaks.length() > 0) {
+            val color=MaterialTheme.colorScheme.primary
+            Text("Timeline overview · adjust the selection in the recording timeline above",style=MaterialTheme.typography.labelSmall)
+            Canvas(Modifier.fillMaxWidth().height(64.dp).testTag("effects-overview").semantics {
+                contentDescription="Read-only waveform overview; adjust the selection in the recording timeline"
+            }) {
+                val a=start.toLongOrNull(); val b=end.toLongOrNull()
+                if (a!=null && b!=null && b>a && duration>0) {
+                    val left=(size.width*a/duration).coerceIn(0f,size.width);val right=(size.width*b/duration).coerceIn(0f,size.width)
+                    drawRect(color.copy(alpha=.2f),Offset(left,0f),Size((right-left).coerceAtLeast(0f),size.height))
+                }
+                for (i in 0 until overviewPeaks.length()) {
+                    val x=size.width*i/overviewPeaks.length();val y=size.height*overviewPeaks.getDouble(i).toFloat()/2
+                    drawLine(color,Offset(x,size.height/2-y),Offset(x,size.height/2+y))
+                }
+                val cursor=size.width*position/duration.coerceAtLeast(1)
+                drawLine(Color.Black,Offset(cursor,0f),Offset(cursor,size.height),4f)
+                drawLine(Color.White,Offset(cursor,0f),Offset(cursor,size.height),2f)
+            }
+            OutlinedButton(onClick={model.togglePlayback(actor)},enabled=ready) { Text(if(playing) "Pause playback" else if(model.player!=null) "Resume playback" else "Play recording") }
+        }
         Text("Draft settings only until Render. Tap the selected preset again to remove it and restore prior settings.")
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            for ((name,preset) in rackPresets) FilterChip(selected=presetName==name,onClick={
+                if(presetName==name) { draft=presetBackup; presetName="";presetBackup="" }
+                else { if(presetName.isBlank()) presetBackup=draft; draft=preset.json().toString();presetName=name }
+            },label={Text(name)},enabled=ready)
+        }
         Text("For a broadband noise gate, select up to 30 seconds of representative noise above, then measure it. Measurement enables Denoise at its existing nonzero setting, or +50 if it was zero; adjust or disable it before rendering. Speech or other important sounds in the selection may also be attenuated. This is not a spectral noise profile or source separation.",style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={
             try { val (a,b)=selection(); noiseError=""; noiseRequested=true; model.measureNoise(actor,a,b) }
@@ -363,38 +416,71 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
         if (measurement != null && measurement.optJSONObject("reference")?.optString("artifactId") == rack.noiseReference?.artifactId && measurement.optLong("nearFullScaleSamples") > 0) {
             Text("The measured selection has ${measurement.getLong("nearFullScaleSamples")} near-full-scale samples. Check whether it is representative before applying the gate.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
         }
-        for ((name,preset) in rackPresets) FilterChip(selected=presetName==name,onClick={
-            if(presetName==name) { draft=presetBackup; presetName="";presetBackup="" }
-            else { if(presetName.isBlank()) presetBackup=draft; draft=preset.json().toString();presetName=name }
-        },label={Text(name)},enabled=ready)
         TextButton(onClick={showEffects=!showEffects}) { Text(if(showEffects) "Hide effect controls" else "Effect controls") }
         if(showEffects) {
-            for(spec in effectSpecs) {
-                val value=rack.values[spec.id]?:EffectValue()
-                Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
-                    Text(spec.title,modifier=Modifier.weight(1f)); Switch(value.enabled,{update(rack.copy(values=rack.values+(spec.id to value.copy(enabled=it))))},enabled=ready,modifier=Modifier.semantics{contentDescription="${spec.title} enabled"})
-                }
-                Text(spec.description,style=MaterialTheme.typography.bodySmall)
-                Slider(value=value.strength.toFloat(),onValueChange={update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it.roundToInt()))))},valueRange=-100f..100f,steps=199,enabled=ready&&value.enabled,modifier=Modifier.semantics{contentDescription="${spec.title} strength"})
-                var number by remember(draft,spec.id) { mutableStateOf(value.strength.toString()) }
-                Numeric(number,{text->number=text;text.toIntOrNull()?.takeIf{it in -100..100}?.let{update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it))))}},"${spec.title} strength (−100 to 100)",ready&&value.enabled,signed=true)
+            Text("Effect groups",style=MaterialTheme.typography.labelMedium)
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                for (group in effectGroups.keys) FilterChip(effectCategory==group,{
+                    effectCategory=group; selectedEffect=effectSpecs.first { it.id in effectGroups.getValue(group) }.id
+                },{Text(group)},enabled=ready)
             }
-            Row { for(hz in listOf(50,60)) FilterChip(rack.humHz==hz,{update(rack.copy(humHz=hz))},{Text("$hz Hz")},enabled=ready) }
-            var buzz by remember(rack.buzzHz) { mutableStateOf(rack.buzzHz.toString()) }
-            Numeric(buzz,{buzz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 100.0..20000.0}?.let{n->update(rack.copy(buzzHz=n))}},"Buzz notch Hz (below Nyquist)",ready)
-            var echo by remember(rack.echoMs) { mutableStateOf(rack.echoMs.toString()) }
-            Numeric(echo,{echo=it;it.toIntOrNull()?.takeIf{n->n in 1..500}?.let{n->update(rack.copy(echoMs=n))}},"Echo delay ms (1–500)",ready)
-            var noiseThreshold by remember(rack.noiseThresholdDb) { mutableStateOf(rack.noiseThresholdDb.toString()) }
-            Numeric(noiseThreshold,{noiseThreshold=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in -90.0..-10.0}?.let{n->update(rack.copy(noiseThresholdDb=n,noiseReference=null))}},"Noise gate threshold dBFS (−90 to −10)",ready,signed=true)
-            Text("Frequency values apply when valid. Current: EQ ${rack.paramHz} Hz, Q ${rack.paramQ}; band ${rack.bandLowHz}–${rack.bandHighHz} Hz. All must be below the recording's Nyquist frequency.",style=MaterialTheme.typography.bodySmall)
-            var paramHz by remember(rack.paramHz) { mutableStateOf(rack.paramHz.toString()) }
-            Numeric(paramHz,{paramHz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 20.0..20000.0}?.let{n->update(rack.copy(paramHz=n))}},"EQ center Hz (20–20000)",ready)
-            var paramQ by remember(rack.paramQ) { mutableStateOf(rack.paramQ.toString()) }
-            Numeric(paramQ,{paramQ=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in .1..20.0}?.let{n->update(rack.copy(paramQ=n))}},"EQ Q (0.1–20)",ready)
-            var bandLow by remember(rack.bandLowHz) { mutableStateOf(rack.bandLowHz.toString()) }
-            Numeric(bandLow,{bandLow=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n>=20&&n<rack.bandHighHz}?.let{n->update(rack.copy(bandLowHz=n))}},"Band low Hz",ready)
-            var bandHigh by remember(rack.bandHighHz) { mutableStateOf(rack.bandHighHz.toString()) }
-            Numeric(bandHigh,{bandHigh=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n>rack.bandLowHz&&n<=20000}?.let{n->update(rack.copy(bandHighHz=n))}},"Band high Hz",ready)
+            val enabledEffects=effectSpecs.filter { rack.values[it.id]?.enabled == true }.map { it.title }
+            Text(if(enabledEffects.isEmpty()) "No effects enabled" else "Enabled: ${enabledEffects.joinToString(", ")}",style=MaterialTheme.typography.bodySmall)
+            val groupEffects=effectSpecs.filter { it.id in effectGroups.getValue(effectCategory) }
+            val currentEffect=groupEffects.firstOrNull { it.id == selectedEffect } ?: groupEffects.first()
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                for (effect in groupEffects) FilterChip(currentEffect.id==effect.id,{selectedEffect=effect.id},{Text(effect.title)},enabled=ready)
+            }
+            val spec=currentEffect; val value=rack.values[spec.id]?:EffectValue()
+            Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
+                Text(spec.title,modifier=Modifier.weight(1f)); Switch(value.enabled,{update(rack.copy(values=rack.values+(spec.id to value.copy(enabled=it))))},enabled=ready,modifier=Modifier.semantics{contentDescription="${spec.title} enabled"})
+            }
+            Text(spec.description,style=MaterialTheme.typography.bodySmall)
+            Slider(value=value.strength.toFloat(),onValueChange={update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it.roundToInt()))))},valueRange=-100f..100f,steps=199,enabled=ready&&value.enabled,modifier=Modifier.semantics{contentDescription="${spec.title} strength"})
+            var number by remember(draft,spec.id) { mutableStateOf(value.strength.toString()) }
+            val invalid=number.toIntOrNull()?.let { it !in -100..100 } ?: true
+            Numeric(number,{text->number=text;text.toIntOrNull()?.takeIf{it in -100..100}?.let{update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it))))}},"${spec.title} strength (−100 to 100)",ready&&value.enabled,signed=true,
+                errorMessage=if(value.enabled&&invalid) "Enter a whole number from −100 to 100. The last valid value remains in the draft." else null)
+            when(effectCategory) {
+                "Filters" -> {
+                    if (currentEffect.id == "hum") {
+                        Row { for(hz in listOf(50,60)) FilterChip(rack.humHz==hz,{update(rack.copy(humHz=hz))},{Text("$hz Hz")},enabled=ready) }
+                    }
+                    if (currentEffect.id == "buzz") {
+                        var buzz by remember(rack.buzzHz) { mutableStateOf(rack.buzzHz.toString()) }
+                        Numeric(buzz,{buzz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 100.0..20000.0}?.let{n->update(rack.copy(buzzHz=n))}},"Buzz notch Hz (below Nyquist)",ready)
+                    }
+                    if (currentEffect.id == "frequency") {
+                        Text("Band ${rack.bandLowHz}–${rack.bandHighHz} Hz. Frequencies must be below the recording's Nyquist frequency.",style=MaterialTheme.typography.bodySmall)
+                        var bandLow by remember(rack.bandLowHz) { mutableStateOf(rack.bandLowHz.toString()) }
+                        Numeric(bandLow,{bandLow=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n>=20&&n<rack.bandHighHz}?.let{n->update(rack.copy(bandLowHz=n))}},"Band low Hz",ready)
+                        var bandHigh by remember(rack.bandHighHz) { mutableStateOf(rack.bandHighHz.toString()) }
+                        Numeric(bandHigh,{bandHigh=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n>rack.bandLowHz&&n<=20000}?.let{n->update(rack.copy(bandHighHz=n))}},"Band high Hz",ready)
+                    }
+                }
+                "Time & space" -> {
+                    if (currentEffect.id == "echo") {
+                        var echo by remember(rack.echoMs) { mutableStateOf(rack.echoMs.toString()) }
+                        Numeric(echo,{echo=it;it.toIntOrNull()?.takeIf{n->n in 1..500}?.let{n->update(rack.copy(echoMs=n))}},"Echo delay ms (1–500)",ready)
+                    }
+                }
+                "Restore" -> {
+                    if (currentEffect.id == "noise") {
+                        var noiseThreshold by remember(rack.noiseThresholdDb) { mutableStateOf(rack.noiseThresholdDb.toString()) }
+                        Numeric(noiseThreshold,{noiseThreshold=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in -90.0..-10.0}?.let{n->update(rack.copy(noiseThresholdDb=n,noiseReference=null))}},"Noise gate threshold dBFS (−90 to −10)",ready,signed=true)
+                    }
+                }
+                "Gain & EQ" -> {
+                    if (currentEffect.id == "parametric") {
+                        Text("EQ center ${rack.paramHz} Hz, Q ${rack.paramQ}. The center must be below the recording's Nyquist frequency.",style=MaterialTheme.typography.bodySmall)
+                        var paramHz by remember(rack.paramHz) { mutableStateOf(rack.paramHz.toString()) }
+                        Numeric(paramHz,{paramHz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 20.0..20000.0}?.let{n->update(rack.copy(paramHz=n))}},"EQ center Hz (20–20000)",ready)
+                        var paramQ by remember(rack.paramQ) { mutableStateOf(rack.paramQ.toString()) }
+                        Numeric(paramQ,{paramQ=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in .1..20.0}?.let{n->update(rack.copy(paramQ=n))}},"EQ Q (0.1–20)",ready)
+                    }
+                }
+                else -> Unit
+            }
             Row { Checkbox(limit,{limit=it},enabled=ready);Text("Soft peak limiter (changes peaks)") }
             TextButton(onClick={update(EffectRack());limit=false},enabled=ready) { Text("Bypass all effects") }
         }
@@ -417,6 +503,24 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
         TextButton(onClick={regionsJson="[]";chosen=-1},enabled=ready) { Text("Clear regions") }
         OutlinedButton(onClick={render()},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render enhanced revision") }
         TextButton(onClick={model.transcribe(actor,transcript)},enabled=ready) { Text("Transcribe active audio on device") }
+    }
+    WorkCard("Markers and speech candidates") {
+        OutlinedTextField(note,{note=it.take(4000)},label={Text("Examiner note / candidate label")},enabled=ready,modifier=Modifier.fillMaxWidth())
+        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            OutlinedButton(onClick={model.timelineNote(actor,position,null,note);note=""},enabled=ready&&note.isNotBlank()) { Text("Bookmark cursor") }
+            OutlinedButton(onClick={try{val(a,b)=selection();model.timelineNote(actor,a,b,note);note=""}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready&&note.isNotBlank()) { Text("Note selection") }
+        }
+        OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160))}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Mark selected speech candidate") }
+        val speechEvents=screen.analysis?.items("events").orEmpty()
+        for(event in speechEvents.take(candidateCount)) FilterChip(selectedEventId==event.getString("eventId"),{
+            selectedEventId=event.getString("eventId");start=event.getLong("startMs").toString();end=event.getLong("endMs").toString();note=event.optString("label");chosen=-1
+        },{Text("Candidate ${event.getLong("startMs")}–${event.getLong("endMs")} ms ${event.optString("label")}")},enabled=ready)
+        if (speechEvents.size>candidateCount) TextButton(onClick={candidateCount+=32}) { Text("Show more candidates") }
+        if (selectedEventId != null) OutlinedButton(onClick={try{val(a,b)=selection();model.saveSpeechCandidate(actor,a,b,note.take(160),selectedEventId)}catch(_:Exception){model.notice("Choose a valid interval")}},enabled=ready) { Text("Save candidate adjustment") }
+        for(event in selected.items("audit").filter{it.optString("action") in setOf("BOOKMARK","ANNOTATION")}.takeLast(32).asReversed()) {
+            val d=event.optJSONObject("details")?:continue
+            if(d.optString("audioArtifactId")==active) TextButton(onClick={model.playbackAt(actor,d.getLong("startMs"))},enabled=ready) { Text("${d.getLong("startMs")} ms · ${d.optString("text")}") }
+        }
     }
     TextButton(onClick={showHistory=!showHistory}) { Text(if(showHistory) "Hide audio history" else "Audio revision history") }
     if(showHistory) WorkCard("Processing changelog") {

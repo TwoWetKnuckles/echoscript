@@ -1,0 +1,7 @@
+# Workbench design direction
+
+The owner selected [Audio Editor: Recording Studio on the App Store](https://apps.apple.com/us/app/audio-editor-recording-studio/id1475947965) as an inspiration for the editing workflow. Its public screenshots show a prominent waveform timeline, highlighted time selections, nearby playback controls and compact effect tabs with sliders. EchoScript takes those general interaction ideas as a reference; its interface, branding and code remain its own.
+
+The Android draft uses dark Material surfaces, a full-duration waveform with a separately identified sampled spectral overview, draggable selection edges, direct playback and clipping controls, and grouped effect panels immediately below the inspection tools. Exact time fields remain available for precision and accessibility. A short-range, configurable spectral view supports time/frequency inspection. The full-file spectral overview is still sampled; continuous high-resolution inspection across an entire long recording is an open requirement.
+
+Presets and effect changes remain drafts until a render. The interface identifies enabled effects, retains signed numerical entry and records the actual processing recipe and input/output provenance. Region passes, restoration, limitations and validation status are described in [the workbench guide](ENHANCEMENT-WORKBENCH.md). This design note does not imply that the draft is a released or physically validated build.

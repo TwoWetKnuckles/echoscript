@@ -7,11 +7,16 @@ Install only the APK from this same package after checking SHA256SUMS.txt. The
 BUILD.txt file identifies its source commit and GitHub Actions run. It is a
 debuggable preview build, not an owner-signed production release.
 
-Debug builds from separate runs may have different signing identities. Android
-may refuse to update an existing EchoScript preview. Do not remove or reset the
-existing app until you have exported, independently verified and safely stored
-any cases you need: uninstalling can erase the existing device vault. Owner
-signing and vault-preserving upgrade testing are still outstanding.
+This 0.6 test build uses the separate application ID
+org.echoscript.app.preview06 and appears as "EchoScript 0.6 Test". It can be
+installed alongside the 0.5.1 preview and has its own separate, initially empty
+vault; cases do not move between apps automatically. Use synthetic test files.
+
+Separate 0.6 CI builds can still use different signing keys, so Android may
+refuse to update an earlier 0.6 test build. Do not remove or reset either app
+until you have exported, independently verified and safely stored any cases you
+need: uninstalling can erase that app's vault. Owner signing and vault-preserving
+upgrade testing are still outstanding.
 
 In Cases, tap Choose audio file. After choosing one file, confirm that the
 Selected recording panel shows its name, then tap Import selected audio. The

@@ -10,7 +10,7 @@ check(ownerSigning.values.all { it == null } || ownerSigning.values.all { !it.is
 android {
     namespace = "org.echoscript.app"
     compileSdk = 36
-    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 8; versionName = "0.6.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner" }
+    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 8; versionName = "0.6.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"; manifestPlaceholders["appLabel"] = "EchoScript" }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("androidTest").assets.srcDir("../../../specs/fixtures")
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
@@ -24,8 +24,11 @@ android {
     }
     buildTypes {
         debug {
-            applicationIdSuffix = ".preview"
+            // Keep the 0.6 evaluation vault separate from the installed 0.5.x
+            // preview; ephemeral CI debug keys cannot safely update that app.
+            applicationIdSuffix = ".preview06"
             versionNameSuffix = "-preview"
+            manifestPlaceholders["appLabel"] = "EchoScript 0.6 Test"
         }
         release {
             isMinifyEnabled = false

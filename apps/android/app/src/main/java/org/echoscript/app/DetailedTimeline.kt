@@ -122,6 +122,9 @@ internal fun DetailedTimeline(detail: JSONObject, positionMs: Long, startMs: Lon
             if (b > a) drawRect(color.copy(alpha = .2f), Offset(a, 0f), Size(b - a, size.height))
         }
         val cursor = ((positionMs * rate / 1000.0 - fromFrame) / span * size.width).toFloat()
-        if (cursor in 0f..size.width) drawLine(Color.White, Offset(cursor, 0f), Offset(cursor, size.height), 2f)
+        if (cursor in 0f..size.width) {
+            drawLine(Color.Black, Offset(cursor, 0f), Offset(cursor, size.height), 4f)
+            drawLine(Color.White, Offset(cursor, 0f), Offset(cursor, size.height), 2f)
+        }
     }
 }

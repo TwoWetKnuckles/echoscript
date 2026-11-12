@@ -16,6 +16,7 @@ import android.os.Parcel
 import android.graphics.Bitmap
 import androidx.compose.ui.test.*
 import androidx.compose.ui.test.junit4.createAndroidComposeRule
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.espresso.Espresso.closeSoftKeyboard
 import androidx.test.espresso.intent.Intents
@@ -262,6 +263,7 @@ class OfflineInterfaceTest {
             assertEquals(noise.getString("id"),rack.getJSONObject("noiseReference").getString("artifactId"))
             assertEquals(noise.getString("sha256"),rack.getJSONObject("noiseReference").getString("sha256"))
             assertEquals(noise.getString("id"),rendered.getJSONArray("parents").getString(1))
+            click("Show A/B comparison")
             click("Revision 2")
             click("Compare waveform and clipping")
             waitFor("Comparison is ready. Review the overlay and near-full-scale counts.")
@@ -294,6 +296,29 @@ class OfflineInterfaceTest {
             ui.onNodeWithTag("waveform").performScrollTo().performTouchInput {
                 swipe(androidx.compose.ui.geometry.Offset(width * .2f, height * .5f), androidx.compose.ui.geometry.Offset(width * .6f, height * .5f), 600)
             }
+            fun selectionValue(label:String) = ui.onNodeWithText(label).fetchSemanticsNode().config[SemanticsProperties.EditableText].text.toLong()
+            val firstStart=selectionValue("Selection start ms"); val firstEnd=selectionValue("Selection end ms")
+            ui.onNodeWithTag("waveform").performScrollTo().performTouchInput {
+                swipe(androidx.compose.ui.geometry.Offset(width * .2f, height * .5f), androidx.compose.ui.geometry.Offset(width * .1f, height * .5f), 600)
+            }
+            assertTrue("Dragging the left handle should extend the selection",selectionValue("Selection start ms") < firstStart)
+            assertEquals("The opposite selection edge must remain fixed",firstEnd,selectionValue("Selection end ms"))
+            screenshot("ui-workbench-timeline.png")
+            ui.onNodeWithTag("effects-overview").performScrollTo().assertIsDisplayed()
+            screenshot("ui-effects-overview.png")
+            click("Filters")
+            click("Low hum isolation")
+            ui.onNodeWithContentDescription("Low hum isolation enabled").performScrollTo().assertIsDisplayed()
+            screenshot("ui-workbench-effects.png")
+            click("Restore")
+            click("Denoise")
+            ui.onNodeWithContentDescription("Denoise enabled").performScrollTo().assertIsDisplayed()
+            click("Gain & EQ")
+            ui.onNodeWithContentDescription("Preamp / gain enabled").performScrollTo().performClick()
+            ui.onNodeWithText("Preamp / gain strength (−100 to 100)").performScrollTo().performTextReplacement("101")
+            ui.onNodeWithText("Enter a whole number from −100 to 100. The last valid value remains in the draft.").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("Preamp / gain strength (−100 to 100)").performTextReplacement("0")
+            closeSoftKeyboard()
             click("Speech band")
             ui.onNodeWithText("Speech band").assertIsSelected()
             click("Speech band")

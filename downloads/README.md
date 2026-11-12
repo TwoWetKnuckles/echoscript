@@ -2,14 +2,14 @@
 
 ## Temporary test package for local audio selection
 
-**[Download the 0.6.0 development test package](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43184211337/artifacts/13928227300)** (GitHub sign-in required; expires November 19, 2026). The ZIP includes the APK, installation instructions and checksums. After picking a recording, verify its name under **Selected recording**, then tap **Import selected audio**. This is a debug-signed synthetic-evaluation build from commit `1ba4de6c8d70bc224845bdc481308811a568f269`, not a production release. It predates the later detailed-spectrum and measured-noise work.
+**[Download the 0.6.0 development test package](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43284529949/artifacts/13974164615)** (GitHub sign-in required; expires November 19, 2026). The ZIP includes the APK, installation instructions and checksums. After picking a recording, verify its name under **Selected recording**, then tap **Import selected audio**. This is a debug-signed synthetic-evaluation build from commit `92c26790920e75429f6bdd33aefa4d395a94f8f4`, not a production release. It includes picker-interruption handling, detailed spectrum and measured-noise controls, but not the subsequent side-by-side installation or layout changes.
 
 | File | SHA-256 |
 | --- | --- |
-| Downloaded Actions ZIP | `855e308859b0b8a389e30a44a42b275503a27e2e745e097e19a86e1055bbe401` |
-| APK inside ZIP | `ea3deea6d6cb135faa8294f78a815ec9bc9dfa1fe67288bc3c5bedef16e0693c` |
+| Downloaded Actions ZIP | `9370330ec65e5a7e7a823d8cfd8686f93e3602bfd7e755f8442af5a910681171` |
+| APK inside ZIP | `75c8ff92100a4b90926e21cee6e36bac9bada09facdd884c1680b2ed216ab2e6` |
 
-All seven quality jobs passed for this source in [the test run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43184211337). The originally reported Galaxy S22+ behavior has not been reproduced or verified fixed on that physical device. Separate debug builds may use different signing keys: if Android rejects an update, export and independently verify any cases you need before removing the older app, because uninstalling can erase its vault.
+All seven quality jobs passed for this source in [the test run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43284529949). The originally reported Galaxy S22+ behavior has not been reproduced or verified fixed on that physical device. This package uses the 0.5.1 preview's app ID, and separate debug builds may use different signing keys. If Android rejects an update, do not remove the older app without first exporting and independently verifying any cases you need, because uninstalling can erase its vault. A separately installed 0.6 test build is being validated.
 
 ## Android preview 0.5.1
 

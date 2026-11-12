@@ -154,7 +154,9 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -partition-size 4096
           working-directory: apps/android
           script: |
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }}
+            python3 ../../scripts/qa-android-coexistence.py setup ${{ matrix.api }}
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
+            python3 ../../scripts/qa-android-coexistence.py check ${{ matrix.api }}
             cd ../.. && python3 scripts/qa-android-crash.py
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
       - name: Verify and stage the Android 16 emulator build
@@ -164,6 +166,9 @@ jobs:
           tools="$ANDROID_HOME/build-tools/36.0.0"
           "$tools/apksigner" verify --verbose "$apk"
           "$tools/zipalign" -c -P 16 4 "$apk"
+          badging=$("$tools/aapt" dump badging "$apk")
+          rg -q "^package: name='org[.]echoscript[.]app[.]preview06' " <<< "$badging"
+          rg -q "^application-label:'EchoScript 0[.]6 Test'$" <<< "$badging"
           permissions=$("$tools/aapt" dump permissions "$apk")
           if printf '%s\n' "$permissions" | rg -q 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)'; then
             exit 1

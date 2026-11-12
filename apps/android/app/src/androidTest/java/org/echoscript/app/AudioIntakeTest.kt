@@ -9,12 +9,26 @@ import android.provider.MediaStore
 import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.test.uiautomator.UiDevice
 import kotlinx.coroutines.cancel
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
 
 class AudioIntakeTest {
+    @Test fun developmentCandidateUsesSeparatePackageAndVisibleTestLabel() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        assertEquals("org.echoscript.app.preview06", app.packageName)
+        assertNotEquals("org.echoscript.app.preview", app.packageName)
+        assertEquals("EchoScript 0.6 Test", app.applicationInfo.loadLabel(app.packageManager).toString())
+        if (InstrumentationRegistry.getArguments().getString("verifyCoexistence") == "true") {
+            val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
+            assertTrue(device.executeShellCommand("pm path org.echoscript.app.preview").trim().startsWith("package:"))
+            assertTrue(device.executeShellCommand("pm path org.echoscript.app.preview06").trim().startsWith("package:"))
+            assertEquals("SYNTHETIC_OLD_PREVIEW_DATA", device.executeShellCommand("run-as org.echoscript.app.preview cat files/synthetic-preview-isolation.txt").trim())
+        }
+    }
+
     @Test fun providerResultSupportsDataAndSingleClipButRejectsAmbiguousSelection() {
         val uri = Uri.parse("content://synthetic.test/document/audio")
         assertEquals(uri, selectedAudioUri(Intent().setData(uri)))

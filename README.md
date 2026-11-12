@@ -4,7 +4,7 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Test the file-selection repair](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43184211337/artifacts/13928227300)** — temporary 0.6.0 development package; GitHub sign-in required. Available until November 19, 2026. This package was built from `1ba4de6c8d70bc224845bdc481308811a568f269` and does not include later spectrum or measured-noise work. Its synthetic Android emulator checks passed; the reported Galaxy S22+ behavior still needs a physical-device test. See [test package details and checksums](downloads/README.md).
+**[Download the tested 0.6 workbench package](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43284529949/artifacts/13974164615)** — temporary development build; GitHub sign-in required. Available until November 19, 2026. This package was built from `92c26790920e75429f6bdd33aefa4d395a94f8f4` and includes the intake and picker-recovery changes, detailed spectrum and measured-noise controls. Its Android emulator checks passed; the reported Galaxy S22+ behavior still needs a physical-device test. This build uses the existing preview's application ID and a different CI signing key may cause Android to reject an update. Do not uninstall an existing app without first safely exporting and verifying its cases. A separate side-by-side test build is under development. See [test package details and checksums](downloads/README.md).
 
 **[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
 
@@ -18,7 +18,7 @@ Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Mate
 
 [Owner-confirmed working scope](docs/WORKING-SCOPE.md) includes items 1–20 and 23–28; browser parity and Termux are deferred, with physical-device/final workflow acceptance pending.
 
-The 0.6.0 candidate adds presets, signed effect controls, region/overlap rendering, a playback/selection timeline, short-range spectral inspection, clips and restorable processing recipes. [Capabilities and limitations](docs/android/ENHANCEMENT-WORKBENCH.md). Published APK links above remain 0.5.1 until validation completes. The working draft also changes file intake: selecting a recording shows its name and an explicit **Import selected audio** action, with visible progress and retry. This draft is not yet in the published APK and needs device validation.
+The 0.6.0 candidate adds presets, signed effect controls, region/overlap rendering, a playback/selection timeline, short-range spectral inspection, clips and restorable processing recipes. [Capabilities and limitations](docs/android/ENHANCEMENT-WORKBENCH.md) · [Workbench design direction](docs/android/WORKBENCH-DESIGN.md). Published release assets remain 0.5.1 until validation completes. The working draft also changes file intake: selecting a recording shows its name and an explicit **Import selected audio** action, with visible progress and retry. This draft is not yet in the published APK and needs device validation.
 
 ### File selection in 0.5.1
 
@@ -95,7 +95,7 @@ cd apps/android
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK uses the separate `org.echoscript.app.preview` application ID. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
+The 0.6 debug draft uses `org.echoscript.app.preview06`, separate from the 0.5.1 preview and its vault. Its side-by-side installation still requires validation. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
 
