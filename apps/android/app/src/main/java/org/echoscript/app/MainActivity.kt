@@ -125,12 +125,18 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     // Providers sometimes omit or mislabel audio MIME types. Select any openable
     // file; actual decoding validates the bytes after original preservation.
     val chooseAudio = {
+        model.markAudioPickerOpen()
         try { importAudio.launch(audioPickerIntent(Intent.ACTION_OPEN_DOCUMENT)) }
         catch (_: android.content.ActivityNotFoundException) { model.pickerNotice("No document picker is available. Try Choose with another file picker.") }
+        catch (_: SecurityException) { model.pickerNotice("Android denied access to this document picker. Try the other picker or check your device settings.") }
+        catch (_: IllegalStateException) { model.pickerNotice("The document picker could not open yet. Wait a moment and try again.") }
     }
     val chooseOtherAudio = {
+        model.markAudioPickerOpen()
         try { importAudio.launch(audioPickerIntent(Intent.ACTION_GET_CONTENT)) }
         catch (_: android.content.ActivityNotFoundException) { model.pickerNotice("No compatible file picker is installed or permitted on this device.") }
+        catch (_: SecurityException) { model.pickerNotice("Android denied access to this picker. Try the other picker or check your device settings.") }
+        catch (_: IllegalStateException) { model.pickerNotice("The file picker could not open yet. Wait a moment and try again.") }
     }
     val importCase = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) model.importCase(uri, actor, expectedHash) { transfer = false; tab = "Cases" }

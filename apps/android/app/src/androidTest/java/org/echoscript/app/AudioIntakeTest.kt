@@ -63,6 +63,41 @@ class AudioIntakeTest {
         }
     }
 
+    @Test fun pickerInterruptedBeforeResultIsReportedAndCancellationClearsOnlyItsMarker() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        val preferences = app.getSharedPreferences("echoscript_workspace", 0)
+        var first: VaultModel? = null
+        var reopened: VaultModel? = null
+        try {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                preferences.edit().remove("pendingAudioSelection").commit()
+                val model = VaultModel(app); first = model
+                model.markAudioPickerOpen()
+                assertTrue(preferences.getBoolean("pendingAudioSelection", false))
+                reopened = VaultModel(app)
+            }
+            val deadline = System.nanoTime() + 30_000_000_000L
+            while ((first?.state?.value?.ready != true || reopened?.state?.value?.ready != true) && System.nanoTime() < deadline) Thread.sleep(20)
+            assertTrue(checkNotNull(reopened).state.value.recoveryWarnings.contains(INTERRUPTED_AUDIO_SELECTION))
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                val model = checkNotNull(first)
+                model.pickerNotice("No recording was selected.")
+                assertFalse(preferences.getBoolean("pendingAudioSelection", false))
+                model.selectAudio(Uri.parse("content://synthetic.test/document/previous"), "")
+                model.markAudioPickerOpen()
+                model.pickerNotice("The replacement picker was cancelled.")
+                assertTrue(model.state.value.audioSelected)
+                assertTrue(preferences.getBoolean("pendingAudioSelection", false))
+            }
+        } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                first?.let { it.clearSelectedAudio(); it.viewModelScope.cancel() }
+                reopened?.viewModelScope?.cancel()
+                preferences.edit().remove("pendingAudioSelection").commit()
+            }
+        }
+    }
+
     @Test fun memoryFailureReportsProblemAndKeepsSelectionForRetry() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         lateinit var model: VaultModel

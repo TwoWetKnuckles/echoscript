@@ -140,4 +140,6 @@ On `fda9aa53`, the Android build, JVM tests, lint and CodeQL passed, but Android
 
 On `708a3b04`, Android 10 and 16 both retained the edited `-30.0` threshold after recreation. The same interface test then failed because its assertion expected an exact `-30` instead of allowing the displayed decimal value. The assertion is corrected; the remainder of that workflow and the complete device suites still require a successful fresh run. The Android compilation, JVM tests, lint, CodeQL, web/API, Rust, stress and security jobs passed on `708a3b04`.
 
+A further intake draft records a non-sensitive in-flight picker marker before launching either Android chooser. After a process interruption, it prompts the user to check for preserved work and reselect, without storing the document URI or filename. Cancellation clears the marker when no earlier selection exists. The new interruption and cancellation checks need device execution; this is recovery feedback, not proof of the reported Galaxy-specific root cause.
+
 A local draft adds an on-demand before/after peak-envelope overlay and near-full-scale sample counts from a chosen saved audio revision without changing the active revision. Synthetic provenance and UI checks need execution. This display is a bounded overview, not a sample-level de-clipping validation.

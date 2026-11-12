@@ -116,7 +116,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                         cases = listing.cases,
                         recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
                             "Interrupted task · $it. Review the saved case before retrying."
-                        }) + (if (interruptedSelection && !current.audioSelected) listOf(INTERRUPTED_AUDIO_SELECTION) else emptyList()),
+                        }) + (if (interruptedSelection && !current.audioSelected && current.pickerNotice == null) listOf(INTERRUPTED_AUDIO_SELECTION) else emptyList()),
                         message = when {
                             current.importPending -> "Recording selected. Waiting for the encrypted vault…"
                             current.audioSelected || current.pickerNotice != null -> current.message
@@ -223,7 +223,14 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     fun acknowledgeImportedCase(id: String) {
         updateState { if (it.importedCaseId == id) it.copy(importedCaseId = null) else it }
     }
+    fun markAudioPickerOpen(): Boolean {
+        // Record only that the picker is in flight, before Android leaves this
+        // activity. No filename or URI is persisted by this recovery marker.
+        return try { preferences.edit().putBoolean("pendingAudioSelection", true).commit() }
+        catch (_: RuntimeException) { false }
+    }
     fun pickerNotice(message: String) {
+        if (audioSelection == null) try { preferences.edit().remove("pendingAudioSelection").apply() } catch (_: RuntimeException) { }
         updateState { it.copy(pickerNotice = message, message = message, failed = true) }
     }
     fun dismissPickerNotice() {
@@ -241,7 +248,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
         val selection = AudioSelection(uri, title, ++selectionSequence)
         audioSelection = selection
-        val recoveryMarkerSaved = preferences.edit().putBoolean("pendingAudioSelection", true).commit()
+        val recoveryMarkerSaved = markAudioPickerOpen()
         val fallback = uri.lastPathSegment?.substringAfterLast('/')?.filter { it.code >= 32 }?.take(256)
             ?.ifBlank { null } ?: "Selected audio file"
         updateState { it.copy(audioSelected = true, importName = fallback, pickerNotice = null, failed = false,
