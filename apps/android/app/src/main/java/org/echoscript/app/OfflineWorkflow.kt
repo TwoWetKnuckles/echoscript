@@ -68,15 +68,16 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return checkNotNull(artifact)
     }
 
-    fun savedAnalysis(manifest: JSONObject): JSONObject? {
+    fun savedAnalysisArtifact(manifest: JSONObject): JSONObject? {
         val audio = manifest.getString("activeArtifact")
-        val artifact = manifest.items("artifacts").lastOrNull {
+        return manifest.items("artifacts").lastOrNull {
             it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
                 it.getJSONObject("operation").getString("algorithm") in setOf("bounded-envelope-spectrum-and-speech-candidates", "examiner-speech-region-edit") &&
                 it.getJSONObject("operation").getString("version") == "1"
-        } ?: return null
-        return readJson(manifest, artifact, 1024 * 1024)
+        }
     }
+    fun savedAnalysis(manifest: JSONObject): JSONObject? =
+        savedAnalysisArtifact(manifest)?.let { readJson(manifest, it, 1024 * 1024) }
 
     fun analyze(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val audio = prepareAudio(manifest, actor, cancelled, progress)
@@ -147,8 +148,9 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         val audio = prepareAudio(manifest, actor, cancelled, progress)
         val audioId = audio.getString("id")
         val caseId = manifest.getString("caseId")
-        val analysis = manifest.items("artifacts").lastOrNull { it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audioId }
-            ?.let { readJson(manifest, it, 1024 * 1024) } ?: analyze(manifest, actor, cancelled, progress)
+        // Spectral inspections and other analysis artifacts do not contain
+        // speech events. Reuse only a compatible overview or examiner revision.
+        val analysis = savedAnalysis(manifest) ?: analyze(manifest, actor, cancelled, progress)
         val candidates = analysis.items("events").map { it.getLong("startMs")..it.getLong("endMs") }
         val input = withWave(manifest, audio) { wave ->
             vault.addDerivative(manifest, actor, "TRANSCRIPTION_TRANSMISSION", listOf(audioId), "Local recognition input.wav", "native-mono-resample-pcm16", "1") { out ->

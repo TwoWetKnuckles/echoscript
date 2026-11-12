@@ -39,6 +39,10 @@ class OfflineWorkflowTest {
             if (index == 0) {
                 assertEquals("2", enhanced.getJSONObject("operation").getString("version"))
                 assertEquals("bounded-native-effect-rack/2", enhanced.operationParameters().getJSONObject("effectRack").getString("algorithm"))
+                workflow.analyze(case, actor, { false }, {})
+                val speechAnalysis = checkNotNull(workflow.savedAnalysisArtifact(case))
+                workflow.inspectSpectrum(case, actor, DetailSpectrumSettings(200, 1000), { false }, {})
+                assertEquals(speechAnalysis.getString("id"), checkNotNull(workflow.savedAnalysisArtifact(case)).getString("id"))
             }
             val draft = workflow.transcribe(case, actor, { false }, {})
             val transcript = workflow.readJson(case, draft, 16 * 1024 * 1024)

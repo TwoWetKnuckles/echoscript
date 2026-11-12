@@ -380,9 +380,9 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     }
     fun saveSpeechCandidate(actor: String, startMs: Long, endMs: Long, label: String, eventId: String? = null) = runJob("Saving speech candidate revision") {
         val manifest = selected()
-        val previous = workflow.savedAnalysis(manifest) ?: error("Analyze this revision first")
+        val parent = workflow.savedAnalysisArtifact(manifest) ?: error("Analyze this revision first")
+        val previous = workflow.readJson(manifest, parent, 1024 * 1024)
         val analysis = reviseSpeechCandidate(previous, startMs, endMs, label, eventId, "manual-${java.util.UUID.randomUUID()}")
-        val parent = manifest.items("artifacts").last { it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == manifest.getString("activeArtifact") }
         vault.addDerivative(manifest, actor, "ANALYSIS", listOf(manifest.getString("activeArtifact"),parent.getString("id")), "Examiner speech regions.json", "examiner-speech-region-edit", "1", maxBytes=1024*1024) { out ->
             out.write(EvidenceVault.canonical(analysis)); JSONObject().put("startMs",startMs).put("endMs",endMs).put("label",label).put("adjustedEventId",eventId ?: JSONObject.NULL)
         }
