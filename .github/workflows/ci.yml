@@ -167,10 +167,10 @@ jobs:
           "$tools/apksigner" verify --verbose "$apk"
           "$tools/zipalign" -c -P 16 4 "$apk"
           badging=$("$tools/aapt" dump badging "$apk")
-          rg -q "^package: name='org[.]echoscript[.]app[.]preview06' " <<< "$badging"
-          rg -q "^application-label:'EchoScript 0[.]6 Test'$" <<< "$badging"
+          grep -Eq "^package: name='org[.]echoscript[.]app[.]preview06' " <<< "$badging"
+          grep -Eq "^application-label:'EchoScript 0[.]6 Test'$" <<< "$badging"
           permissions=$("$tools/aapt" dump permissions "$apk")
-          if printf '%s\n' "$permissions" | rg -q 'android.permission.(INTERNET|ACCESS_NETWORK_STATE)'; then
+          if printf '%s\n' "$permissions" | grep -Eq 'android[.]permission[.](INTERNET|ACCESS_NETWORK_STATE)'; then
             exit 1
           fi
           folder=qa-output/android-preview/EchoScript-Android
