@@ -25,6 +25,12 @@ source bytes are preserved before decoding. If an app interruption is reported,
 check Cases for a preserved copy before selecting the recording again. Actual
 physical-device testing, including the Galaxy S22+, remains outstanding.
 
+In Analyze, tap the timeline to seek or drag to select a range. Playback and
+clipping controls are below it. The quick spectrum samples brief windows; the
+optional full-recording scan covers the recording with overlapping windows and
+shows a coarse overview. It can take a long time for large files. Keep the app
+open, and use Cancel if needed. For finer detail, inspect a selected time range.
+
 The app is local-first and runs its bundled English speech model on the device.
 The optional experimental Whisper service in the source tree is not connected
 to this Android build. Individual WAV and document exports are plaintext;
