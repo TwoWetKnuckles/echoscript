@@ -116,8 +116,18 @@ class OfflineInterfaceTest {
             val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it) }
             if (output != null) { output.mkdirs(); assertTrue(device.takeScreenshot(File(output, "ui-real-picker.png"))) }
             checkNotNull(file) { "Synthetic Downloads document not visible in actual picker" }.click()
+            waitFor("Selected recording")
+            waitFor(filename)
+            ui.onNodeWithText("Selected recording").assertIsDisplayed()
+            ui.onNodeWithText(filename).assertIsDisplayed()
+            assertEquals(0, vault.listCases().cases.count { it.getString("caseId") !in baseline })
+            // Rotation must not drop the pending provider URI or its visible action.
+            ui.activityRule.scenario.recreate()
+            ui.onNodeWithText("Selected recording").assertIsDisplayed()
+            ui.onNodeWithText(filename).assertIsDisplayed()
+            click("Import selected audio", navigation = true)
             waitFor("Original preserved. Waveform and speech candidates are ready.")
-            ui.onNodeWithText("Selected recording").performScrollTo().assertIsDisplayed()
+            ui.onNodeWithText("Imported recording").performScrollTo().assertIsDisplayed()
             assertTrue(ui.onAllNodesWithText(filename).fetchSemanticsNodes().isNotEmpty())
             ui.onNodeWithTag("waveform").performScrollTo().assertIsDisplayed()
             val imported = vault.listCases().cases.single { it.getString("caseId") !in baseline }
@@ -214,6 +224,8 @@ class OfflineInterfaceTest {
             context.assets.open("synthetic-speech.wav").use { input -> source.outputStream().use { input.copyTo(it) } }
             document(Intent.ACTION_OPEN_DOCUMENT, source) {
                 click("Choose audio file")
+                waitFor("Selected recording")
+                click("Import selected audio", navigation = true)
                 waitFor("Original preserved. Waveform and speech candidates are ready.")
             }
             val case = vault.listCases().cases.single { it.getString("caseId") !in before }

@@ -45,3 +45,8 @@ For emulator checks, run `:app:connectedDebugAndroidTest` from `apps/android`. T
 Production distribution needs an owner-controlled signing key, verified upgrade behavior and acceptance of the complete release matrix. The downloadable ZIP contains a development-signed preview for synthetic evaluation. Signing keys stay outside Git, and APK users do not need access to the source tree or build tools to run the installed app.
 
 See [owner-signing setup](OWNER-SIGNING.md) and [the exact-build acceptance record](../qa/RC-ACCEPTANCE.md). The manual signing workflow produces an evaluation artifact only; it does not publish a release candidate or count debug/emulator results as tests of a different signed APK.
+
+
+### File selection in the 0.6 working draft
+
+After choosing a file, the draft displays the selected filename above the scrolling page. Tap **Import selected audio** to preserve it; failed imports keep a **Retry import** action. Cancelling or receiving an empty picker result produces a visible message. If Android kills the app after selection, the URI is not persisted; the app asks the user to check existing cases and choose the file again. This behavior is under development and has not yet been confirmed on a physical Galaxy S22+. The published 0.5.1 preview retains its previous automatic-import flow.

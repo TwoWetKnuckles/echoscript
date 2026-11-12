@@ -111,24 +111,26 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode != android.app.Activity.RESULT_OK) {
-            model.notice("No recording was selected. Choose a file or try the other file picker.")
+            model.pickerNotice("No recording was selected. Choose a file or try the other file picker.")
         } else try {
             val uri = selectedAudioUri(result.data)
-            if (uri == null) model.notice("The file picker returned no recording. Try Choose with another file picker.")
-            else model.importAudio(uri, if (tab == "Acquire") title else "", actor)
+            if (uri == null) model.pickerNotice("The file picker returned no recording. Try Choose with another file picker.")
+            else model.selectAudio(uri, if (tab == "Acquire") title else "")
         } catch (failure: IllegalArgumentException) {
-            model.notice(failure.message ?: "Choose one recording at a time.")
+            model.pickerNotice(failure.message ?: "Choose one recording at a time.")
+        } catch (_: RuntimeException) {
+            model.pickerNotice("The picker returned an unreadable selection. Choose the file again or try the other picker.")
         }
     }
     // Providers sometimes omit or mislabel audio MIME types. Select any openable
     // file; actual decoding validates the bytes after original preservation.
     val chooseAudio = {
         try { importAudio.launch(audioPickerIntent(Intent.ACTION_OPEN_DOCUMENT)) }
-        catch (_: android.content.ActivityNotFoundException) { model.notice("No document picker is available. Try Choose with another file picker.") }
+        catch (_: android.content.ActivityNotFoundException) { model.pickerNotice("No document picker is available. Try Choose with another file picker.") }
     }
     val chooseOtherAudio = {
         try { importAudio.launch(audioPickerIntent(Intent.ACTION_GET_CONTENT)) }
-        catch (_: android.content.ActivityNotFoundException) { model.notice("No compatible file picker is installed or permitted on this device.") }
+        catch (_: android.content.ActivityNotFoundException) { model.pickerNotice("No compatible file picker is installed or permitted on this device.") }
     }
     val importCase = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         if (uri != null) model.importCase(uri, actor, expectedHash) { transfer = false; tab = "Cases" }
@@ -190,17 +192,57 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                 }
             },
         ) { padding ->
+            Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+            val ready = screen.ready && !busy && actor.isNotBlank()
+            if (screen.audioSelected) {
+                Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Selected recording", style = MaterialTheme.typography.titleSmall)
+                        SelectionContainer { Text(screen.importName ?: "Selected audio file", maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                        if (busy) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                            Text(screen.message, style = MaterialTheme.typography.bodySmall)
+                            if (screen.job != null) TextButton(onClick = model::cancel) { Text("Cancel current operation") }
+                        } else {
+                            Text(screen.message, style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { model.importSelectedAudio(actor) }, enabled = ready) { Text(if (screen.failed) "Retry import" else "Import selected audio") }
+                                TextButton(onClick = model::clearSelectedAudio, enabled = ready) { Text("Clear") }
+                            }
+                        }
+                    }
+                }
+            } else if (screen.pickerNotice != null) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), shape = MaterialTheme.shapes.medium) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(screen.pickerNotice ?: "Choose an audio file again.", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = model::dismissPickerNotice) { Text("Dismiss") }
+                    }
+                }
+            } else if (INTERRUPTED_AUDIO_SELECTION in screen.recoveryWarnings) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(INTERRUPTED_AUDIO_SELECTION, style = MaterialTheme.typography.bodySmall)
+                        Row {
+                            TextButton(onClick = chooseAudio, enabled = ready) { Text("Choose file again") }
+                            TextButton(onClick = model::dismissInterruptedSelection) { Text("Dismiss") }
+                        }
+                    }
+                }
+            }
             stateHolder.SaveableStateProvider(tab) {
                 Column(
-                    Modifier.fillMaxSize().padding(padding).imePadding().verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+                    Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
                     verticalArrangement = Arrangement.spacedBy(16.dp),
                 ) {
-                    val ready = screen.ready && !busy && actor.isNotBlank()
-                    for (warning in screen.recoveryWarnings) Text(warning, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    for (warning in screen.recoveryWarnings.filterNot { it == INTERRUPTED_AUDIO_SELECTION }) Text(warning, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     screen.importName?.let { name ->
-                        if (tab in listOf("Cases", "Acquire", "Analyze")) Section("Selected recording") { SelectionContainer { Text(name) } }
+                        if (!screen.audioSelected && tab in listOf("Cases", "Acquire", "Analyze")) Section("Imported recording") { SelectionContainer { Text(name) } }
                     }
-                    if (screen.job != null || screen.importPending || screen.message != "Choose a case or import a recording.") {
+                    if (!screen.audioSelected && screen.pickerNotice == null && (screen.job != null || screen.importPending || screen.message != "Choose a case or import a recording.")) {
                         StatusCard(screen, model)
                     }
                     val activePlayer = model.player
@@ -269,6 +311,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                     Text("Development preview · synthetic evaluation · beta gate pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
                     if (!screen.ready && screen.job == null) Text(screen.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
+            }
             }
         }
     }

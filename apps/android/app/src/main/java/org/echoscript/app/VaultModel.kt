@@ -24,6 +24,7 @@ import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false)
+internal const val INTERRUPTED_AUDIO_SELECTION = "A file selection or import was interrupted. Check Cases for a preserved copy, then choose the recording again if needed."
 
 internal data class VaultScreen(
     val ready: Boolean = false,
@@ -38,6 +39,8 @@ internal data class VaultScreen(
     val failed: Boolean = false,
     val importPending: Boolean = false,
     val importName: String? = null,
+    val audioSelected: Boolean = false,
+    val pickerNotice: String? = null,
     val importedCaseId: String? = null,
 )
 
@@ -56,6 +59,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private lateinit var vault: EvidenceVault
     private lateinit var workflow: OfflineWorkflow
     private val preferences = application.getSharedPreferences("echoscript_workspace", 0)
+    // The provider URI is deliberately held only in memory. After process death,
+    // the recovery notice asks for a new selection instead of saving sensitive
+    // document paths in preferences or pretending the source was imported.
+    private data class AudioSelection(val uri: Uri, val title: String, val sequence: Long)
+    private var audioSelection: AudioSelection? = null
+    private var selectionSequence = 0L
     var player by mutableStateOf<ExoPlayer?>(null); private set
     var reviewDrafts by mutableStateOf<Map<String, ReviewDraft>>(emptyMap()); private set
     var acquisitionTitle by mutableStateOf("")
@@ -83,13 +92,14 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                 workflow = OfflineWorkflow(application, vault)
                 val listing = vault.listCases()
                 val interrupted = preferences.getString("pendingJob", null)
+                val interruptedSelection = preferences.getBoolean("pendingAudioSelection", false)
                 withContext(Dispatchers.Main) {
                     mutable.update { current -> current.copy(
                         ready = true,
                         cases = listing.cases,
                         recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
                             "Interrupted task · $it. Review the saved case before retrying."
-                        }),
+                        }) + (if (interruptedSelection && !current.audioSelected) listOf(INTERRUPTED_AUDIO_SELECTION) else emptyList()),
                         message = if (current.importPending) "Recording selected. Waiting for the encrypted vault…" else "Choose a case or import a recording.",
                     ) }
                     vaultOpened.complete(true)
@@ -105,6 +115,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
 
     fun select(id: String) {
         if (mutable.value.job != null || id == mutable.value.selected) return
+        if (!mutable.value.audioSelected) updateState { it.copy(importName = null) }
         runJob("Opening case", refreshCases = false) {
             val manifest = mutable.value.cases.first { it.getString("caseId") == id }
             restoreWorkspace(manifest)
@@ -178,6 +189,63 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     fun acknowledgeImportedCase(id: String) {
         updateState { if (it.importedCaseId == id) it.copy(importedCaseId = null) else it }
     }
+    fun pickerNotice(message: String) {
+        updateState { it.copy(pickerNotice = message, message = message, failed = true) }
+    }
+    fun dismissPickerNotice() {
+        updateState { it.copy(pickerNotice = null, failed = false) }
+    }
+    fun dismissInterruptedSelection() {
+        if (audioSelection != null) return
+        preferences.edit().remove("pendingAudioSelection").apply()
+        updateState { it.copy(recoveryWarnings = it.recoveryWarnings.filterNot { warning -> warning == INTERRUPTED_AUDIO_SELECTION }) }
+    }
+    fun selectAudio(uri: Uri, title: String) {
+        if (mutable.value.job != null || mutable.value.importPending) {
+            notice("Wait for the current operation before choosing another recording.")
+            return
+        }
+        val selection = AudioSelection(uri, title, ++selectionSequence)
+        audioSelection = selection
+        val recoveryMarkerSaved = preferences.edit().putBoolean("pendingAudioSelection", true).commit()
+        val fallback = uri.lastPathSegment?.substringAfterLast('/')?.filter { it.code >= 32 }?.take(256)
+            ?.ifBlank { null } ?: "Selected audio file"
+        updateState { it.copy(audioSelected = true, importName = fallback, pickerNotice = null, failed = false,
+            recoveryWarnings = it.recoveryWarnings.filterNot { warning -> warning == INTERRUPTED_AUDIO_SELECTION },
+            message = if (recoveryMarkerSaved) "Recording selected. Tap Import selected audio to preserve it in the vault."
+            else "Recording selected. Keep the app open until the import completes.") }
+        viewModelScope.launch(Dispatchers.IO) {
+            val name = try {
+                getApplication<Application>().contentResolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use {
+                    val column = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                    if (column >= 0 && it.moveToFirst()) it.getString(column) else null
+                }
+            } catch (_: Exception) { null }
+            val clean = name?.filter { it.code >= 32 }?.take(256)?.ifBlank { null } ?: fallback
+            withContext(Dispatchers.Main) {
+                if (audioSelection?.sequence == selection.sequence) mutable.update { it.copy(importName = clean) }
+            }
+        }
+    }
+    fun clearSelectedAudio() {
+        if (mutable.value.job != null || mutable.value.importPending) return
+        audioSelection = null; selectionSequence++
+        preferences.edit().remove("pendingAudioSelection").apply()
+        updateState { it.copy(audioSelected = false, importName = null, pickerNotice = null, failed = false,
+            recoveryWarnings = it.recoveryWarnings.filterNot { warning -> warning == INTERRUPTED_AUDIO_SELECTION },
+            message = "Selection cleared. Choose an audio file when ready.") }
+    }
+    fun importSelectedAudio(actor: String) {
+        val selection = audioSelection ?: run { notice("Choose an audio file first."); return }
+        importAudio(selection.uri, selection.title, actor) {
+            if (audioSelection?.sequence == selection.sequence) {
+                audioSelection = null; selectionSequence++
+                preferences.edit().remove("pendingAudioSelection").apply()
+                updateState { it.copy(audioSelected = false,
+                    recoveryWarnings = it.recoveryWarnings.filterNot { warning -> warning == INTERRUPTED_AUDIO_SELECTION }) }
+            }
+        }
+    }
     fun importAudio(uri: Uri, title: String, actor: String, completed: () -> Unit = {}) {
         // Result delivery can precede vault initialization after Android recreates
         // this process while a document picker is open. Never drop that result.
@@ -203,7 +271,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                         val column = it.getColumnIndex(OpenableColumns.DISPLAY_NAME)
                         if (column >= 0 && it.moveToFirst()) it.getString(column) else null
                     }
-                } catch (_: Exception) { null } ?: "source-audio"
+                } catch (_: Exception) { null } ?: uri.lastPathSegment?.substringAfterLast('/') ?: "source-audio"
                 val name = filename.filter { it.code >= 32 }.take(256).ifBlank { "source-audio" }
                 updateState { it.copy(importName = name, message = "Importing $name into the encrypted vault…") }
                 val manifest = checkNotNull(resolver.openInputStream(uri)) { "The selected file could not be read. Choose it again or try the other file picker." }.use {
