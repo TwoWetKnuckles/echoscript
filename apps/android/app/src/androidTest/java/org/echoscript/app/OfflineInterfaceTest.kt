@@ -147,6 +147,39 @@ class OfflineInterfaceTest {
         }
     }
 
+    @Test fun emptyPickerResultIsVisibleAndDoesNotCreateACase() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val before = EvidenceVault(context).listCases().cases.map { it.getString("caseId") }.toSet()
+        Intents.init()
+        try {
+            intending(hasAction(Intent.ACTION_OPEN_DOCUMENT)).respondWith(ActivityResult(Activity.RESULT_OK, Intent()))
+            click("Choose audio file")
+            val message = "The file picker returned no recording. Try Choose with another file picker."
+            waitFor(message)
+            ui.onNodeWithText(message).assertIsDisplayed()
+            assertEquals(before, EvidenceVault(context).listCases().cases.map { it.getString("caseId") }.toSet())
+            click("Dismiss", navigation = true)
+        } finally { Intents.release() }
+    }
+
+    @Test fun unreadableSelectedFileOffersRetryAndClear() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val source = File(context.cacheDir, "SYNTHETIC-UNREADABLE.wav")
+        source.writeText("synthetic")
+        try {
+            document(Intent.ACTION_OPEN_DOCUMENT, source) {
+                click("Choose audio file")
+                waitFor("Selected recording")
+                assertTrue(source.delete())
+                click("Import selected audio", navigation = true)
+                waitFor("Retry import")
+                ui.onNodeWithText("Retry import").assertIsDisplayed().assertIsEnabled()
+                click("Clear", navigation = true)
+                ui.onNodeWithText("Selected recording").assertDoesNotExist()
+            }
+        } finally { source.delete() }
+    }
+
     @Test fun effectPresetsRegionsAndRestorableRecipe() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val vault = EvidenceVault(context)

@@ -1,0 +1,30 @@
+EchoScript 0.6.0 Android development candidate
+===============================================
+This package is for synthetic evaluation. It is not an accepted release candidate
+and has not passed all release gates. Android 10 or later is required.
+
+Install only the APK from this same package after checking SHA256SUMS.txt. The
+BUILD.txt file identifies its source commit and GitHub Actions run. It is a
+debuggable preview build, not an owner-signed production release.
+
+Debug builds from separate runs may have different signing identities. Android
+may refuse to update an existing EchoScript preview. Do not remove or reset the
+existing app until you have exported, independently verified and safely stored
+any cases you need: uninstalling can erase the existing device vault. Owner
+signing and vault-preserving upgrade testing are still outstanding.
+
+In Cases, tap Choose audio file. After choosing one file, confirm that the
+Selected recording panel shows its name, then tap Import selected audio. The
+panel shows progress and lets you retry an unsuccessful import. The exact
+source bytes are preserved before decoding. If an app interruption is reported,
+check Cases for a preserved copy before selecting the recording again. Actual
+physical-device testing, including the Galaxy S22+, remains outstanding.
+
+The app is local-first and runs its bundled English speech model on the device.
+The optional experimental Whisper service in the source tree is not connected
+to this Android build. Individual WAV and document exports are plaintext;
+protected case packages require a separately retained passphrase. Device
+checkpoint signatures do not identify the examiner.
+
+For current published downloads and release status, see:
+https://github.com/TwoWetKnuckles/echoscript

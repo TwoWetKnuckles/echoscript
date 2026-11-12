@@ -171,7 +171,7 @@ jobs:
           folder=qa-output/android-preview/EchoScript-Android
           mkdir -p "$folder"
           cp "$apk" "$folder/EchoScript-offline-preview.apk"
-          cp downloads/android/INSTALL.txt "$folder/"
+          cp downloads/android/INSTALL-CANDIDATE.txt "$folder/INSTALL.txt"
           cp LICENSE "$folder/LICENSE.txt"
           cp NOTICE "$folder/NOTICE.txt"
           printf 'Source commit %s\nQuality checks %s/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$folder/BUILD.txt"

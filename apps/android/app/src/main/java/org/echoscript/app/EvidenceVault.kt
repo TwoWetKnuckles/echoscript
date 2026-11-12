@@ -127,7 +127,13 @@ class EvidenceVault(private val context: Context) {
                 Files.move(temp.toPath(), file.toPath(), StandardCopyOption.ATOMIC_MOVE)
             }
             return hash.digest().joinToString("") { "%02x".format(it.toInt() and 255) } to count
-        } catch (failure: Exception) { temp.delete(); throw failure }
+        } catch (failure: Throwable) {
+            // A handled allocation failure must not leave an uncommitted staging
+            // file looking like a completed artifact. A real process kill still
+            // leaves encrypted pending bytes for explicit recovery review.
+            temp.delete()
+            throw failure
+        }
     }
     private fun writeEncrypted(file: File, aad: ByteArray, source: InputStream, max: Long, cancelled: () -> Boolean, progress: (Long) -> Unit): Pair<String, Long> =
         writeGenerated(file, aad, max) { output -> copyBounded(source, output, cancelled, progress) }

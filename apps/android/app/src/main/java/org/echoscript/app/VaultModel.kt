@@ -100,7 +100,11 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                         recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
                             "Interrupted task · $it. Review the saved case before retrying."
                         }) + (if (interruptedSelection && !current.audioSelected) listOf(INTERRUPTED_AUDIO_SELECTION) else emptyList()),
-                        message = if (current.importPending) "Recording selected. Waiting for the encrypted vault…" else "Choose a case or import a recording.",
+                        message = when {
+                            current.importPending -> "Recording selected. Waiting for the encrypted vault…"
+                            current.audioSelected || current.pickerNotice != null -> current.message
+                            else -> "Choose a case or import a recording."
+                        },
                     ) }
                     vaultOpened.complete(true)
                 }
@@ -127,7 +131,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private fun selected(): JSONObject = mutable.value.cases.firstOrNull { it.getString("caseId") == mutable.value.selected }
         ?.let { JSONObject(it.toString()) } ?: error("Select a case first")
 
-    private fun runJob(
+    internal fun runJob(
         name: String,
         completed: () -> Unit = {},
         refreshCases: Boolean = true,
@@ -138,11 +142,16 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(job = name, message = name, failed = false, importPending = false) }
         viewModelScope.launch(Dispatchers.IO) {
             var succeeded = false
+            var memoryExhausted = false
             val message = try {
                 check(preferences.edit().putString("pendingJob", name).commit()) { "Could not record task recovery state" }
                 action().also { succeeded = true }
             }
             catch (_: InterruptedException) { "Cancelled. Completed originals and revisions are preserved." }
+            catch (_: OutOfMemoryError) {
+                memoryExhausted = true
+                "The device did not have enough memory to finish. Check Cases for preserved work, then close other apps and try again."
+            }
             catch (_: LinkageError) { "The bundled speech library could not load on this Android device." }
             catch (failure: Exception) { failure.message?.take(350) ?: "Operation could not complete. Review the case before retrying." }
             var refreshFailed = false
@@ -150,6 +159,10 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                 if (refreshCases) vault.listCases() else null
             } catch (_: Exception) {
                 refreshFailed = true
+                null
+            } catch (_: OutOfMemoryError) {
+                refreshFailed = true
+                memoryExhausted = true
                 null
             }
             preferences.edit().remove("pendingJob").commit()
@@ -160,7 +173,11 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                         recoveryWarnings = listing?.warnings ?: current.recoveryWarnings,
                         job = null,
                         failed = !succeeded || refreshFailed,
-                        message = if (refreshFailed) "Vault refresh failed. Reopen the app to check the saved case." else message,
+                        message = when {
+                            refreshFailed && memoryExhausted -> "The device ran out of memory. Reopen the app and check Cases for preserved work."
+                            refreshFailed -> "Vault refresh failed. Reopen the app to check the saved case."
+                            else -> message
+                        },
                     )
                 }
                 if (succeeded && !refreshFailed) completed()

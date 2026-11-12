@@ -6,8 +6,10 @@ import android.content.ContentValues
 import android.content.Intent
 import android.net.Uri
 import android.provider.MediaStore
+import androidx.lifecycle.viewModelScope
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import kotlinx.coroutines.cancel
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
@@ -36,7 +38,7 @@ class AudioIntakeTest {
         val sensitivePath = "SYNTHETIC-PRIVATE-DOCUMENT-NAME.wav"
         val uri = Uri.parse("content://synthetic.test/document/$sensitivePath")
         var first: VaultModel? = null
-        lateinit var reopened: VaultModel
+        var reopened: VaultModel? = null
         try {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 val model = VaultModel(app)
@@ -46,13 +48,41 @@ class AudioIntakeTest {
                 reopened = VaultModel(app)
             }
             val deadline = System.nanoTime() + 30_000_000_000L
-            while (!reopened.state.value.ready && System.nanoTime() < deadline) Thread.sleep(20)
-            assertTrue(reopened.state.value.ready)
-            assertFalse(reopened.state.value.audioSelected)
-            assertTrue(reopened.state.value.recoveryWarnings.any { it.contains("selection or import was interrupted") })
+            while ((reopened?.state?.value?.ready != true || first?.state?.value?.ready != true) && System.nanoTime() < deadline) Thread.sleep(20)
+            val restored = checkNotNull(reopened).state.value
+            assertTrue(restored.ready)
+            assertTrue(checkNotNull(first).state.value.message.contains("Tap Import selected audio"))
+            assertFalse(restored.audioSelected)
+            assertTrue(restored.recoveryWarnings.any { it.contains("selection or import was interrupted") })
             assertFalse(preferences.all.values.any { it.toString().contains(sensitivePath) })
         } finally {
-            first?.let { model -> InstrumentationRegistry.getInstrumentation().runOnMainSync { model.clearSelectedAudio() } }
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                first?.let { model -> model.clearSelectedAudio(); model.viewModelScope.cancel() }
+                reopened?.viewModelScope?.cancel()
+            }
+        }
+    }
+
+    @Test fun memoryFailureReportsProblemAndKeepsSelectionForRetry() {
+        val app = ApplicationProvider.getApplicationContext<Application>()
+        lateinit var model: VaultModel
+        InstrumentationRegistry.getInstrumentation().runOnMainSync { model = VaultModel(app) }
+        try {
+            val readyDeadline = System.nanoTime() + 30_000_000_000L
+            while (!model.state.value.ready && System.nanoTime() < readyDeadline) Thread.sleep(20)
+            assertTrue(model.state.value.ready)
+            InstrumentationRegistry.getInstrumentation().runOnMainSync {
+                model.selectAudio(Uri.parse("content://synthetic.test/document/memory-test.wav"), "")
+                model.runJob("Synthetic memory failure") { throw OutOfMemoryError("synthetic test") }
+            }
+            val deadline = System.nanoTime() + 30_000_000_000L
+            while ((!model.state.value.failed || model.state.value.job != null) && System.nanoTime() < deadline) Thread.sleep(20)
+            assertTrue(model.state.value.failed)
+            assertNull(model.state.value.job)
+            assertTrue(model.state.value.message.contains("memory"))
+            assertTrue(model.state.value.audioSelected)
+        } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { model.clearSelectedAudio(); model.viewModelScope.cancel() }
         }
     }
 
@@ -64,6 +94,9 @@ class AudioIntakeTest {
             put(MediaStore.MediaColumns.MIME_TYPE, "application/octet-stream")
             put(MediaStore.MediaColumns.IS_PENDING, 1)
         }))
+        val caseRoot = File(app.filesDir, "EvidenceVault/cases")
+        val existingFolders = caseRoot.listFiles()?.map { it.name }?.toSet() ?: emptySet()
+        var heldModel: VaultModel? = null
         try {
             app.assets.open("synthetic-speech.wav").use { input -> checkNotNull(resolver.openOutputStream(uri)).use { input.copyTo(it) } }
             resolver.update(uri, ContentValues().apply { put(MediaStore.MediaColumns.IS_PENDING, 0) }, null, null)
@@ -71,6 +104,7 @@ class AudioIntakeTest {
             InstrumentationRegistry.getInstrumentation().runOnMainSync {
                 // Main is held here, so initialization cannot publish ready yet.
                 model = VaultModel(app)
+                heldModel = model
                 assertFalse(model.state.value.ready)
                 model.selectAudio(uri, "Synthetic early picker result")
                 assertTrue(model.state.value.audioSelected)
@@ -78,9 +112,10 @@ class AudioIntakeTest {
                 assertTrue(model.state.value.importPending)
             }
             val deadline = System.nanoTime() + 120_000_000_000L
-            while ((model.state.value.importPending || !model.state.value.ready || model.state.value.job != null) && System.nanoTime() < deadline) Thread.sleep(20)
+            while ((model.state.value.importPending || !model.state.value.ready || model.state.value.job != null ||
+                        (model.state.value.audioSelected && !model.state.value.failed)) && System.nanoTime() < deadline) Thread.sleep(20)
             val state = model.state.value
-            assertFalse(state.failed)
+            assertFalse(state.message, state.failed)
             assertFalse(state.audioSelected)
             assertEquals("ECHOSCRIPT-SYNTHETIC-EARLY.bin", state.importName)
             val case = state.cases.single { it.getString("caseId") == state.selected }
@@ -100,6 +135,10 @@ class AudioIntakeTest {
             assertTrue(model.state.value.message.isNotBlank())
             InstrumentationRegistry.getInstrumentation().runOnMainSync { model.clearSelectedAudio() }
             assertFalse(model.state.value.audioSelected)
-        } finally { resolver.delete(uri, null, null) }
+        } finally {
+            InstrumentationRegistry.getInstrumentation().runOnMainSync { heldModel?.cancel(); heldModel?.viewModelScope?.cancel() }
+            resolver.delete(uri, null, null)
+            caseRoot.listFiles().orEmpty().filter { it.name !in existingFolders }.forEach { it.deleteRecursively() }
+        }
     }
 }
