@@ -70,7 +70,9 @@ internal fun fullSpectrum(input: WaveReader, cancelled: () -> Boolean, progress:
             }
         }
         val first=min(times-1,(from*times/frames).toInt())
-        val last=min(times-1,((to-1)*times/frames).toInt())
+        // Include every display column intersected by the window's half-open
+        // frame interval, even when a recording has fewer frames than columns.
+        val last=min(times-1,((to*times-1)/frames).toInt())
         for(t in first..last) for(b in 0 until bands) maxima[t][b]=max(maxima[t][b],windowBands[b])
         windowCount++
     }

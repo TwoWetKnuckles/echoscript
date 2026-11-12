@@ -2,6 +2,8 @@ package org.echoscript.app
 
 import org.junit.Assert.*
 import org.junit.Test
+import java.io.InputStream
+import java.io.SequenceInputStream
 import kotlin.math.PI
 import kotlin.math.sin
 
@@ -39,6 +41,8 @@ class FullSpectrumTest {
         assertTrue(analyze(edges).columns.flatten().any { it > -45.0 })
         val partialHopTail=wave(1,127) { frame,_->if(frame==126) 32767 else 0 }
         assertTrue(analyze(partialHopTail).columns.last().any { it > -45.0 })
+        val oneFrame=wave(1,1) { _,_->32767 }
+        assertTrue(analyze(oneFrame).columns.all { column -> column.any { it > -45.0 } })
     }
 
     @Test fun nyquistAmplitudeIsNotDoubled() {
@@ -53,5 +57,27 @@ class FullSpectrumTest {
         assertThrows(InterruptedException::class.java) {
             WaveReader(source.inputStream(),source.size.toLong()).use { fullSpectrum(it,{true},{}) }
         }
+    }
+
+    @Test fun minuteLongSyntheticStreamUsesFixedSizeReads() {
+        val frames=16000L*60; val format=PcmFormat(16000,1); val dataBytes=frames*format.frameBytes
+        var remaining=dataBytes; var largestRead=0
+        val zeros=object:InputStream() {
+            override fun read():Int = if (remaining > 0) { remaining--; 0 } else -1
+            override fun read(buffer:ByteArray, offset:Int, length:Int):Int {
+                if (length == 0) return 0
+                if (remaining == 0L) return -1
+                largestRead=maxOf(largestRead,length)
+                val count=minOf(length.toLong(),remaining).toInt()
+                java.util.Arrays.fill(buffer,offset,offset+count,0.toByte()); remaining-=count
+                return count
+            }
+        }
+        var progress=0L
+        val source=SequenceInputStream(waveHeader(format,dataBytes).inputStream(),zeros)
+        val result=WaveReader(source,dataBytes+44).use { fullSpectrum(it,{false},{ progress=it }) }
+        assertEquals(frames,progress); assertEquals(7501L,result.windows)
+        assertTrue(largestRead <= PCM_BLOCK_BYTES)
+        assertTrue(result.columns.flatten().all { it == -100.0 })
     }
 }

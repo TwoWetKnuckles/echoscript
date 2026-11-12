@@ -163,7 +163,7 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         val parameters = JSONObject().put("fftSize", 256).put("hopSize", 128).put("window", "Hann")
             .put("windowDefinition", "symmetric-n-minus-one").put("sampleRate", result.sampleRate).put("channels", result.channels)
             .put("frames", result.frames).put("windowCount", result.windows).put("timeColumns", 128).put("frequencyBands", 32)
-            .put("scale", "linear").put("floorDb", -100).put("edgePadding", "zero-through-first-hop-center-at-or-after-end")
+            .put("scale", "linear").put("floorDb", -100).put("edgePadding", "half-window-start-and-first-hop-center-at-or-after-end-zero")
             .put("channelCombination", "strongest-channel-per-bin")
             .put("aggregation", "peak-magnitude-per-band-over-overlapping-window-support")
             .put("normalization", "window-coherent-gain-onesided-amplitude").put("displayQuantizationDb", 0.1)
