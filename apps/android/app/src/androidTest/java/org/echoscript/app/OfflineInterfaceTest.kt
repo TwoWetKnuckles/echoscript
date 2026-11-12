@@ -191,6 +191,11 @@ class OfflineInterfaceTest {
         val case = vault.listCases().cases.single { it.getString("caseId") !in before }
         val sourceHash = case.items("artifacts").first().getString("sha256")
         try {
+            click("Scan full recording spectrum")
+            waitFor("Full-recording spectral overview saved. Use detailed inspection for finer time and frequency resolution.")
+            ui.onNodeWithTag("spectrogram").performScrollTo().assertTextContains("overlapping windows cover the recording", substring = true)
+            val fullSaved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            assertTrue(fullSaved.items("artifacts").any { it.getJSONObject("operation").getString("algorithm") == "continuous-overview-stft" })
             ui.onNodeWithText("Selection start ms").performScrollTo().performTextReplacement("0")
             ui.onNodeWithText("Selection end ms").performScrollTo().performTextReplacement("5000")
             closeSoftKeyboard()

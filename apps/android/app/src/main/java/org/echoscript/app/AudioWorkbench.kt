@@ -113,6 +113,9 @@ private val effectGroups = linkedMapOf(
     val rack = remember(draft) { EffectRack.fromJson(JSONObject(draft)) }
     val regions = JSONArray(regionsJson)
     val duration = screen.analysis?.optLong("durationMs", 0) ?: 0L
+    val fullOverview = screen.fullSpectrum?.takeIf {
+        it.optString("audioArtifactId") == active && it.optString("sourceSha256") == selected.artifact(active).getString("sha256")
+    }
     val comparison = screen.comparisonAnalysis?.takeIf { screen.comparisonAudioId == comparisonId }
     LaunchedEffect(model.player,loop,start,end) {
         while (true) {
@@ -211,15 +214,15 @@ private val effectGroups = linkedMapOf(
         } catch (e: Exception) { model.notice(e.message ?: "Check effects and region values") }
     }
     WorkCard("Recording timeline") {
-        Text("Tap to seek · drag to select · add regions to keep multiple selections. Full duration ${duration} ms.", style = MaterialTheme.typography.bodySmall)
+        Text("Tap to seek · drag to select or adjust edges · ${duration} ms", style = MaterialTheme.typography.bodySmall)
         val analysis = screen.analysis
         if (analysis != null) {
-            val peaks = analysis.getJSONArray("peaks"); val spectrum = analysis.getJSONArray("spectrum")
+            val peaks = analysis.getJSONArray("peaks"); val spectrum = fullOverview?.getJSONArray("columns") ?: analysis.getJSONArray("spectrum")
             val color = MaterialTheme.colorScheme.primary
             var dragAnchor by remember { mutableLongStateOf(0L) }
             val selectionStart = start.toLongOrNull(); val selectionEnd = end.toLongOrNull()
             val latestStart by rememberUpdatedState(selectionStart); val latestEnd by rememberUpdatedState(selectionEnd)
-            Canvas(Modifier.fillMaxWidth().height(190.dp).testTag("waveform").semantics { contentDescription = "Full recording waveform and sampled spectrogram; drag to select or adjust selection edges, or use time fields for precision" }
+            Canvas(Modifier.fillMaxWidth().height(190.dp).testTag("waveform").semantics { contentDescription = "Full recording waveform and ${if (fullOverview == null) "sampled" else "continuous coarse"} spectrogram; drag to select or adjust selection edges, or use time fields for precision" }
                 .pointerInput(duration, ready) { detectTapGestures { point -> if (ready && duration > 0) model.playbackAt(actor, (point.x / size.width * duration).toLong().coerceIn(0, duration)) } }
                 .pointerInput(duration, ready) { detectDragGestures(orientationLock = null, onDragStart = { down, _, _ ->
                     val at = (down.position.x / size.width * duration).toLong().coerceIn(0, duration)
@@ -268,8 +271,6 @@ private val effectGroups = linkedMapOf(
                 drawLine(Color.Black,Offset(cursor,0f),Offset(cursor,size.height),4f)
                 drawLine(Color.White,Offset(cursor,0f),Offset(cursor,size.height),2f)
             }
-            Text("Spectral overview · up to 128 brief Hann-window snapshots across the file, not continuous. Events between snapshots can be missed; use precise time fields and listen to the recording.", modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
-            Text("Active revision: peak ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("peakDb"))} dBFS · RMS ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("rmsDb"))} dBFS · ${analysis.getLong("clippedSamples")} near-full-scale samples. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
         } else OutlinedButton(onClick={model.analyze(actor)},enabled=ready) { Text("Analyze audio") }
         FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             Button(onClick={model.togglePlayback(actor)},enabled=ready) { Text(if(playing) "Pause" else if(model.player!=null) "Resume" else "Play") }
@@ -281,6 +282,18 @@ private val effectGroups = linkedMapOf(
         Slider(value=(if(scrubbing) seek else position.toFloat()).coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={seek=it;scrubbing=true},onValueChangeFinished={model.playbackAt(actor,seek.toLong());scrubbing=false},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=ready&&duration>0,modifier=Modifier.semantics { contentDescription="Playback position" })
         Row { Checkbox(loop,{loop=it},enabled=ready&&start.toLongOrNull()!=null&&end.toLongOrNull()!=null); Text("Loop selection while this workbench is open") }
         Numeric(start,{start=it},"Selection start ms",ready); Numeric(end,{end=it},"Selection end ms",ready)
+        if (analysis != null) {
+            Text(if (fullOverview == null) "Spectral overview · up to 128 brief Hann-window snapshots across the file, not continuous. Events between snapshots can be missed."
+                else "Full-recording spectral overview · overlapping windows cover the recording. The 128 time columns and 32 frequency bands show peak magnitudes, so brief sounds can blur; inspect and listen to a selection for detail.",
+                modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
+            OutlinedButton(onClick={model.inspectFullSpectrum(actor)},enabled=ready) { Text(if(fullOverview == null) "Scan full recording spectrum" else "Rescan full recording spectrum") }
+            Text("A full scan reads the complete recording and can take a long time on large files. Keep EchoScript open; you can cancel. Your original is preserved.",style=MaterialTheme.typography.bodySmall)
+            if (screen.job == "Scanning full recording spectrum") {
+                LinearProgressIndicator(Modifier.fillMaxWidth()); Text(screen.message,style=MaterialTheme.typography.bodySmall)
+                TextButton(onClick=model::cancel) { Text("Cancel full spectrum scan") }
+            }
+            Text("Active revision: peak ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("peakDb"))} dBFS · RMS ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("rmsDb"))} dBFS · ${analysis.getLong("clippedSamples")} near-full-scale samples. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
+        }
         TextButton(onClick={showComparison=!showComparison}) { Text(if(showComparison) "Hide A/B comparison" else "Show A/B comparison") }
         if(showComparison) {
         val audioRevisions=selected.items("artifacts").filter{it.getString("type") in setOf("SOURCE","DECODE","ENHANCED_AUDIO")}
@@ -308,69 +321,6 @@ private val effectGroups = linkedMapOf(
         Text("A/B seeks the same millisecond position. Pitch/echo/time-shift processing can alter alignment.",style=MaterialTheme.typography.bodySmall)
         }
     }
-    WorkCard("Inspect a time range") {
-        TextButton(onClick={showDetail=!showDetail}) { Text(if(showDetail) "Hide detailed spectrum" else "Open detailed spectrum") }
-        if (showDetail) {
-        Text("Select a short interval above, then inspect it with consecutive FFT windows. Smaller hops add overlap; larger FFTs improve frequency resolution but use longer time windows.",style=MaterialTheme.typography.bodySmall)
-        Text("FFT size",style=MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            for (n in listOf(256,512,1024,2048)) FilterChip(detailFft==n,{detailFft=n},{Text("$n")},enabled=ready)
-        }
-        Text("Hop size",style=MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            for (divisor in listOf(1,2,4)) FilterChip(detailOverlap==divisor,{detailOverlap=divisor},{Text("${detailFft/divisor} samples")},enabled=ready)
-        }
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            for (window in listOf("hann","hamming")) FilterChip(detailWindow==window,{detailWindow=window},{Text(window.replaceFirstChar{it.uppercase()})},enabled=ready)
-            for (scale in listOf("linear","log")) FilterChip(detailScale==scale,{detailScale=scale},{Text(if(scale=="log") "Log frequency" else "Linear frequency")},enabled=ready)
-        }
-        Text("Display floor",style=MaterialTheme.typography.labelMedium)
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            for (db in listOf(-60,-90,-120)) FilterChip(detailFloor==db,{detailFloor=db},{Text("$db dBFS")},enabled=ready)
-        }
-        fun inspect(a:Long,b:Long) {
-            try {
-                require(a>=0 && b>a && b<=duration) { "Choose a valid interval inside the recording" }
-                start=a.toString();end=b.toString();chosen=-1
-                detailError="";detailRequested=true
-                model.inspectSpectrum(actor,DetailSpectrumSettings(a,b,detailFft,detailFft/detailOverlap,detailWindow,detailScale,detailFloor))
-            } catch (failure:Exception) { detailError=failure.message ?: "Choose a valid interval" }
-        }
-        Button(onClick={try{val(a,b)=selection();inspect(a,b)}catch(_:Exception){detailError="Choose a valid interval to inspect"}},enabled=ready) { Text("Inspect selected interval") }
-        if (detailError.isNotBlank()) Text(detailError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
-        if (detailRequested && (screen.job == "Inspecting selected spectrum" || screen.failed)) {
-            if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(screen.message,style=MaterialTheme.typography.bodySmall)
-            if (screen.job != null) TextButton(onClick=model::cancel) { Text("Cancel inspection") }
-        }
-        val detail=screen.detailedSpectrum?.takeIf{it.optString("audioArtifactId")==active}
-        if (detail != null) {
-            val actual=detail.getJSONObject("settings");val a=actual.getLong("startMs");val b=actual.getLong("endMs")
-            val sampleRate=actual.getInt("sampleRate");val span=b-a;val center=a+span/2
-            Text("$a–$b ms · ${actual.getInt("fftSize")}-sample ${actual.getString("window")} window · hop ${actual.getInt("hopSize")} · ${actual.getString("scale")} · ${actual.getInt("floorDb")} dBFS floor",style=MaterialTheme.typography.bodySmall)
-            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                OutlinedButton(onClick={val minimum=(detailFft*1000L/sampleRate+1).coerceAtMost(duration);val size=max(minimum,span/2);val left=(center-size/2).coerceIn(0,(duration-size).coerceAtLeast(0));inspect(left,left+size)},enabled=ready&&span>1) { Text("Zoom in") }
-                OutlinedButton(onClick={val size=min(duration,span*2);val left=(center-size/2).coerceIn(0,(duration-size).coerceAtLeast(0));inspect(left,left+size)},enabled=ready&&span<duration) { Text("Zoom out") }
-                OutlinedButton(onClick={val left=(a-span/2).coerceAtLeast(0);inspect(left,(left+span).coerceAtMost(duration))},enabled=ready&&a>0) { Text("Earlier") }
-                OutlinedButton(onClick={val left=(a+span/2).coerceAtMost((duration-span).coerceAtLeast(0));inspect(left,left+span)},enabled=ready&&b<duration) { Text("Later") }
-            }
-            Row(Modifier.fillMaxWidth().heightIn(min=48.dp).toggleable(selectFrequency,enabled=ready,role=Role.Checkbox,onValueChange={selectFrequency=it})) {
-                Checkbox(selectFrequency,null,enabled=ready);Text("Select a frequency band by dragging on the spectrum")
-            }
-            DetailedTimeline(detail,position,start.toLongOrNull(),end.toLongOrNull(),selectFrequency,ready,
-                seek={model.playbackAt(actor,it)}, selectTime={first,last->start=first.toString();end=last.toString();chosen=-1},
-                selectFrequencyBand={low,high->
-                    val value=rack.values["frequency"]?:EffectValue()
-                    update(rack.copy(bandLowHz=low,bandHighHz=high,values=rack.values+("frequency" to EffectValue(true,if(value.strength==0) 100 else value.strength))))
-                    effectCategory="Filters";selectedEffect="frequency";showEffects=true
-                    model.notice("Frequency isolation enabled in draft. Render to apply the selected band.")
-                })
-            Text("Tap to seek; drag to select time. Spectral colors show the strongest channel/bin, not speech certainty or power density. Edge samples and the final incomplete hop have no centered window. Other effects operate across the selected time range, not only within the frequency band.",style=MaterialTheme.typography.bodySmall)
-        }
-        }
-    }
-    Text("Review audio",style=MaterialTheme.typography.headlineSmall)
-    Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Quick enhancement presets") {
         val overviewPeaks=screen.analysis?.optJSONArray("peaks")
         if (overviewPeaks != null && overviewPeaks.length() > 0) {
@@ -504,6 +454,69 @@ private val effectGroups = linkedMapOf(
         OutlinedButton(onClick={render()},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render enhanced revision") }
         TextButton(onClick={model.transcribe(actor,transcript)},enabled=ready) { Text("Transcribe active audio on device") }
     }
+    WorkCard("Inspect a time range") {
+        TextButton(onClick={showDetail=!showDetail}) { Text(if(showDetail) "Hide detailed spectrum" else "Open detailed spectrum") }
+        if (showDetail) {
+        Text("Select a short interval above, then inspect it with consecutive FFT windows. Smaller hops add overlap; larger FFTs improve frequency resolution but use longer time windows.",style=MaterialTheme.typography.bodySmall)
+        Text("FFT size",style=MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            for (n in listOf(256,512,1024,2048)) FilterChip(detailFft==n,{detailFft=n},{Text("$n")},enabled=ready)
+        }
+        Text("Hop size",style=MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            for (divisor in listOf(1,2,4)) FilterChip(detailOverlap==divisor,{detailOverlap=divisor},{Text("${detailFft/divisor} samples")},enabled=ready)
+        }
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            for (window in listOf("hann","hamming")) FilterChip(detailWindow==window,{detailWindow=window},{Text(window.replaceFirstChar{it.uppercase()})},enabled=ready)
+            for (scale in listOf("linear","log")) FilterChip(detailScale==scale,{detailScale=scale},{Text(if(scale=="log") "Log frequency" else "Linear frequency")},enabled=ready)
+        }
+        Text("Display floor",style=MaterialTheme.typography.labelMedium)
+        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            for (db in listOf(-60,-90,-120)) FilterChip(detailFloor==db,{detailFloor=db},{Text("$db dBFS")},enabled=ready)
+        }
+        fun inspect(a:Long,b:Long) {
+            try {
+                require(a>=0 && b>a && b<=duration) { "Choose a valid interval inside the recording" }
+                start=a.toString();end=b.toString();chosen=-1
+                detailError="";detailRequested=true
+                model.inspectSpectrum(actor,DetailSpectrumSettings(a,b,detailFft,detailFft/detailOverlap,detailWindow,detailScale,detailFloor))
+            } catch (failure:Exception) { detailError=failure.message ?: "Choose a valid interval" }
+        }
+        Button(onClick={try{val(a,b)=selection();inspect(a,b)}catch(_:Exception){detailError="Choose a valid interval to inspect"}},enabled=ready) { Text("Inspect selected interval") }
+        if (detailError.isNotBlank()) Text(detailError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+        if (detailRequested && (screen.job == "Inspecting selected spectrum" || screen.failed)) {
+            if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(screen.message,style=MaterialTheme.typography.bodySmall)
+            if (screen.job != null) TextButton(onClick=model::cancel) { Text("Cancel inspection") }
+        }
+        val detail=screen.detailedSpectrum?.takeIf{it.optString("audioArtifactId")==active}
+        if (detail != null) {
+            val actual=detail.getJSONObject("settings");val a=actual.getLong("startMs");val b=actual.getLong("endMs")
+            val sampleRate=actual.getInt("sampleRate");val span=b-a;val center=a+span/2
+            Text("$a–$b ms · ${actual.getInt("fftSize")}-sample ${actual.getString("window")} window · hop ${actual.getInt("hopSize")} · ${actual.getString("scale")} · ${actual.getInt("floorDb")} dBFS floor",style=MaterialTheme.typography.bodySmall)
+            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick={val minimum=(detailFft*1000L/sampleRate+1).coerceAtMost(duration);val size=max(minimum,span/2);val left=(center-size/2).coerceIn(0,(duration-size).coerceAtLeast(0));inspect(left,left+size)},enabled=ready&&span>1) { Text("Zoom in") }
+                OutlinedButton(onClick={val size=min(duration,span*2);val left=(center-size/2).coerceIn(0,(duration-size).coerceAtLeast(0));inspect(left,left+size)},enabled=ready&&span<duration) { Text("Zoom out") }
+                OutlinedButton(onClick={val left=(a-span/2).coerceAtLeast(0);inspect(left,(left+span).coerceAtMost(duration))},enabled=ready&&a>0) { Text("Earlier") }
+                OutlinedButton(onClick={val left=(a+span/2).coerceAtMost((duration-span).coerceAtLeast(0));inspect(left,left+span)},enabled=ready&&b<duration) { Text("Later") }
+            }
+            Row(Modifier.fillMaxWidth().heightIn(min=48.dp).toggleable(selectFrequency,enabled=ready,role=Role.Checkbox,onValueChange={selectFrequency=it})) {
+                Checkbox(selectFrequency,null,enabled=ready);Text("Select a frequency band by dragging on the spectrum")
+            }
+            DetailedTimeline(detail,position,start.toLongOrNull(),end.toLongOrNull(),selectFrequency,ready,
+                seek={model.playbackAt(actor,it)}, selectTime={first,last->start=first.toString();end=last.toString();chosen=-1},
+                selectFrequencyBand={low,high->
+                    val value=rack.values["frequency"]?:EffectValue()
+                    update(rack.copy(bandLowHz=low,bandHighHz=high,values=rack.values+("frequency" to EffectValue(true,if(value.strength==0) 100 else value.strength))))
+                    effectCategory="Filters";selectedEffect="frequency";showEffects=true
+                    model.notice("Frequency isolation enabled in draft. Render to apply the selected band.")
+                })
+            Text("Tap to seek; drag to select time. Spectral colors show the strongest channel/bin, not speech certainty or power density. Edge samples and the final incomplete hop have no centered window. Other effects operate across the selected time range, not only within the frequency band.",style=MaterialTheme.typography.bodySmall)
+        }
+        }
+    }
+    Text("Review audio",style=MaterialTheme.typography.headlineSmall)
+    Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Markers and speech candidates") {
         OutlinedTextField(note,{note=it.take(4000)},label={Text("Examiner note / candidate label")},enabled=ready,modifier=Modifier.fillMaxWidth())
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {

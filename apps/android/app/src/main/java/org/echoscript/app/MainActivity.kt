@@ -246,10 +246,15 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                 ) {
                     for (warning in screen.recoveryWarnings.filterNot { it == INTERRUPTED_AUDIO_SELECTION }) Text(warning, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
                     screen.importName?.let { name ->
-                        if (!screen.audioSelected && tab in listOf("Cases", "Acquire", "Analyze")) Section("Imported recording") { SelectionContainer { Text(name) } }
+                        if (!screen.audioSelected && tab == "Analyze") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Imported recording", style = MaterialTheme.typography.labelSmall)
+                            SelectionContainer { Text(name, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        } else if (!screen.audioSelected && tab in listOf("Cases", "Acquire")) Section("Imported recording") { SelectionContainer { Text(name) } }
                     }
                     if (!screen.audioSelected && screen.pickerNotice == null && (screen.job != null || screen.importPending || screen.message != "Choose a case or import a recording.")) {
-                        StatusCard(screen, model)
+                        if (tab == "Analyze" && !screen.failed && screen.job == null && !screen.importPending)
+                            Text(screen.message, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else StatusCard(screen, model)
                     }
                     val activePlayer = model.player
                     if (activePlayer != null) {

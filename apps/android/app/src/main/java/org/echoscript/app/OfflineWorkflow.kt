@@ -78,6 +78,27 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
     fun savedAnalysis(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? =
         savedAnalysisArtifact(manifest, audio)?.let { readJson(manifest, it, 1024 * 1024) }
 
+    fun savedFullSpectrum(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? {
+        val source = manifest.artifact(audio)
+        val artifact = manifest.items("artifacts").lastOrNull {
+            it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
+                it.getJSONObject("operation").getString("algorithm") == "continuous-overview-stft" &&
+                it.getJSONObject("operation").getString("version") == "1"
+        } ?: return null
+        val result = readJson(manifest, artifact, 1024 * 1024)
+        require(result.getString("audioArtifactId") == audio && result.getString("sourceSha256") == source.getString("sha256")) {
+            "Saved spectrum does not match this audio revision"
+        }
+        val columns = result.getJSONArray("columns")
+        require(columns.length() == 128 && (0 until columns.length()).all { x ->
+            val bands = columns.getJSONArray(x)
+            bands.length() == 32 && (0 until bands.length()).all { y ->
+                val value = bands.getDouble(y); value.isFinite() && value in -100.0..0.0
+            }
+        }) { "Saved spectrum has an invalid display shape" }
+        return result
+    }
+
     fun analyze(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val audio = prepareAudio(manifest, actor, cancelled, progress)
         return analyzePreparedAudio(manifest, actor, audio, cancelled, progress)
@@ -129,6 +150,31 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
                 "Windowing limits time/frequency resolution; the final incomplete hop is not padded."
             ), maxBytes = 4L * 1024 * 1024) { out ->
             if (cancelled()) throw InterruptedException("Spectral inspection cancelled")
+            out.write(EvidenceVault.canonical(payload)); parameters
+        }
+        return payload
+    }
+
+    fun inspectFullSpectrum(manifest: JSONObject, actor: String,
+        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.activeAudio()
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Analyze this audio before scanning its full spectrum" }
+        val result = withWave(manifest, audio) { fullSpectrum(it, cancelled, progress) }
+        val parameters = JSONObject().put("fftSize", 256).put("hopSize", 128).put("window", "Hann")
+            .put("windowDefinition", "symmetric-n-minus-one").put("sampleRate", result.sampleRate).put("channels", result.channels)
+            .put("frames", result.frames).put("windowCount", result.windows).put("timeColumns", 128).put("frequencyBands", 32)
+            .put("scale", "linear").put("floorDb", -100).put("edgePadding", "zero-through-first-hop-center-at-or-after-end")
+            .put("channelCombination", "strongest-channel-per-bin")
+            .put("aggregation", "peak-magnitude-per-band-over-overlapping-window-support")
+            .put("normalization", "window-coherent-gain-onesided-amplitude").put("displayQuantizationDb", 0.1)
+        val payload = JSONObject().put("audioArtifactId", audio.getString("id")).put("sourceSha256", audio.getString("sha256"))
+            .put("settings", parameters).put("columns", JSONArray(result.columns.map { JSONArray(it) }))
+        vault.addDerivative(manifest, actor, "ANALYSIS", listOf(audio.getString("id")), "Full spectral overview.json",
+            "continuous-overview-stft", "1", warnings = listOf(
+                "Coarse peak-magnitude time/frequency bins can smear short events; inspect and listen to the selected range.",
+                "Strongest-channel peaks are not power spectral density or evidence of speech."
+            ), maxBytes = 1024 * 1024) { out ->
+            if (cancelled()) throw InterruptedException("Full spectral overview cancelled")
             out.write(EvidenceVault.canonical(payload)); parameters
         }
         return payload

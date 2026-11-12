@@ -44,6 +44,7 @@ internal data class VaultScreen(
     val message: String = "Opening the encrypted vault…",
     val recoveryWarnings: List<String> = emptyList(),
     val analysis: JSONObject? = null,
+    val fullSpectrum: JSONObject? = null,
     val detailedSpectrum: JSONObject? = null,
     val noiseFloorMeasurement: JSONObject? = null,
     val comparisonAnalysis: JSONObject? = null,
@@ -204,12 +205,13 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     private fun showCase(manifest: JSONObject) {
-        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null, comparisonAnalysis = null, comparisonAudioId = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, comparisonAnalysis = null, comparisonAudioId = null, transcript = null, transcriptRevision = null) }
     }
     private fun restoreWorkspace(manifest: JSONObject) {
         showCase(manifest)
         val overview = workflow.savedAnalysis(manifest)
-        updateState { it.copy(analysis = overview) }
+        val fullSpectrum = workflow.savedFullSpectrum(manifest)
+        updateState { it.copy(analysis = overview, fullSpectrum = fullSpectrum) }
         manifest.latestTranscript()?.let { openTranscript(manifest, it) }
     }
     private fun reportProgress(unit: String): (Long) -> Unit {
@@ -379,6 +381,11 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(detailedSpectrum = spectrum) }
         "Detailed spectrum saved for the selected interval."
     }
+    fun inspectFullSpectrum(actor: String) = runJob("Scanning full recording spectrum") {
+        val result = workflow.inspectFullSpectrum(selected(), actor, cancelled::get, reportProgress("frames scanned"))
+        updateState { it.copy(fullSpectrum = result) }
+        "Full-recording spectral overview saved. Use detailed inspection for finer time and frequency resolution."
+    }
     fun measureNoise(actor: String, startMs: Long, endMs: Long) = runJob("Measuring selected noise floor") {
         val result = workflow.measureNoise(selected(), actor, startMs, endMs, cancelled::get, reportProgress("frames read"))
         updateState { it.copy(noiseFloorMeasurement = result) }
@@ -395,14 +402,14 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         vault.selectRevision(manifest, actor, baseId)
         // A cancelled or failed render may still have selected another revision.
         // Never leave the previous revision's analysis/transcript on that audio.
-        updateState { it.copy(analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         for ((index, settings) in regions.withIndex()) {
             if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
             val completedSettings = settings.copy(workbenchPlan = completedRegionPlan(settings.workbenchPlan, index + 1))
             workflow.enhance(manifest, actor, completedSettings, cancelled::get, reportProgress("frames rendered"))
         }
         val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
-        updateState { it.copy(analysis = overview, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         "Effect plan rendered. Earlier audio and settings remain in revision history."
     }
     fun timelineNote(actor: String, startMs: Long, endMs: Long?, text: String) = runJob("Saving timeline annotation") {
@@ -434,14 +441,15 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     }
     fun enhance(actor: String, settings: RenderSettings) = runJob("Rendering audio revision") {
         val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
-        updateState { it.copy(analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
+        updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
         "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
     }
     fun revision(actor: String, id: String) = runJob("Selecting audio revision") {
         val manifest = selected()
         vault.selectRevision(manifest, actor, id)
         val overview = workflow.savedAnalysis(manifest)
-        updateState { it.copy(analysis = overview, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+        val fullSpectrum = workflow.savedFullSpectrum(manifest)
+        updateState { it.copy(analysis = overview, fullSpectrum = fullSpectrum, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         "Active revision changed. Earlier versions remain in the case."
     }
     fun transcribe(actor: String, completed: () -> Unit = {}) = runJob("Transcribing on this device", completed) {
@@ -456,7 +464,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         runJob("Rendering and transcribing", completed) {
             val manifest = selected()
             workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("units rendered"))
-            updateState { it.copy(analysis = null, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
+            updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
             val artifact = workflow.transcribe(manifest, actor, cancelled::get, reportProgress("units transcribed"))
             openTranscript(manifest, artifact)
             val overview = workflow.savedAnalysis(manifest)
