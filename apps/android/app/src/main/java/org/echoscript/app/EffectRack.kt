@@ -78,6 +78,17 @@ internal data class EffectRack(
         }
     }
 }
+// Intermediate audio revisions must restore only the passes already rendered.
+internal fun completedRegionPlan(plan: String?, completed: Int): String? {
+    if (plan == null) return null
+    val value = JSONObject(plan)
+    val regions = value.getJSONArray("regions")
+    if (regions.length() == 0) return value.toString()
+    require(completed in 1..regions.length())
+    val prefix = JSONArray()
+    for (i in 0 until completed) prefix.put(regions.getJSONObject(i))
+    return value.put("regions", prefix).toString()
+}
 internal val rackPresets = linkedMapOf(
     "Speech band" to EffectRack(mapOf("band" to EffectValue(true, 85), "presence" to EffectValue(true, 12))),
     "Rumble" to EffectRack(mapOf("band" to EffectValue(true, 55))),

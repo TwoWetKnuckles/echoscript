@@ -150,7 +150,8 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
                 val cursor = size.width * position / duration.coerceAtLeast(1)
                 drawLine(Color.White,Offset(cursor,0f),Offset(cursor,size.height),2f)
             }
-            Text("Spectrogram · Hann / FFT 256 · full-file overview (128 time tiles); short events require precise time fields.", modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
+            Text("Spectral overview · up to 128 brief Hann-window snapshots across the file, not continuous. Events between snapshots can be missed; use precise time fields and listen to the recording.", modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
+            Text("Active revision: peak ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("peakDb"))} dBFS · RMS ${"%.1f".format(java.util.Locale.ROOT,analysis.getDouble("rmsDb"))} dBFS · ${analysis.getLong("clippedSamples")} near-full-scale samples. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
         } else OutlinedButton(onClick={model.analyze(actor)},enabled=ready) { Text("Analyze audio") }
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             Button(onClick={model.togglePlayback(actor)},enabled=ready) { Text(if(playing) "Pause" else if(model.player!=null) "Resume" else "Play") }

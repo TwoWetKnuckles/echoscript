@@ -110,6 +110,17 @@ class EffectRackTest {
         assertEquals(100,moved.getJSONObject(2).getInt("startMs"))
         assertThrows(IllegalArgumentException::class.java){moveProcessingRegion(regions,0,3)}
     }
+    @Test fun intermediateRevisionsRestoreOnlyCompletedRegionPasses() {
+        val regions=org.json.JSONArray().put(org.json.JSONObject().put("id","a")).put(org.json.JSONObject().put("id","b"))
+        val original=org.json.JSONObject().put("regions",regions).put("baseId","original").toString()
+        val first=org.json.JSONObject(checkNotNull(completedRegionPlan(original,1)))
+        assertEquals(1,first.getJSONArray("regions").length())
+        assertEquals("a",first.getJSONArray("regions").getJSONObject(0).getString("id"))
+        assertEquals(2,org.json.JSONObject(checkNotNull(completedRegionPlan(original,2))).getJSONArray("regions").length())
+        assertEquals(2,org.json.JSONObject(original).getJSONArray("regions").length())
+        assertNull(completedRegionPlan(null,1))
+        assertThrows(IllegalArgumentException::class.java){completedRegionPlan(original,3)}
+    }
     @Test fun cancellationAndInvalidParametersFailBeforeFalseCompletion() {
         assertThrows(IllegalArgumentException::class.java){EffectValue(true,101)}
         assertThrows(IllegalArgumentException::class.java){EffectRack(mapOf("unknown" to EffectValue()))}

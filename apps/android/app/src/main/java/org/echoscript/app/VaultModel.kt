@@ -267,9 +267,13 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
         val manifest = selected()
         vault.selectRevision(manifest, actor, baseId)
-        for (settings in regions) {
+        // A cancelled or failed render may still have selected another revision.
+        // Never leave the previous revision's analysis/transcript on that audio.
+        updateState { it.copy(analysis = null, transcript = null, transcriptRevision = null) }
+        for ((index, settings) in regions.withIndex()) {
             if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
-            workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("frames rendered"))
+            val completedSettings = settings.copy(workbenchPlan = completedRegionPlan(settings.workbenchPlan, index + 1))
+            workflow.enhance(manifest, actor, completedSettings, cancelled::get, reportProgress("frames rendered"))
         }
         val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
         updateState { it.copy(analysis = overview, transcript = null, transcriptRevision = null) }
@@ -315,7 +319,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         val manifest = selected()
         vault.selectRevision(manifest, actor, id)
         val overview = workflow.savedAnalysis(manifest)
-        updateState { it.copy(analysis = overview) }
+        updateState { it.copy(analysis = overview, transcript = null, transcriptRevision = null) }
         "Active revision changed. Earlier versions remain in the case."
     }
     fun transcribe(actor: String, completed: () -> Unit = {}) = runJob("Transcribing on this device", completed) {

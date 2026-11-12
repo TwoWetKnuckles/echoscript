@@ -32,8 +32,14 @@ class OfflineWorkflowTest {
             assertEquals(artifactCount, case.getJSONArray("artifacts").length())
             assertTrue(analysis.getJSONArray("peaks").length() > 0)
             assertTrue(analysis.getJSONArray("spectrum").length() > 0)
-            val enhanced = workflow.enhance(case, actor, RenderSettings(gainDb = 3.0, highPassHz = 70.0), { false }, {})
+            val settings = if (index == 0) RenderSettings(rack = EffectRack(mapOf("gain" to EffectValue(true, 10))), limit = false)
+                else RenderSettings(gainDb = 3.0, highPassHz = 70.0)
+            val enhanced = workflow.enhance(case, actor, settings, { false }, {})
             assertNotEquals(speechHash, enhanced.getString("sha256"))
+            if (index == 0) {
+                assertEquals("2", enhanced.getJSONObject("operation").getString("version"))
+                assertEquals("bounded-native-effect-rack/2", enhanced.operationParameters().getJSONObject("effectRack").getString("algorithm"))
+            }
             val draft = workflow.transcribe(case, actor, { false }, {})
             val transcript = workflow.readJson(case, draft, 16 * 1024 * 1024)
             assertEquals("vosk-android-local", transcript.getString("provider"))
