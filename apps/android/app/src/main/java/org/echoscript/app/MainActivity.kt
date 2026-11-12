@@ -298,6 +298,15 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                                     }, { Text(mode) }, modifier = Modifier.heightIn(min = 48.dp))
                                 }
                             }
+                            if (BuildConfig.DEBUG) Section("Explore possible plans", "Compare access in this test build. No prices, purchases or subscriptions are active.") {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    for (preview in AccessPreview.entries) FilterChip(model.accessPreview == preview, {
+                                        model.setAccessPreview(preview)
+                                    }, { Text(preview.label) }, enabled = ready, modifier = Modifier.heightIn(min = 48.dp))
+                                }
+                                Text("Free preview includes local import, playback, clipping, basic effects, transcription, history and exports. Premium previews add detailed analysis, advanced effects and multiple processing regions.", style = MaterialTheme.typography.bodySmall)
+                                Text("All tools is the default for evaluating this build. Existing recordings, revisions and exports stay accessible in every preview.", style = MaterialTheme.typography.bodySmall)
+                            }
                             Section("Examiner", "This identifier is supplied locally and recorded with your actions.") {
                                 var draft by rememberSaveable(actor) { mutableStateOf(actor) }
                                 OutlinedTextField(draft, { draft = it.take(128) }, label = { Text("Examiner identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())

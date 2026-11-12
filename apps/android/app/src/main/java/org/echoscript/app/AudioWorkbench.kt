@@ -1,9 +1,11 @@
 package org.echoscript.app
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.gestures.detectDragGestures
 import androidx.compose.foundation.gestures.detectTapGestures
 import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.text.KeyboardOptions
 import androidx.compose.material3.*
@@ -116,6 +118,7 @@ private val effectGroups = linkedMapOf(
     val fullOverview = screen.fullSpectrum?.takeIf {
         it.optString("audioArtifactId") == active && it.optString("sourceSha256") == selected.artifact(active).getString("sha256")
     }
+    fun previewLabel(label: String, capability: PremiumCapability) = if (model.canPreview(capability)) label else "$label · Premium"
     val comparison = screen.comparisonAnalysis?.takeIf { screen.comparisonAudioId == comparisonId }
     LaunchedEffect(model.player,loop,start,end) {
         while (true) {
@@ -286,7 +289,8 @@ private val effectGroups = linkedMapOf(
             Text(if (fullOverview == null) "Spectral overview · up to 128 brief Hann-window snapshots across the file, not continuous. Events between snapshots can be missed."
                 else "Full-recording spectral overview · overlapping windows cover the recording. The 128 time columns and 32 frequency bands show peak magnitudes, so brief sounds can blur; inspect and listen to a selection for detail.",
                 modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
-            OutlinedButton(onClick={model.inspectFullSpectrum(actor)},enabled=ready) { Text(if(fullOverview == null) "Scan full recording spectrum" else "Rescan full recording spectrum") }
+            OutlinedButton(onClick={model.inspectFullSpectrum(actor)},enabled=ready) { Text(previewLabel(if(fullOverview == null) "Scan full recording spectrum" else "Rescan full recording spectrum", PremiumCapability.FULL_SPECTRUM)) }
+            if (!model.canPreview(PremiumCapability.FULL_SPECTRUM)) Text("Premium in this Free preview. Change the preview in Settings to try it.",style=MaterialTheme.typography.bodySmall)
             Text("A full scan reads the complete recording and can take a long time on large files. Keep EchoScript open; you can cancel. Your original is preserved.",style=MaterialTheme.typography.bodySmall)
             if (screen.job == "Scanning full recording spectrum") {
                 LinearProgressIndicator(Modifier.fillMaxWidth()); Text(screen.message,style=MaterialTheme.typography.bodySmall)
@@ -301,7 +305,7 @@ private val effectGroups = linkedMapOf(
         for(a in audioRevisions.takeLast(8)) FilterChip(comparisonId==a.getString("id"),{comparisonId=a.getString("id")},{Text("Revision ${a.getInt("revision")}")},enabled=ready)
         val comparisonRevision = audioRevisions.firstOrNull { it.getString("id") == comparisonId }
         val canCompare = comparisonRevision != null && comparisonRevision.getString("type") in setOf("DECODE","ENHANCED_AUDIO")
-        OutlinedButton(onClick={model.compareAudio(actor,comparisonId)},enabled=ready&&canCompare) { Text("Compare waveform and clipping") }
+        OutlinedButton(onClick={model.compareAudio(actor,comparisonId)},enabled=ready&&canCompare) { Text(previewLabel("Compare waveform and clipping", PremiumCapability.CLIPPING_COMPARISON)) }
         Text("Choose a decoded or enhanced reference to compare peak envelopes and near-full-scale sample counts. Counts include all channels, so different durations or channel counts affect them. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
         if (screen.job == "Comparing audio revisions") {
             LinearProgressIndicator(Modifier.fillMaxWidth()); Text(screen.message,style=MaterialTheme.typography.bodySmall)
@@ -345,31 +349,16 @@ private val effectGroups = linkedMapOf(
             OutlinedButton(onClick={model.togglePlayback(actor)},enabled=ready) { Text(if(playing) "Pause playback" else if(model.player!=null) "Resume playback" else "Play recording") }
         }
         Text("Draft settings only until Render. Tap the selected preset again to remove it and restore prior settings.")
-        FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             for ((name,preset) in rackPresets) FilterChip(selected=presetName==name,onClick={
                 if(presetName==name) { draft=presetBackup; presetName="";presetBackup="" }
                 else { if(presetName.isBlank()) presetBackup=draft; draft=preset.json().toString();presetName=name }
             },label={Text(name)},enabled=ready)
         }
-        Text("For a broadband noise gate, select up to 30 seconds of representative noise above, then measure it. Measurement enables Denoise at its existing nonzero setting, or +50 if it was zero; adjust or disable it before rendering. Speech or other important sounds in the selection may also be attenuated. This is not a spectral noise profile or source separation.",style=MaterialTheme.typography.bodySmall)
-        OutlinedButton(onClick={
-            try { val (a,b)=selection(); noiseError=""; noiseRequested=true; model.measureNoise(actor,a,b) }
-            catch (_:Exception) { noiseError="Choose a valid interval to measure" }
-        },enabled=ready&&screen.analysis!=null) { Text("Measure selected noise floor") }
-        if (noiseError.isNotBlank()) Text(noiseError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
-        if (noiseRequested && (screen.job == "Measuring selected noise floor" || screen.failed)) {
-            if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
-            Text(screen.message,style=MaterialTheme.typography.bodySmall)
-            if (screen.job != null) TextButton(onClick=model::cancel) { Text("Cancel noise measurement") }
-        }
-        if (rack.noiseReference != null) Text("Measured gate threshold: ${"%.1f".format(java.util.Locale.ROOT,rack.noiseThresholdDb)} dBFS. The measurement is saved in this case. Gain and EQ before the gate can change the noise level.",style=MaterialTheme.typography.bodySmall)
-        if (measurement != null && measurement.optJSONObject("reference")?.optString("artifactId") == rack.noiseReference?.artifactId && measurement.optLong("nearFullScaleSamples") > 0) {
-            Text("The measured selection has ${measurement.getLong("nearFullScaleSamples")} near-full-scale samples. Check whether it is representative before applying the gate.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
-        }
         TextButton(onClick={showEffects=!showEffects}) { Text(if(showEffects) "Hide effect controls" else "Effect controls") }
         if(showEffects) {
             Text("Effect groups",style=MaterialTheme.typography.labelMedium)
-            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 for (group in effectGroups.keys) FilterChip(effectCategory==group,{
                     effectCategory=group; selectedEffect=effectSpecs.first { it.id in effectGroups.getValue(group) }.id
                 },{Text(group)},enabled=ready)
@@ -378,10 +367,12 @@ private val effectGroups = linkedMapOf(
             Text(if(enabledEffects.isEmpty()) "No effects enabled" else "Enabled: ${enabledEffects.joinToString(", ")}",style=MaterialTheme.typography.bodySmall)
             val groupEffects=effectSpecs.filter { it.id in effectGroups.getValue(effectCategory) }
             val currentEffect=groupEffects.firstOrNull { it.id == selectedEffect } ?: groupEffects.first()
-            FlowRow(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 for (effect in groupEffects) FilterChip(currentEffect.id==effect.id,{selectedEffect=effect.id},{Text(effect.title)},enabled=ready)
             }
             val spec=currentEffect; val value=rack.values[spec.id]?:EffectValue()
+            if (!model.canPreview(PremiumCapability.ADVANCED_EFFECTS) && PlanPreviewPolicy.renderRequirement(listOf(RenderSettings(rack=rack))) == PremiumCapability.ADVANCED_EFFECTS)
+                Text("The current draft includes Premium effects in this Free preview. Existing audio and exports remain available.",style=MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                 Text(spec.title,modifier=Modifier.weight(1f)); Switch(value.enabled,{update(rack.copy(values=rack.values+(spec.id to value.copy(enabled=it))))},enabled=ready,modifier=Modifier.semantics{contentDescription="${spec.title} enabled"})
             }
@@ -434,9 +425,26 @@ private val effectGroups = linkedMapOf(
             Row { Checkbox(limit,{limit=it},enabled=ready);Text("Soft peak limiter (changes peaks)") }
             TextButton(onClick={update(EffectRack());limit=false},enabled=ready) { Text("Bypass all effects") }
         }
+        Text("For a broadband noise gate, select up to 30 seconds of representative noise above, then measure it. Measurement enables Denoise at its existing nonzero setting, or +50 if it was zero; adjust or disable it before rendering. Speech or other important sounds in the selection may also be attenuated. This is not a spectral noise profile or source separation.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            try { val (a,b)=selection(); noiseError=""; noiseRequested=true; model.measureNoise(actor,a,b) }
+            catch (_:Exception) { noiseError="Choose a valid interval to measure" }
+        },enabled=ready&&screen.analysis!=null) { Text(previewLabel("Measure selected noise floor", PremiumCapability.NOISE_MEASUREMENT)) }
+        if (noiseError.isNotBlank()) Text(noiseError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+        if (noiseRequested && (screen.job == "Measuring selected noise floor" || screen.failed)) {
+            if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(screen.message,style=MaterialTheme.typography.bodySmall)
+            if (screen.job != null) TextButton(onClick=model::cancel) { Text("Cancel noise measurement") }
+        }
+        if (rack.noiseReference != null) Text("Measured gate threshold: ${"%.1f".format(java.util.Locale.ROOT,rack.noiseThresholdDb)} dBFS. The measurement is saved in this case. Gain and EQ before the gate can change the noise level.",style=MaterialTheme.typography.bodySmall)
+        if (measurement != null && measurement.optJSONObject("reference")?.optString("artifactId") == rack.noiseReference?.artifactId && measurement.optLong("nearFullScaleSamples") > 0) {
+            Text("The measured selection has ${measurement.getLong("nearFullScaleSamples")} near-full-scale samples. Check whether it is representative before applying the gate.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+        }
     }
     WorkCard("Ordered processing regions") {
         Text("Without regions, the rack applies to the current selection or entire file. With regions, only saved region settings are rendered in list order; overlaps accumulate. Update a region after changing its rack. Maximum 32 regions.")
+        if (!model.canPreview(PremiumCapability.MULTIPLE_REGIONS) && regions.length() > 1)
+            Text("Rendering multiple regions is Premium in this Free preview. Your existing revisions remain available.",style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={try{val(a,b)=selection();require(regions.length()<32);regions.put(JSONObject().put("startMs",a).put("endMs",b).put("rack",rack.json()));regionsJson=regions.toString();chosen=regions.length()-1}catch(_:Exception){model.notice("Choose a valid interval; maximum 32 regions")}},enabled=ready) { Text("Add selection with these effects") }
         for(i in 0 until regions.length()) {
             val r=regions.getJSONObject(i)
@@ -482,7 +490,7 @@ private val effectGroups = linkedMapOf(
                 model.inspectSpectrum(actor,DetailSpectrumSettings(a,b,detailFft,detailFft/detailOverlap,detailWindow,detailScale,detailFloor))
             } catch (failure:Exception) { detailError=failure.message ?: "Choose a valid interval" }
         }
-        Button(onClick={try{val(a,b)=selection();inspect(a,b)}catch(_:Exception){detailError="Choose a valid interval to inspect"}},enabled=ready) { Text("Inspect selected interval") }
+        Button(onClick={try{val(a,b)=selection();inspect(a,b)}catch(_:Exception){detailError="Choose a valid interval to inspect"}},enabled=ready) { Text(previewLabel("Inspect selected interval", PremiumCapability.DETAIL_SPECTRUM)) }
         if (detailError.isNotBlank()) Text(detailError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
         if (detailRequested && (screen.job == "Inspecting selected spectrum" || screen.failed)) {
             if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())

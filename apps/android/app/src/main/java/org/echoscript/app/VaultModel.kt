@@ -89,7 +89,21 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var exportPassphrase by mutableStateOf("")
     var exportPassphraseConfirmation by mutableStateOf("")
     var trustedCheckpointKey by mutableStateOf("")
+    // Product-design simulation only. Never stored or treated as a purchase.
+    var accessPreview by mutableStateOf(AccessPreview.EVALUATION); private set
     private var workbenchMemory: WorkbenchDraftMemory? = null
+
+    fun setAccessPreview(preview: AccessPreview) {
+        if (!BuildConfig.DEBUG || mutable.value.job != null || mutable.value.importPending) return
+        accessPreview = preview
+        notice("Access preview changed. No purchase or payment is involved.")
+    }
+    fun canPreview(capability: PremiumCapability): Boolean = PlanPreviewPolicy.allows(accessPreview, capability)
+    fun requirePreviewCapability(capability: PremiumCapability): Boolean {
+        if (canPreview(capability)) return true
+        notice("${capability.title} is Premium in the Free preview. Switch previews in Settings; no payment is set up.")
+        return false
+    }
 
     fun recallWorkbenchDraft(caseId: String, revisionId: String): WorkbenchDraftMemory? =
         workbenchMemory?.takeIf { it.caseId == caseId && it.revisionId == revisionId }
@@ -376,41 +390,56 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(analysis = overview, detailedSpectrum = null) }
         "Waveform, spectral overview and candidate speech regions are ready."
     }
-    fun inspectSpectrum(actor: String, settings: DetailSpectrumSettings) = runJob("Inspecting selected spectrum") {
-        val spectrum = workflow.inspectSpectrum(selected(), actor, settings, cancelled::get, reportProgress("frames read"))
-        updateState { it.copy(detailedSpectrum = spectrum) }
-        "Detailed spectrum saved for the selected interval."
-    }
-    fun inspectFullSpectrum(actor: String) = runJob("Scanning full recording spectrum") {
-        val result = workflow.inspectFullSpectrum(selected(), actor, cancelled::get, reportProgress("frames scanned"))
-        updateState { it.copy(fullSpectrum = result) }
-        "Full-recording spectral overview saved. Use detailed inspection for finer time and frequency resolution."
-    }
-    fun measureNoise(actor: String, startMs: Long, endMs: Long) = runJob("Measuring selected noise floor") {
-        val result = workflow.measureNoise(selected(), actor, startMs, endMs, cancelled::get, reportProgress("frames read"))
-        updateState { it.copy(noiseFloorMeasurement = result) }
-        "Noise-floor measurement saved. Review the threshold before rendering."
-    }
-    fun compareAudio(actor: String, audioId: String) = runJob("Comparing audio revisions") {
-        val result = workflow.compareAudio(selected(), actor, audioId, cancelled::get, reportProgress("frames analyzed"))
-        updateState { it.copy(comparisonAnalysis = result, comparisonAudioId = audioId) }
-        "Comparison is ready. Review the overlay and near-full-scale counts."
-    }
-    fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) = runJob("Rendering effect plan", completed) {
-        require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
-        val manifest = selected()
-        vault.selectRevision(manifest, actor, baseId)
-        // A cancelled or failed render may still have selected another revision.
-        // Never leave the previous revision's analysis/transcript on that audio.
-        updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
-        for ((index, settings) in regions.withIndex()) {
-            if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
-            val completedSettings = settings.copy(workbenchPlan = completedRegionPlan(settings.workbenchPlan, index + 1))
-            workflow.enhance(manifest, actor, completedSettings, cancelled::get, reportProgress("frames rendered"))
+    fun inspectSpectrum(actor: String, settings: DetailSpectrumSettings) {
+        if (!requirePreviewCapability(PremiumCapability.DETAIL_SPECTRUM)) return
+        runJob("Inspecting selected spectrum") {
+            val spectrum = workflow.inspectSpectrum(selected(), actor, settings, cancelled::get, reportProgress("frames read"))
+            updateState { it.copy(detailedSpectrum = spectrum) }
+            "Detailed spectrum saved for the selected interval."
         }
-        val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
-        updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
-        "Effect plan rendered. Earlier audio and settings remain in revision history."
+    }
+    fun inspectFullSpectrum(actor: String) {
+        if (!requirePreviewCapability(PremiumCapability.FULL_SPECTRUM)) return
+        runJob("Scanning full recording spectrum") {
+            val result = workflow.inspectFullSpectrum(selected(), actor, cancelled::get, reportProgress("frames scanned"))
+            updateState { it.copy(fullSpectrum = result) }
+            "Full-recording spectral overview saved. Use detailed inspection for finer time and frequency resolution."
+        }
+    }
+    fun measureNoise(actor: String, startMs: Long, endMs: Long) {
+        if (!requirePreviewCapability(PremiumCapability.NOISE_MEASUREMENT)) return
+        runJob("Measuring selected noise floor") {
+            val result = workflow.measureNoise(selected(), actor, startMs, endMs, cancelled::get, reportProgress("frames read"))
+            updateState { it.copy(noiseFloorMeasurement = result) }
+            "Noise-floor measurement saved. Review the threshold before rendering."
+        }
+    }
+    fun compareAudio(actor: String, audioId: String) {
+        if (!requirePreviewCapability(PremiumCapability.CLIPPING_COMPARISON)) return
+        runJob("Comparing audio revisions") {
+            val result = workflow.compareAudio(selected(), actor, audioId, cancelled::get, reportProgress("frames analyzed"))
+            updateState { it.copy(comparisonAnalysis = result, comparisonAudioId = audioId) }
+            "Comparison is ready. Review the overlay and near-full-scale counts."
+        }
+    }
+    fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) {
+        val requirement = PlanPreviewPolicy.renderRequirement(regions)
+        if (requirement != null && !requirePreviewCapability(requirement)) return
+        runJob("Rendering effect plan", completed) {
+            require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
+            val manifest = selected()
+            vault.selectRevision(manifest, actor, baseId)
+            // A failed render can select a new revision; clear stale review data.
+            updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+            for ((index, settings) in regions.withIndex()) {
+                if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
+                val completedSettings = settings.copy(workbenchPlan = completedRegionPlan(settings.workbenchPlan, index + 1))
+                workflow.enhance(manifest, actor, completedSettings, cancelled::get, reportProgress("frames rendered"))
+            }
+            val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
+            updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+            "Effect plan rendered. Earlier audio and settings remain in revision history."
+        }
     }
     fun timelineNote(actor: String, startMs: Long, endMs: Long?, text: String) = runJob("Saving timeline annotation") {
         val manifest = selected()
@@ -439,10 +468,14 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         val p = player
         if (p == null) play(actor) else if (p.isPlaying) p.pause() else p.play()
     }
-    fun enhance(actor: String, settings: RenderSettings) = runJob("Rendering audio revision") {
-        val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
-        updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
-        "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
+    fun enhance(actor: String, settings: RenderSettings) {
+        val requirement = PlanPreviewPolicy.renderRequirement(listOf(settings))
+        if (requirement != null && !requirePreviewCapability(requirement)) return
+        runJob("Rendering audio revision") {
+            val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
+            updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
+            "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
+        }
     }
     fun revision(actor: String, id: String) = runJob("Selecting audio revision") {
         val manifest = selected()
@@ -460,7 +493,9 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(analysis = overview) }
         "Draft transcript saved. Review the words, timestamps and speaker groups."
     }
-    fun renderAndTranscribe(actor: String, settings: RenderSettings, completed: () -> Unit) =
+    fun renderAndTranscribe(actor: String, settings: RenderSettings, completed: () -> Unit) {
+        val requirement = PlanPreviewPolicy.renderRequirement(listOf(settings))
+        if (requirement != null && !requirePreviewCapability(requirement)) return
         runJob("Rendering and transcribing", completed) {
             val manifest = selected()
             workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("units rendered"))
@@ -471,6 +506,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             updateState { it.copy(analysis = overview) }
             "Draft transcript saved. Review the words, timestamps and speaker groups."
         }
+    }
     private fun openTranscript(case: JSONObject, artifact: JSONObject) {
         val transcript = workflow.readTranscript(case, artifact)
         updateState { it.copy(transcript = transcript, transcriptRevision = artifact.getString("id")) }
