@@ -4,6 +4,8 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
+**[Test the file-selection repair](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43184211337/artifacts/13928227300)** — temporary 0.6.0 development package; GitHub sign-in required. Available until November 19, 2026. This package was built from `1ba4de6c8d70bc224845bdc481308811a568f269` and does not include later spectrum or measured-noise work. Its synthetic Android emulator checks passed; the reported Galaxy S22+ behavior still needs a physical-device test. See [test package details and checksums](downloads/README.md).
+
 **[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
 
 Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Material interface defaults to a dark graphite theme with cyan accents. In **Cases**, choose **Load synthetic speech sample** to try the workflow. Import prepares the waveform automatically, and **Render & transcribe** opens the resulting draft for review. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.

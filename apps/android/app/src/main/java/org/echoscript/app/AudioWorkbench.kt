@@ -96,9 +96,11 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     var noiseRequested by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var noiseError by rememberSaveable(screen.selected) { mutableStateOf("") }
     var appliedNoiseMeasurement by rememberSaveable(screen.selected) { mutableStateOf("") }
+    var workbenchLoaded by remember(active) { mutableStateOf(false) }
     val rack = remember(draft) { EffectRack.fromJson(JSONObject(draft)) }
     val regions = JSONArray(regionsJson)
     val duration = screen.analysis?.optLong("durationMs", 0) ?: 0L
+    val comparison = screen.comparisonAnalysis?.takeIf { screen.comparisonAudioId == comparisonId }
     LaunchedEffect(model.player,loop,start,end) {
         while (true) {
             position = model.player?.currentPosition ?: 0; playing = model.player?.isPlaying ?: false
@@ -114,7 +116,16 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     LaunchedEffect(active) {
         // Keep unsaved controls and selections across activity recreation. Only
         // load a stored recipe when the selected audio revision actually changes.
-        if (loadedRevision == active) return@LaunchedEffect
+        val restored = model.recallWorkbenchDraft(selected.getString("caseId"), active)
+        if (restored != null) {
+            draft=restored.draft; regionsJson=restored.regions; baseId=restored.baseId
+            start=restored.start; end=restored.end; chosen=restored.chosen
+            presetBackup=restored.presetBackup; presetName=restored.presetName; limit=restored.limit
+            showEffects=restored.showEffects; appliedNoiseMeasurement=restored.appliedNoiseMeasurement
+            loadedRevision=active; workbenchLoaded=true
+            return@LaunchedEffect
+        }
+        if (loadedRevision == active) { workbenchLoaded=true; return@LaunchedEffect }
         comparisonMode = false; detailRequested = false; detailError = ""; noiseRequested = false; noiseError = ""
         try {
         val parameters = selected.artifact(active).operationParameters()
@@ -134,12 +145,18 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             baseId = active; draft = EffectRack().json().toString(); regionsJson = "[]"; start = ""; end = ""; chosen = -1; selectedEventId = null
             model.notice("This revision has an unsupported effect recipe. Audio is retained; start a new recipe or restore an earlier revision.")
         }
-        loadedRevision = active
+        loadedRevision = active; workbenchLoaded = true
+    }
+    SideEffect {
+        if (workbenchLoaded && loadedRevision == active) model.rememberWorkbenchDraft(WorkbenchDraftMemory(
+            selected.getString("caseId"), active, draft, regionsJson, baseId, start, end, chosen,
+            presetBackup, presetName, limit, showEffects, appliedNoiseMeasurement,
+        ))
     }
     fun update(next: EffectRack) { draft = next.json().toString(); presetName = "" }
     val measurement = screen.noiseFloorMeasurement?.takeIf { it.optString("sourceArtifactId") == active }
-    LaunchedEffect(active, measurement?.optJSONObject("reference")?.optString("artifactId")) {
-        if (measurement != null && measurement.getJSONObject("reference").getString("artifactId") != appliedNoiseMeasurement) {
+    LaunchedEffect(active, loadedRevision, workbenchLoaded, measurement?.optJSONObject("reference")?.optString("artifactId")) {
+        if (workbenchLoaded && loadedRevision == active && measurement != null && measurement.getJSONObject("reference").getString("artifactId") != appliedNoiseMeasurement) {
             val reference = measurement.getJSONObject("reference")
             val current = EffectRack.fromJson(JSONObject(draft))
             val noise = current.values["noise"] ?: EffectValue()
@@ -191,6 +208,13 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
                     }
                 }) }) {
                 val waveHeight = size.height * .4f
+                if (comparison != null && comparison.optLong("durationMs") == duration) {
+                    val referencePeaks = comparison.getJSONArray("peaks")
+                    for (i in 0 until referencePeaks.length()) {
+                        val x = size.width * i / referencePeaks.length(); val y = waveHeight * referencePeaks.getDouble(i).toFloat() / 2
+                        drawLine(Color(0xFFFFB74D), Offset(x, waveHeight / 2 - y), Offset(x, waveHeight / 2 + y), 3f)
+                    }
+                }
                 for (i in 0 until peaks.length()) {
                     val x = size.width * i / peaks.length(); val y = waveHeight * peaks.getDouble(i).toFloat() / 2
                     drawLine(color, Offset(x, waveHeight / 2 - y), Offset(x, waveHeight / 2 + y))
@@ -217,6 +241,18 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
         val audioRevisions=selected.items("artifacts").filter{it.getString("type") in setOf("SOURCE","DECODE","ENHANCED_AUDIO")}
         Text("A/B comparison reference")
         for(a in audioRevisions.takeLast(8)) FilterChip(comparisonId==a.getString("id"),{comparisonId=a.getString("id")},{Text("Revision ${a.getInt("revision")}")},enabled=ready)
+        val comparisonRevision = audioRevisions.firstOrNull { it.getString("id") == comparisonId }
+        val canCompare = comparisonRevision != null && comparisonRevision.getString("type") in setOf("DECODE","ENHANCED_AUDIO")
+        OutlinedButton(onClick={model.compareAudio(actor,comparisonId)},enabled=ready&&canCompare) { Text("Compare waveform and clipping") }
+        Text("Choose a decoded or enhanced reference to compare peak envelopes and near-full-scale sample counts. Counts include all channels, so different durations or channel counts affect them. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
+        if (screen.job == "Comparing audio revisions") {
+            LinearProgressIndicator(Modifier.fillMaxWidth()); Text(screen.message,style=MaterialTheme.typography.bodySmall)
+            TextButton(onClick=model::cancel) { Text("Cancel comparison") }
+        }
+        if (comparison != null && analysis != null) {
+            Text("Reference: ${comparison.getLong("clippedSamples")} near-full-scale samples · active: ${analysis.getLong("clippedSamples")}",modifier=Modifier.testTag("clipping-comparison"),style=MaterialTheme.typography.bodySmall)
+            Text(if(comparison.optLong("durationMs")==duration) "Waveform overlay: reference amber, active theme color. Envelopes summarize peaks, not individual samples." else "Durations differ, so the waveform overlay is hidden. Compare a time-aligned revision.",style=MaterialTheme.typography.bodySmall)
+        }
         OutlinedButton(onClick={
             val reference=comparisonId.ifBlank{audioRevisions.first().getString("id")}
             val time=model.player?.currentPosition?:position
@@ -312,7 +348,7 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Quick enhancement presets") {
         Text("Draft settings only until Render. Tap the selected preset again to remove it and restore prior settings.")
-        Text("For a broadband noise gate, select up to 30 seconds of representative noise above, then measure it. If the selection contains speech or another important sound, the gate may attenuate it. This is not a spectral noise profile or source separation.",style=MaterialTheme.typography.bodySmall)
+        Text("For a broadband noise gate, select up to 30 seconds of representative noise above, then measure it. Measurement enables Denoise at its existing nonzero setting, or +50 if it was zero; adjust or disable it before rendering. Speech or other important sounds in the selection may also be attenuated. This is not a spectral noise profile or source separation.",style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={
             try { val (a,b)=selection(); noiseError=""; noiseRequested=true; model.measureNoise(actor,a,b) }
             catch (_:Exception) { noiseError="Choose a valid interval to measure" }
@@ -324,6 +360,9 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             if (screen.job != null) TextButton(onClick=model::cancel) { Text("Cancel noise measurement") }
         }
         if (rack.noiseReference != null) Text("Measured gate threshold: ${"%.1f".format(java.util.Locale.ROOT,rack.noiseThresholdDb)} dBFS. The measurement is saved in this case. Gain and EQ before the gate can change the noise level.",style=MaterialTheme.typography.bodySmall)
+        if (measurement != null && measurement.optJSONObject("reference")?.optString("artifactId") == rack.noiseReference?.artifactId && measurement.optLong("nearFullScaleSamples") > 0) {
+            Text("The measured selection has ${measurement.getLong("nearFullScaleSamples")} near-full-scale samples. Check whether it is representative before applying the gate.",color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+        }
         for ((name,preset) in rackPresets) FilterChip(selected=presetName==name,onClick={
             if(presetName==name) { draft=presetBackup; presetName="";presetBackup="" }
             else { if(presetName.isBlank()) presetBackup=draft; draft=preset.json().toString();presetName=name }

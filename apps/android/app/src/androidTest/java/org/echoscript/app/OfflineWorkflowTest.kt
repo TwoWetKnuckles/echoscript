@@ -27,6 +27,7 @@ class OfflineWorkflowTest {
             }
             assertEquals(speechHash, case.activeAudio().getString("sha256"))
             val analysis = workflow.analyze(case, actor, { false }, {})
+            val analyzedAudioId = case.activeAudio().getString("id")
             val artifactCount = case.getJSONArray("artifacts").length()
             assertArrayEquals(EvidenceVault.canonical(analysis), EvidenceVault.canonical(checkNotNull(workflow.savedAnalysis(case))))
             assertEquals(artifactCount, case.getJSONArray("artifacts").length())
@@ -39,6 +40,15 @@ class OfflineWorkflowTest {
             if (index == 0) {
                 assertEquals("3", enhanced.getJSONObject("operation").getString("version"))
                 assertEquals("bounded-native-effect-rack/3", enhanced.operationParameters().getJSONObject("effectRack").getString("algorithm"))
+                val beforeComparison = case.getJSONArray("artifacts").length()
+                val referenceOverview = workflow.compareAudio(case, actor, analyzedAudioId, { false }, {})
+                assertArrayEquals(EvidenceVault.canonical(analysis), EvidenceVault.canonical(referenceOverview))
+                assertEquals(beforeComparison, case.getJSONArray("artifacts").length())
+                assertEquals(enhanced.getString("id"), case.activeAudio().getString("id"))
+                val freshComparison = workflow.compareAudio(case, actor, enhanced.getString("id"), { false }, {})
+                assertTrue(freshComparison.has("clippedSamples"))
+                assertEquals(beforeComparison + 1, case.getJSONArray("artifacts").length())
+                assertEquals(enhanced.getString("id"), case.activeAudio().getString("id"))
                 workflow.analyze(case, actor, { false }, {})
                 val speechAnalysis = checkNotNull(workflow.savedAnalysisArtifact(case))
                 workflow.inspectSpectrum(case, actor, DetailSpectrumSettings(200, 1000), { false }, {})

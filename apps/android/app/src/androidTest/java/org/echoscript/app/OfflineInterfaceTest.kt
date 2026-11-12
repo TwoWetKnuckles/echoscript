@@ -262,6 +262,12 @@ class OfflineInterfaceTest {
             assertEquals(noise.getString("id"),rack.getJSONObject("noiseReference").getString("artifactId"))
             assertEquals(noise.getString("sha256"),rack.getJSONObject("noiseReference").getString("sha256"))
             assertEquals(noise.getString("id"),rendered.getJSONArray("parents").getString(1))
+            click("Revision 2")
+            click("Compare waveform and clipping")
+            waitFor("Comparison is ready. Review the overlay and near-full-scale counts.")
+            ui.onNodeWithTag("clipping-comparison").performScrollTo().assertIsDisplayed()
+            saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            assertEquals(rendered.getString("id"),saved.getString("activeArtifact"))
             assertEquals(sourceHash, saved.items("artifacts").first().getString("sha256"))
             assertTrue(vault.verify(saved).contains("agree"))
             val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it).apply { mkdirs() } } ?: context.cacheDir

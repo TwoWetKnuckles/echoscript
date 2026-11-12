@@ -68,19 +68,28 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return checkNotNull(artifact)
     }
 
-    fun savedAnalysisArtifact(manifest: JSONObject): JSONObject? {
-        val audio = manifest.getString("activeArtifact")
+    fun savedAnalysisArtifact(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? {
         return manifest.items("artifacts").lastOrNull {
             it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
                 it.getJSONObject("operation").getString("algorithm") in setOf("bounded-envelope-spectrum-and-speech-candidates", "examiner-speech-region-edit") &&
                 it.getJSONObject("operation").getString("version") == "1"
         }
     }
-    fun savedAnalysis(manifest: JSONObject): JSONObject? =
-        savedAnalysisArtifact(manifest)?.let { readJson(manifest, it, 1024 * 1024) }
+    fun savedAnalysis(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? =
+        savedAnalysisArtifact(manifest, audio)?.let { readJson(manifest, it, 1024 * 1024) }
 
     fun analyze(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val audio = prepareAudio(manifest, actor, cancelled, progress)
+        return analyzePreparedAudio(manifest, actor, audio, cancelled, progress)
+    }
+
+    fun compareAudio(manifest: JSONObject, actor: String, audioId: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.artifact(audioId)
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Choose a decoded or enhanced audio revision to compare" }
+        return savedAnalysis(manifest, audioId) ?: analyzePreparedAudio(manifest, actor, audio, cancelled, progress)
+    }
+
+    private fun analyzePreparedAudio(manifest: JSONObject, actor: String, audio: JSONObject, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val (analysis, format) = withWave(manifest, audio) { overview(it, cancelled, progress) to it.format }
         val payload = JSONObject().put("durationMs", analysis.durationMs).put("peaks", JSONArray(analysis.peaks))
             .put("spectrum", JSONArray(analysis.spectrum.map { JSONArray(it) }))

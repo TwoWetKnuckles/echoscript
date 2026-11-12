@@ -24,6 +24,14 @@ import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false)
+// In-memory workbench controls survive activity recreation without persisting a
+// document URI, audio data, or unsaved control state to shared preferences.
+internal data class WorkbenchDraftMemory(
+    val caseId: String, val revisionId: String, val draft: String, val regions: String,
+    val baseId: String, val start: String, val end: String, val chosen: Int,
+    val presetBackup: String, val presetName: String, val limit: Boolean,
+    val showEffects: Boolean, val appliedNoiseMeasurement: String,
+)
 internal const val INTERRUPTED_AUDIO_SELECTION = "A file selection or import was interrupted. Check Cases for a preserved copy, then choose the recording again if needed."
 
 internal data class VaultScreen(
@@ -36,6 +44,8 @@ internal data class VaultScreen(
     val analysis: JSONObject? = null,
     val detailedSpectrum: JSONObject? = null,
     val noiseFloorMeasurement: JSONObject? = null,
+    val comparisonAnalysis: JSONObject? = null,
+    val comparisonAudioId: String? = null,
     val transcript: JSONObject? = null,
     val transcriptRevision: String? = null,
     val failed: Boolean = false,
@@ -76,6 +86,11 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var exportPassphrase by mutableStateOf("")
     var exportPassphraseConfirmation by mutableStateOf("")
     var trustedCheckpointKey by mutableStateOf("")
+    private var workbenchMemory: WorkbenchDraftMemory? = null
+
+    fun recallWorkbenchDraft(caseId: String, revisionId: String): WorkbenchDraftMemory? =
+        workbenchMemory?.takeIf { it.caseId == caseId && it.revisionId == revisionId }
+    fun rememberWorkbenchDraft(memory: WorkbenchDraftMemory) { workbenchMemory = memory }
 
     fun clearExportSecret() { exportPassphrase = ""; exportPassphraseConfirmation = "" }
 
@@ -187,7 +202,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     private fun showCase(manifest: JSONObject) {
-        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null, comparisonAnalysis = null, comparisonAudioId = null, transcript = null, transcriptRevision = null) }
     }
     private fun restoreWorkspace(manifest: JSONObject) {
         showCase(manifest)
@@ -359,6 +374,11 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         val result = workflow.measureNoise(selected(), actor, startMs, endMs, cancelled::get, reportProgress("frames read"))
         updateState { it.copy(noiseFloorMeasurement = result) }
         "Noise-floor measurement saved. Review the threshold before rendering."
+    }
+    fun compareAudio(actor: String, audioId: String) = runJob("Comparing audio revisions") {
+        val result = workflow.compareAudio(selected(), actor, audioId, cancelled::get, reportProgress("frames analyzed"))
+        updateState { it.copy(comparisonAnalysis = result, comparisonAudioId = audioId) }
+        "Comparison is ready. Review the overlay and near-full-scale counts."
     }
     fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) = runJob("Rendering effect plan", completed) {
         require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
