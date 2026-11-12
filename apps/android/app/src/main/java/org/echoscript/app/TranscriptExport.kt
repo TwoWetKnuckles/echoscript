@@ -2,6 +2,7 @@ package org.echoscript.app
 
 import android.graphics.Paint
 import android.graphics.pdf.PdfDocument
+import org.json.JSONArray
 import org.json.JSONObject
 import java.io.OutputStream
 import java.util.Locale
@@ -12,6 +13,7 @@ internal enum class ExportFormat(val label: String, val extension: String, val m
     PROTECTED_CASE("Protected case package", "echocase.enc", "application/octet-stream", false),
     CASE("Case package", "echocase", "application/zip", false),
     WAV("Active audio WAV", "wav", "audio/wav", false),
+    CHANGELOG("Processing history JSON", "processing-history.json", "application/json", false),
     TXT("Transcript TXT", "txt", "text/plain"),
     JSON("Transcript JSON", "json", "application/json"),
     CSV("Transcript CSV", "csv", "text/csv"),
@@ -37,6 +39,35 @@ private fun timestamped(s: JSONObject): String = "${clock((s.getDouble("start") 
 private fun timing(s: JSONObject, duration: Double) {
     val start = s.getDouble("start"); val end = s.getDouble("end")
     require(start.isFinite() && end.isFinite() && start >= 0 && end > start && end <= duration && flags(s).none { it in setOf("OUT_OF_RANGE", "TIMESTAMP_ANOMALY") }) { "Subtitle or CTM timing is invalid. Review the timestamps or export JSON." }
+}
+
+// Snapshot only: subsequent changes and export events appear in later snapshots.
+internal fun processingHistory(manifest: JSONObject): JSONObject {
+    val audio = manifest.items("artifacts").filter { it.getString("type") in setOf("SOURCE", "DECODE", "ENHANCED_AUDIO") }
+    require(audio.isNotEmpty()) { "No audio revisions to export" }
+    return JSONObject().put("format", "org.echoscript.processing-history/1")
+        .put("caseId", manifest.getString("caseId")).put("activeArtifact", manifest.getString("activeArtifact"))
+        .put("auditEntriesAtSnapshot", manifest.getJSONArray("audit").length())
+        .put("audioRevisions", JSONArray(audio.map { a ->
+            JSONObject().put("id", a.getString("id")).put("type", a.getString("type"))
+                .put("revision", a.getInt("revision")).put("name", a.getString("name"))
+                .put("sha256", a.getString("sha256")).put("parents", JSONArray(a.getJSONArray("parents").toString()))
+                .put("timestampUtc", a.getString("timestampUtc")).put("actor", a.getString("actor"))
+                .put("softwareVersion", a.getString("softwareVersion"))
+                .put("operation", JSONObject(a.getJSONObject("operation").toString()))
+                .put("warnings", JSONArray(a.getJSONArray("warnings").toString()))
+        }))
+}
+
+internal fun exportProcessingHistory(workflow: OfflineWorkflow, vault: EvidenceVault, manifest: JSONObject, actor: String, destination: OutputStream, cancelled: () -> Boolean): String {
+    val parent = manifest.getString("activeArtifact")
+    val snapshot = processingHistory(manifest)
+    val artifact = vault.addDerivative(manifest, actor, "DOCUMENT_EXPORT", listOf(parent), "Processing history.json", "processing-history-snapshot", "1", maxBytes = 32L * 1024 * 1024) { out ->
+        if (cancelled()) throw InterruptedException("Export cancelled")
+        out.write(EvidenceVault.canonical(snapshot))
+        JSONObject().put("format", "org.echoscript.processing-history/1").put("snapshotAudioRevision", parent)
+    }
+    return workflow.exportArtifact(manifest, actor, artifact, destination, cancelled)
 }
 
 internal fun exportDocument(workflow: OfflineWorkflow, vault: EvidenceVault, manifest: JSONObject, actor: String, format: ExportFormat, destination: OutputStream, cancelled: () -> Boolean): String {

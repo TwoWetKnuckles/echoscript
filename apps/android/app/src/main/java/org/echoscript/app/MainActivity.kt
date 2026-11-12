@@ -455,6 +455,8 @@ private fun ExportScreen(model: VaultModel, selected: JSONObject, actor: String,
     Section("Individual and legacy plaintext exports", "Choose an approved protected destination. These exports do not have container encryption. Signed checkpoints, when present, cover their stated historical snapshots.") {
         OutlinedButton(onClick = { export(ExportFormat.CASE) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Case package") }
         OutlinedButton(onClick = { export(ExportFormat.WAV) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Active audio WAV") }
+        OutlinedButton(onClick = { export(ExportFormat.CHANGELOG) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Processing history JSON") }
+        Text("Processing history is a point-in-time snapshot. Export a new one after additional changes; individual exports are not encrypted.", style = MaterialTheme.typography.bodySmall)
         Box {
             OutlinedButton(onClick = { expanded = true }, enabled = ready && acknowledge && selected.latestTranscript() != null, modifier = Modifier.fillMaxWidth()) { Text("Transcript and report formats") }
             DropdownMenu(expanded, onDismissRequest = { expanded = false }) {

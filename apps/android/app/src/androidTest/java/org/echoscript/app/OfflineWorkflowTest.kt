@@ -54,6 +54,15 @@ class OfflineWorkflowTest {
             val jsonHash = exportDocument(workflow, vault, case, actor, ExportFormat.JSON, json) { false }
             assertEquals(EvidenceVault.sha(json.toByteArray()), jsonHash)
             if (index == 0) {
+                val historyOut = ByteArrayOutputStream()
+                val historyHash = exportProcessingHistory(workflow, vault, case, actor, historyOut) { false }
+                assertEquals(EvidenceVault.sha(historyOut.toByteArray()), historyHash)
+                val history = org.json.JSONObject(historyOut.toString("UTF-8"))
+                assertEquals(enhanced.getString("id"), history.getString("activeArtifact"))
+                val enhancedRecord = history.items("audioRevisions").first { it.getString("id") == enhanced.getString("id") }
+                assertEquals(enhanced.getString("sha256"), enhancedRecord.getString("sha256"))
+                assertEquals(enhanced.getJSONObject("operation").toString(), enhancedRecord.getJSONObject("operation").toString())
+                assertTrue(vault.verify(case).contains("agree"))
                 for (format in listOf(ExportFormat.PDF, ExportFormat.DOCX, ExportFormat.XLSX, ExportFormat.SRT)) {
                     val destination = ByteArrayOutputStream()
                     exportDocument(workflow, vault, case, actor, format, destination) { false }

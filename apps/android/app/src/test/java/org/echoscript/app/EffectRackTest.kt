@@ -102,6 +102,14 @@ class EffectRackTest {
         old.remove("paramHz");old.remove("paramQ");old.remove("bandLowHz");old.remove("bandHighHz")
         assertEquals(EffectRack(),EffectRack.fromJson(old))
     }
+    @Test fun regionsCanBeReorderedWithoutChangingOrDiscardingRecipes() {
+        val regions=org.json.JSONArray().put(org.json.JSONObject().put("id","a").put("startMs",100)).put(org.json.JSONObject().put("id","b").put("startMs",200)).put(org.json.JSONObject().put("id","c").put("startMs",300))
+        val moved=moveProcessingRegion(regions,0,2)
+        assertEquals(listOf("b","c","a"),(0 until moved.length()).map{moved.getJSONObject(it).getString("id")})
+        assertEquals("a",regions.getJSONObject(0).getString("id"))
+        assertEquals(100,moved.getJSONObject(2).getInt("startMs"))
+        assertThrows(IllegalArgumentException::class.java){moveProcessingRegion(regions,0,3)}
+    }
     @Test fun cancellationAndInvalidParametersFailBeforeFalseCompletion() {
         assertThrows(IllegalArgumentException::class.java){EffectValue(true,101)}
         assertThrows(IllegalArgumentException::class.java){EffectRack(mapOf("unknown" to EffectValue()))}

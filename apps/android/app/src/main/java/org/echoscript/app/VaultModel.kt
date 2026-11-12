@@ -390,6 +390,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                         ExportFormat.PROTECTED_CASE -> ProtectedTransfer.export(vault, case, actor, output, password, cancelled::get)
                         ExportFormat.CASE -> vault.exportPackage(case, output, actor, cancelled::get)
                         ExportFormat.WAV -> workflow.exportArtifact(case, actor, workflow.prepareAudio(case, actor, cancelled::get, {}), output, cancelled::get)
+                        ExportFormat.CHANGELOG -> exportProcessingHistory(workflow, vault, case, actor, output, cancelled::get)
                         else -> exportDocument(workflow, vault, case, actor, format, output, cancelled::get)
                     }
                 }

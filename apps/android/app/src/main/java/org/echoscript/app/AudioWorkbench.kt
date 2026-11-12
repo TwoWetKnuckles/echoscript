@@ -24,6 +24,13 @@ import org.json.JSONArray
 import org.json.JSONObject
 import kotlin.math.*
 
+internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONArray {
+    require(from in 0 until regions.length() && to in 0 until regions.length())
+    val items = (0 until regions.length()).map { JSONObject(regions.getJSONObject(it).toString()) }.toMutableList()
+    items.add(to, items.removeAt(from))
+    return JSONArray(items)
+}
+
 @Composable private fun WorkCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium); content()
@@ -229,6 +236,10 @@ import kotlin.math.*
         }
         if(chosen in 0 until regions.length()) {
             OutlinedButton(onClick={try{val(a,b)=selection();regions.put(chosen,JSONObject().put("startMs",a).put("endMs",b).put("rack",rack.json()));regionsJson=regions.toString()}catch(_:Exception){model.notice("Invalid region")}},enabled=ready) { Text("Update selected region") }
+            Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                OutlinedButton(onClick={val moved=moveProcessingRegion(regions,chosen,chosen-1);regionsJson=moved.toString();chosen--},enabled=ready&&chosen>0) { Text("Move earlier") }
+                OutlinedButton(onClick={val moved=moveProcessingRegion(regions,chosen,chosen+1);regionsJson=moved.toString();chosen++},enabled=ready&&chosen<regions.length()-1) { Text("Move later") }
+            }
             TextButton(onClick={regions.remove(chosen);regionsJson=regions.toString();chosen=-1},enabled=ready) { Text("Remove selected region") }
         }
         TextButton(onClick={regionsJson="[]";chosen=-1},enabled=ready) { Text("Clear regions") }
