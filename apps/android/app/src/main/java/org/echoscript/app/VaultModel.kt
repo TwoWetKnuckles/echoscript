@@ -243,7 +243,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     }
     fun selectAudio(uri: Uri, title: String) {
         if (mutable.value.job != null || mutable.value.importPending) {
-            notice("Wait for the current operation before choosing another recording.")
+            pickerNotice("Another operation is active. Wait for it to finish, then choose the recording again.")
             return
         }
         val selection = AudioSelection(uri, title, ++selectionSequence)

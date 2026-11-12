@@ -22,8 +22,21 @@ class AudioIntakeTest {
         assertEquals(uri, selectedAudioUri(Intent().apply { clipData = clip }))
         assertEquals(uri, selectedAudioUri(Intent().putExtra(Intent.EXTRA_STREAM, uri)))
         assertEquals(uri, selectedAudioUri(Intent().setData(uri).apply { clipData = clip }))
+        assertEquals(uri, selectedAudioUri(Intent().setData(uri).putExtra(Intent.EXTRA_STREAM, uri).apply { clipData = clip }))
         assertThrows(IllegalArgumentException::class.java) {
             selectedAudioUri(Intent().setData(Uri.parse("content://synthetic.test/document/other")).apply { clipData = clip })
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            selectedAudioUri(Intent().setData(uri).putExtra(Intent.EXTRA_STREAM, Uri.parse("content://synthetic.test/document/other")))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            selectedAudioUri(Intent().putExtra(Intent.EXTRA_STREAM, Uri.parse("content://synthetic.test/document/other")).apply { clipData = clip })
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            selectedAudioUri(Intent().putParcelableArrayListExtra(Intent.EXTRA_STREAM, arrayListOf(uri, Uri.parse("content://synthetic.test/document/second"))))
+        }
+        assertThrows(IllegalArgumentException::class.java) {
+            selectedAudioUri(Intent().putExtra(Intent.EXTRA_STREAM, "not-a-document-uri"))
         }
         clip.addItem(ClipData.Item(Uri.parse("content://synthetic.test/document/second")))
         assertThrows(IllegalArgumentException::class.java) { selectedAudioUri(Intent().apply { clipData = clip }) }
