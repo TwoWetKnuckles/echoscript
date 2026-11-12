@@ -121,6 +121,14 @@ class EffectRackTest {
         assertNull(completedRegionPlan(null,1))
         assertThrows(IllegalArgumentException::class.java){completedRegionPlan(original,3)}
     }
+    @Test fun undoFollowsParentAndRedoOffersRecordedBranches() {
+        fun artifact(id:String,revision:Int,vararg parents:String)=org.json.JSONObject().put("id",id).put("revision",revision).put("parents",org.json.JSONArray(parents.toList()))
+        val revisions=listOf(artifact("a",1),artifact("b",2,"a"),artifact("c",3,"b"),artifact("d",4,"b"))
+        assertEquals("b",audioRevisionParent(revisions,"d"))
+        assertEquals(listOf("c","d"),audioRevisionChildren(revisions,"b").map{it.getString("id")})
+        assertNull(audioRevisionParent(revisions,"a"))
+        assertTrue(audioRevisionChildren(revisions,"missing").isEmpty())
+    }
     @Test fun cancellationAndInvalidParametersFailBeforeFalseCompletion() {
         assertThrows(IllegalArgumentException::class.java){EffectValue(true,101)}
         assertThrows(IllegalArgumentException::class.java){EffectRack(mapOf("unknown" to EffectValue()))}

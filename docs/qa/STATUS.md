@@ -115,3 +115,5 @@ The draft also adds an explicit plaintext processing-history JSON export. It sna
 A follow-up work-in-progress clears displayed analysis and transcript state when a render or revision selection changes the active audio, including when rendering is cancelled after selecting its base. The effect-rack operation version is also being updated for the new adjustable filters. These follow-up changes have not yet been validated in CI.
 
 A draft candidate-adjustment path clones the existing analysis, retains the selected event ID, and saves the edit as a new encrypted analysis revision linked to the prior one; it does not infer a confidence score. The synthetic immutability and boundary tests still require CI validation.
+
+A further draft corrects undo to follow the active audio's recorded parent and exposes saved child revisions as redo branch choices. This corrects chronological-order mistakes after branching; the synthetic branch tests require CI validation.

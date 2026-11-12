@@ -31,6 +31,21 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
     return JSONArray(items)
 }
 
+// Follow the recorded audio parent, not the previous chronological artifact.
+internal fun audioRevisionParent(revisions: List<JSONObject>, currentId: String): String? {
+    val ids = revisions.map { it.getString("id") }.toSet()
+    val current = revisions.firstOrNull { it.getString("id") == currentId } ?: return null
+    val parents = current.getJSONArray("parents")
+    return (0 until parents.length()).map { parents.getString(it) }.firstOrNull { it in ids }
+}
+internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: String): List<JSONObject> {
+    val ids = revisions.map { it.getString("id") }.toSet()
+    return revisions.filter { child ->
+        val parents = child.getJSONArray("parents")
+        (0 until parents.length()).map { parents.getString(it) }.firstOrNull { it in ids } == currentId
+    }
+}
+
 @Composable private fun WorkCard(title: String, content: @Composable ColumnScope.() -> Unit) {
     Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium); content()
@@ -77,6 +92,7 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
         }
     }
     LaunchedEffect(active) {
+        comparisonMode = false
         try {
         val parameters = selected.artifact(active).operationParameters()
         val plan = parameters.optJSONObject("workbenchPlan")
@@ -256,10 +272,13 @@ internal fun moveProcessingRegion(regions: JSONArray, from: Int, to: Int): JSONA
     if(showHistory) WorkCard("Processing changelog") {
         Text("Restore selects an immutable earlier render and its saved recipe. New work branches without deleting later renders. Missing, corrupt or unsupported media may prevent playback/re-render; original and history are retained.")
         val revisions=selected.items("artifacts").filter{it.getString("type") in setOf("SOURCE","DECODE","ENHANCED_AUDIO")}
-        val index=revisions.indexOfFirst{it.getString("id")==active}
-        Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-            OutlinedButton(onClick={model.revision(actor,revisions[index-1].getString("id"))},enabled=ready&&index>0) { Text("Undo") }
-            OutlinedButton(onClick={model.revision(actor,revisions[index+1].getString("id"))},enabled=ready&&index>=0&&index<revisions.lastIndex) { Text("Redo (next saved)") }
+        val parentId=audioRevisionParent(revisions,active)
+        val children=audioRevisionChildren(revisions,active)
+        OutlinedButton(onClick={parentId?.let{model.revision(actor,it)}},enabled=ready&&parentId!=null) { Text("Undo to parent") }
+        if (children.isNotEmpty()) {
+            Text(if (children.size==1) "Redo" else "Choose a saved branch to redo",style=MaterialTheme.typography.labelMedium)
+            for(child in children.takeLast(historyCount)) OutlinedButton(onClick={model.revision(actor,child.getString("id"))},enabled=ready) { Text("Redo revision ${child.getInt("revision")}") }
+            if (children.size>historyCount) TextButton(onClick={historyCount+=15}) { Text("Show earlier branches") }
         }
         for(a in revisions.takeLast(historyCount).asReversed()) {
             Text("Revision ${a.getInt("revision")} · ${a.getString("name")}")
