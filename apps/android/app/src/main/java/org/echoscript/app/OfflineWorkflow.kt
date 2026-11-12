@@ -125,12 +125,51 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return payload
     }
 
+    fun measureNoise(manifest: JSONObject, actor: String, startMs: Long, endMs: Long,
+        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.activeAudio()
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Analyze this audio before measuring noise" }
+        val result = withWave(manifest, audio) { measureNoiseFloor(it, startMs, endMs, cancelled, progress) }
+        val parameters = JSONObject().put("startMs", startMs).put("endMs", endMs).put("startFrame", result.startFrame)
+            .put("endFrame", result.endFrame).put("sampleRate", result.sampleRate)
+            .put("method", "per-channel-rms-strongest-channel").put("gateThresholdDb", result.gateThresholdDb)
+        val payload = JSONObject().put("sourceArtifactId", audio.getString("id")).put("sourceSha256", audio.getString("sha256"))
+            .put("settings", parameters).put("channelRmsDb", JSONArray(result.channelRmsDb))
+            .put("strongestChannel", result.strongestChannel).put("nearFullScaleSamples", result.nearFullScaleSamples)
+            .put("gateThresholdDb", result.gateThresholdDb)
+        val artifact = vault.addDerivative(manifest, actor, "ANALYSIS", listOf(audio.getString("id")), "Noise floor measurement.json",
+            "broadband-noise-floor-estimate", "1", warnings = listOf(
+                "The examiner chose the interval. Speech or other important sounds in it can be attenuated.",
+                "Broadband RMS is only a gate threshold estimate, not a spectral profile or source separation."
+            ), maxBytes = 65536) { out ->
+            if (cancelled()) throw InterruptedException("Noise-floor measurement cancelled")
+            out.write(EvidenceVault.canonical(payload)); parameters
+        }
+        return JSONObject(payload.toString()).put("reference", NoiseFloorReference(artifact.getString("id"), artifact.getString("sha256")).json())
+    }
+
     fun enhance(manifest: JSONObject, actor: String, settings: RenderSettings, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val parent = prepareAudio(manifest, actor, cancelled, progress)
+        val reference = settings.rack?.noiseReference
+        val measurement = reference?.let { ref ->
+            val artifact = manifest.artifact(ref.artifactId)
+            require(artifact.getString("type") == "ANALYSIS" && artifact.getString("sha256") == ref.sha256 &&
+                artifact.getJSONObject("operation").getString("algorithm") == "broadband-noise-floor-estimate" &&
+                artifact.getJSONObject("operation").getString("version") == "1") { "Noise-floor measurement is missing or does not match" }
+            val payload = readJson(manifest, artifact, 65536)
+            val measuredSource = artifact.getJSONArray("parents").getString(0)
+            require(payload.getString("sourceArtifactId") == measuredSource && payload.getString("sourceSha256") == manifest.artifact(measuredSource).getString("sha256")) { "Noise-floor source linkage does not match" }
+            require(kotlin.math.abs(payload.getDouble("gateThresholdDb") - checkNotNull(settings.rack).noiseThresholdDb) < 1e-9) { "Noise-floor threshold differs from its recorded measurement" }
+            artifact
+        }
+        val parents = listOf(parent.getString("id")) + listOfNotNull(measurement?.getString("id"))
         return withWave(manifest, parent) { wave ->
             require(context.filesDir.usableSpace > wave.dataBytes + 16 * 1024 * 1024) { "Insufficient private storage for another audio revision" }
-            vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", listOf(parent.getString("id")), "Enhanced PCM16.wav", if (settings.rack == null) "native-pcm16-iir-enhancement" else "bounded-native-effect-rack", if (settings.rack == null) "1" else "2",
-                warnings = listOf("Enhancement changes a derivative. Retain the original and examine artifacts independently.") + if (settings.rack != null) listOf("Approximate restoration and granular pitch can introduce artifacts/latency. Declip does not recover lost peaks; envelope gating is not source isolation. Time shifts use silence padding.") else emptyList(), active = true) { out ->
+            val warnings = listOf("Enhancement changes a derivative. Retain the original and examine artifacts independently.") +
+                (if (settings.rack != null) listOf("Approximate restoration and granular pitch can introduce artifacts/latency. Declip does not recover lost peaks; envelope gating is not source isolation. Time shifts use silence padding.") else emptyList()) +
+                (if (measurement != null && measurement.getJSONArray("parents").getString(0) != parent.getString("id")) listOf("The measured noise floor came from a different audio revision; review its suitability.") else emptyList())
+            vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", parents, "Enhanced PCM16.wav", if (settings.rack == null) "native-pcm16-iir-enhancement" else "bounded-native-effect-rack", if (settings.rack == null) "1" else "3",
+                warnings = warnings, active = true) { out ->
                 val stats = renderWave(wave, out, settings, cancelled, progress)
                 JSONObject().put("gainDb", settings.gainDb).put("lowDb", settings.lowDb).put("midDb", settings.midDb).put("highDb", settings.highDb)
                     .put("highPassHz", settings.highPassHz).put("lowPassHz", settings.lowPassHz).put("humHz", settings.humHz)

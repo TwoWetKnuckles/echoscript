@@ -37,12 +37,27 @@ class OfflineWorkflowTest {
             val enhanced = workflow.enhance(case, actor, settings, { false }, {})
             assertNotEquals(speechHash, enhanced.getString("sha256"))
             if (index == 0) {
-                assertEquals("2", enhanced.getJSONObject("operation").getString("version"))
-                assertEquals("bounded-native-effect-rack/2", enhanced.operationParameters().getJSONObject("effectRack").getString("algorithm"))
+                assertEquals("3", enhanced.getJSONObject("operation").getString("version"))
+                assertEquals("bounded-native-effect-rack/3", enhanced.operationParameters().getJSONObject("effectRack").getString("algorithm"))
                 workflow.analyze(case, actor, { false }, {})
                 val speechAnalysis = checkNotNull(workflow.savedAnalysisArtifact(case))
                 workflow.inspectSpectrum(case, actor, DetailSpectrumSettings(200, 1000), { false }, {})
                 assertEquals(speechAnalysis.getString("id"), checkNotNull(workflow.savedAnalysisArtifact(case)).getString("id"))
+                val measurement = workflow.measureNoise(case, actor, 200, 1000, { false }, {})
+                assertEquals(speechAnalysis.getString("id"), checkNotNull(workflow.savedAnalysisArtifact(case)).getString("id"))
+                val ref = measurement.getJSONObject("reference")
+                val reference = NoiseFloorReference(ref.getString("artifactId"), ref.getString("sha256"))
+                val threshold = measurement.getDouble("gateThresholdDb")
+                val rack = EffectRack(mapOf("noise" to EffectValue(true, 50)), noiseThresholdDb=threshold, noiseReference=reference)
+                val beforeMismatch = case.getJSONArray("artifacts").length()
+                assertThrows(IllegalArgumentException::class.java) {
+                    workflow.enhance(case, actor, RenderSettings(rack=rack.copy(noiseThresholdDb=if(threshold < -10.0) -10.0 else -90.0)), { false }, {})
+                }
+                assertEquals(beforeMismatch, case.getJSONArray("artifacts").length())
+                assertThrows(IllegalArgumentException::class.java) {
+                    workflow.enhance(case, actor, RenderSettings(rack=rack.copy(noiseReference=reference.copy(sha256="0".repeat(64)))), { false }, {})
+                }
+                assertEquals(beforeMismatch, case.getJSONArray("artifacts").length())
             }
             val draft = workflow.transcribe(case, actor, { false }, {})
             val transcript = workflow.readJson(case, draft, 16 * 1024 * 1024)

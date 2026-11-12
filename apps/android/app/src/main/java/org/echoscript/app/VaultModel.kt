@@ -35,6 +35,7 @@ internal data class VaultScreen(
     val recoveryWarnings: List<String> = emptyList(),
     val analysis: JSONObject? = null,
     val detailedSpectrum: JSONObject? = null,
+    val noiseFloorMeasurement: JSONObject? = null,
     val transcript: JSONObject? = null,
     val transcriptRevision: String? = null,
     val failed: Boolean = false,
@@ -186,7 +187,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     private fun showCase(manifest: JSONObject) {
-        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
     }
     private fun restoreWorkspace(manifest: JSONObject) {
         showCase(manifest)
@@ -354,20 +355,25 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(detailedSpectrum = spectrum) }
         "Detailed spectrum saved for the selected interval."
     }
+    fun measureNoise(actor: String, startMs: Long, endMs: Long) = runJob("Measuring selected noise floor") {
+        val result = workflow.measureNoise(selected(), actor, startMs, endMs, cancelled::get, reportProgress("frames read"))
+        updateState { it.copy(noiseFloorMeasurement = result) }
+        "Noise-floor measurement saved. Review the threshold before rendering."
+    }
     fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) = runJob("Rendering effect plan", completed) {
         require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
         val manifest = selected()
         vault.selectRevision(manifest, actor, baseId)
         // A cancelled or failed render may still have selected another revision.
         // Never leave the previous revision's analysis/transcript on that audio.
-        updateState { it.copy(analysis = null, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         for ((index, settings) in regions.withIndex()) {
             if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
             val completedSettings = settings.copy(workbenchPlan = completedRegionPlan(settings.workbenchPlan, index + 1))
             workflow.enhance(manifest, actor, completedSettings, cancelled::get, reportProgress("frames rendered"))
         }
         val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
-        updateState { it.copy(analysis = overview, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(analysis = overview, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         "Effect plan rendered. Earlier audio and settings remain in revision history."
     }
     fun timelineNote(actor: String, startMs: Long, endMs: Long?, text: String) = runJob("Saving timeline annotation") {
@@ -399,14 +405,14 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     }
     fun enhance(actor: String, settings: RenderSettings) = runJob("Rendering audio revision") {
         val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
-        updateState { it.copy(analysis = null, detailedSpectrum = null) }
+        updateState { it.copy(analysis = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
         "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
     }
     fun revision(actor: String, id: String) = runJob("Selecting audio revision") {
         val manifest = selected()
         vault.selectRevision(manifest, actor, id)
         val overview = workflow.savedAnalysis(manifest)
-        updateState { it.copy(analysis = overview, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
+        updateState { it.copy(analysis = overview, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         "Active revision changed. Earlier versions remain in the case."
     }
     fun transcribe(actor: String, completed: () -> Unit = {}) = runJob("Transcribing on this device", completed) {

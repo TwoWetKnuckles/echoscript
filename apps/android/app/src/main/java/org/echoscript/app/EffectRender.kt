@@ -39,7 +39,7 @@ internal fun renderRack(input: WaveReader, output: OutputStream, settings: Rende
     val delaySize = rate + 16
     val delays = Array(channels) { DoubleArray(delaySize) }; val pitched = Array(channels) { DoubleArray(delaySize) }
     val env = DoubleArray(channels); val samples = DoubleArray(channels)
-    val smoothing = exp(-1.0 / (.015 * rate)); val noiseFloor = 10.0.pow(-45.0 / 20)
+    val smoothing = exp(-1.0 / (.015 * rate)); val noiseFloor = 10.0.pow(rack.noiseThresholdDb / 20)
     val gain = 10.0.pow(rack.amount("gain") * 30 / 20)
     val shift = (rack.amount("shift") * rate / 10).roundToInt()
     val pitchRatio = 2.0.pow(rack.amount("pitch"))

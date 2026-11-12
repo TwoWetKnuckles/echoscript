@@ -76,7 +76,8 @@ internal fun DetailedTimeline(detail: JSONObject, positionMs: Long, startMs: Lon
             }
         }
         .pointerInput(detail, ready, selectBand) {
-            detectDragGestures(onDragStart = { point -> originX = point.x; originY = point.y; lastY = point.y },
+            detectDragGestures(orientationLock = null,
+                onDragStart = { down, _, _ -> originX = down.position.x; originY = down.position.y; lastY = down.position.y },
                 onDrag = { change, _ ->
                     if (ready) {
                         change.consume(); lastY = change.position.y
@@ -84,7 +85,7 @@ internal fun DetailedTimeline(detail: JSONObject, positionMs: Long, startMs: Lon
                         val b = (fromFrame + max(originX, change.position.x).div(size.width).coerceIn(0f, 1f) * span) * 1000 / rate
                         selectTimeNow(a.toLong(), b.toLong())
                     }
-                }, onDragEnd = {
+                }, onDragEnd = { _ ->
                     val waveHeight = size.height * .35f
                     if (ready && selectBand && originY >= waveHeight && lastY >= waveHeight && kotlin.math.abs(originY - lastY) >= 6) {
                         fun frequency(y: Float): Double {

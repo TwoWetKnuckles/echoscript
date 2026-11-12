@@ -227,14 +227,41 @@ class OfflineInterfaceTest {
                 swipe(androidx.compose.ui.geometry.Offset(width * .25f, height * .55f), androidx.compose.ui.geometry.Offset(width * .75f, height * .85f), 600)
             }
             waitFor("Frequency isolation enabled in draft. Render to apply the selected band.")
+            click("Measure selected noise floor")
+            waitFor("Noise-floor measurement saved. Review the threshold before rendering.")
+            ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodesWithText("Measured gate threshold:", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            val firstNoise = saved.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == "broadband-noise-floor-estimate" }
+            ui.onNodeWithText("Noise gate threshold dBFS (−90 to −10)").performScrollTo().performTextReplacement("-30")
+            closeSoftKeyboard()
+            ui.onAllNodesWithText("Measured gate threshold:", substring = true).assertCountEquals(0)
+            ui.activityRule.scenario.recreate()
+            waitFor("Measure selected noise floor")
+            ui.onAllNodesWithText("Measured gate threshold:", substring = true).assertCountEquals(0)
+            ui.onNodeWithText("Noise gate threshold dBFS (−90 to −10)").performScrollTo().assertTextContains("-30")
+            click("Measure selected noise floor")
+            ui.waitUntil(timeoutMillis = 120000) {
+                vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.items("artifacts")
+                    .count { it.getJSONObject("operation").getString("algorithm") == "broadband-noise-floor-estimate" } == 2
+            }
+            ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodesWithText("Measured gate threshold:", substring = true).fetchSemanticsNodes().isNotEmpty() }
+            saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
+            val noise = saved.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == "broadband-noise-floor-estimate" }
+            assertNotEquals(firstNoise.getString("id"), noise.getString("id"))
             click("Render enhanced revision")
             waitFor("Effect plan rendered. Earlier audio and settings remain in revision history.")
             saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
             val rendered = saved.items("artifacts").last { it.getString("type") == "ENHANCED_AUDIO" }
             val params = rendered.operationParameters(); val rack = params.getJSONObject("effectRack")
-            assertTrue(params.getLong("startMs") in 495L..505L); assertTrue(params.getLong("endMs") in 695L..705L)
-            assertTrue(rack.getDouble("bandLowHz") in 1700.0..2000.0); assertTrue(rack.getDouble("bandHighHz") in 5300.0..5700.0)
+            assertTrue("drag start was ${params.getLong("startMs")} ms",params.getLong("startMs") in 495L..505L)
+            assertTrue("drag end was ${params.getLong("endMs")} ms",params.getLong("endMs") in 695L..705L)
+            assertTrue("band low was ${rack.getDouble("bandLowHz")} Hz",rack.getDouble("bandLowHz") in 1700.0..2000.0)
+            assertTrue("band high was ${rack.getDouble("bandHighHz")} Hz",rack.getDouble("bandHighHz") in 5300.0..5700.0)
             assertTrue(rack.getJSONArray("effects").let { effects -> (0 until effects.length()).map(effects::getJSONObject).any { it.getString("id") == "frequency" && it.getBoolean("enabled") } })
+            assertTrue(rack.getJSONArray("effects").let { effects -> (0 until effects.length()).map(effects::getJSONObject).any { it.getString("id") == "noise" && it.getBoolean("enabled") } })
+            assertEquals(noise.getString("id"),rack.getJSONObject("noiseReference").getString("artifactId"))
+            assertEquals(noise.getString("sha256"),rack.getJSONObject("noiseReference").getString("sha256"))
+            assertEquals(noise.getString("id"),rendered.getJSONArray("parents").getString(1))
             assertEquals(sourceHash, saved.items("artifacts").first().getString("sha256"))
             assertTrue(vault.verify(saved).contains("agree"))
             val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it).apply { mkdirs() } } ?: context.cacheDir
@@ -245,6 +272,7 @@ class OfflineInterfaceTest {
             val reopened = archive.inputStream().use { vault.importPackage(it, "SYNTHETIC_QA", archiveHash, { false }, {}) }
             assertTrue(vault.verify(reopened).contains("agree"))
             assertTrue(reopened.items("artifacts").any { it.getJSONObject("operation").getString("algorithm") == "windowed-stft-inspection" })
+            assertTrue(reopened.items("artifacts").any { it.getString("id") == noise.getString("id") && it.getString("sha256") == noise.getString("sha256") })
             assertEquals(sourceHash, reopened.items("artifacts").first().getString("sha256"))
         } finally { assertTrue(File(context.filesDir,"EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively()) }
     }

@@ -60,6 +60,34 @@ class EffectRackTest {
         val restored=render(clipped,mapOf("declip" to EffectValue(true,100)))
         assertEquals(10000,pcm16(restored,44+102*2))
     }
+    @Test fun measuredGateThresholdIsRecordedAndChangesOnlySelectedSamples() {
+        val source=audio { _,_->328 }
+        val reference=NoiseFloorReference("01234567-89ab-4cde-8fab-0123456789ab", "a".repeat(64))
+        val rack=EffectRack(mapOf("noise" to EffectValue(true,100)),noiseThresholdDb=-20.0,noiseReference=reference)
+        assertEquals(rack,EffectRack.fromJson(rack.json()))
+        fun process(settings:EffectRack):ByteArray=ByteArrayOutputStream().also { out ->
+            WaveReader(source.inputStream(),source.size.toLong()).use {
+                renderWave(it,out,RenderSettings(rack=settings,limit=false,startMs=100,endMs=800),{false},{})
+            }
+        }.toByteArray()
+        val selected=process(rack); val normal=process(rack.copy(noiseThresholdDb=-45.0,noiseReference=null))
+        assertEquals(328,pcm16(selected,44+800*2))
+        assertTrue(kotlin.math.abs(pcm16(selected,44+9600*2))<40)
+        assertTrue(kotlin.math.abs(pcm16(normal,44+9600*2))>300)
+        assertEquals(328,pcm16(selected,44+14400*2))
+        assertArrayEquals(selected,process(rack))
+        assertThrows(IllegalArgumentException::class.java){EffectRack(noiseThresholdDb=-100.0)}
+        assertThrows(IllegalArgumentException::class.java){NoiseFloorReference("not-a-uuid", "a".repeat(64))}
+        assertThrows(IllegalArgumentException::class.java){NoiseFloorReference(reference.artifactId,"bad-hash")}
+        for (version in listOf("1","2")) {
+            val old=rack.json().put("algorithm","bounded-native-effect-rack/$version")
+            old.remove("noiseThresholdDb");old.remove("noiseReference")
+            val restored=EffectRack.fromJson(old)
+            assertEquals(-45.0,restored.noiseThresholdDb,0.0);assertNull(restored.noiseReference)
+        }
+        val malformed=rack.json().put("noiseReference","not-an-object")
+        assertThrows(Exception::class.java){EffectRack.fromJson(malformed)}
+    }
     @Test fun granularPitchMovesToneAndKeepsLengthDeterministically() {
         val s=audio(frames=32000){n,_->(3000*sin(2*PI*440*n/16000)).toInt()}
         val effects=mapOf("pitch" to EffectValue(true,100));val r=render(s,effects)

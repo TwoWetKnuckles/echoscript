@@ -64,6 +64,7 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     var draft by rememberSaveable(screen.selected) { mutableStateOf(EffectRack().json().toString()) }
     var regionsJson by rememberSaveable(screen.selected) { mutableStateOf("[]") }
     var baseId by rememberSaveable(screen.selected) { mutableStateOf(active) }
+    var loadedRevision by rememberSaveable(screen.selected) { mutableStateOf("") }
     var start by rememberSaveable(screen.selected) { mutableStateOf("") }
     var end by rememberSaveable(screen.selected) { mutableStateOf("") }
     var chosen by rememberSaveable(screen.selected) { mutableIntStateOf(-1) }
@@ -92,6 +93,9 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     var showDetail by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var detailRequested by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var detailError by rememberSaveable(screen.selected) { mutableStateOf("") }
+    var noiseRequested by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    var noiseError by rememberSaveable(screen.selected) { mutableStateOf("") }
+    var appliedNoiseMeasurement by rememberSaveable(screen.selected) { mutableStateOf("") }
     val rack = remember(draft) { EffectRack.fromJson(JSONObject(draft)) }
     val regions = JSONArray(regionsJson)
     val duration = screen.analysis?.optLong("durationMs", 0) ?: 0L
@@ -105,9 +109,13 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     }
     LaunchedEffect(screen.job) {
         if (screen.job != null && screen.job != "Inspecting selected spectrum") detailRequested = false
+        if (screen.job != null && screen.job != "Measuring selected noise floor") noiseRequested = false
     }
     LaunchedEffect(active) {
-        comparisonMode = false; detailRequested = false; detailError = ""
+        // Keep unsaved controls and selections across activity recreation. Only
+        // load a stored recipe when the selected audio revision actually changes.
+        if (loadedRevision == active) return@LaunchedEffect
+        comparisonMode = false; detailRequested = false; detailError = ""; noiseRequested = false; noiseError = ""
         try {
         val parameters = selected.artifact(active).operationParameters()
         val plan = parameters.optJSONObject("workbenchPlan")
@@ -126,8 +134,22 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             baseId = active; draft = EffectRack().json().toString(); regionsJson = "[]"; start = ""; end = ""; chosen = -1; selectedEventId = null
             model.notice("This revision has an unsupported effect recipe. Audio is retained; start a new recipe or restore an earlier revision.")
         }
+        loadedRevision = active
     }
     fun update(next: EffectRack) { draft = next.json().toString(); presetName = "" }
+    val measurement = screen.noiseFloorMeasurement?.takeIf { it.optString("sourceArtifactId") == active }
+    LaunchedEffect(active, measurement?.optJSONObject("reference")?.optString("artifactId")) {
+        if (measurement != null && measurement.getJSONObject("reference").getString("artifactId") != appliedNoiseMeasurement) {
+            val reference = measurement.getJSONObject("reference")
+            val current = EffectRack.fromJson(JSONObject(draft))
+            val noise = current.values["noise"] ?: EffectValue()
+            update(current.copy(noiseThresholdDb = measurement.getDouble("gateThresholdDb"),
+                noiseReference = NoiseFloorReference(reference.getString("artifactId"), reference.getString("sha256")),
+                values = current.values + ("noise" to EffectValue(true, if (noise.strength == 0) 50 else noise.strength))))
+            appliedNoiseMeasurement = reference.getString("artifactId")
+            showEffects = true
+        }
+    }
     fun selection(): Pair<Long, Long> {
         val a = start.toLong(); val b = end.toLong()
         require(a >= 0 && b > a && b <= duration) { "Choose a valid interval within the recording" }
@@ -160,7 +182,7 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             val selectionStart = start.toLongOrNull(); val selectionEnd = end.toLongOrNull()
             Canvas(Modifier.fillMaxWidth().height(190.dp).testTag("waveform").semantics { contentDescription = "Full recording waveform and spectrogram; use time fields for precise accessible selection" }
                 .pointerInput(duration, ready) { detectTapGestures { point -> if (ready && duration > 0) model.playbackAt(actor, (point.x / size.width * duration).toLong().coerceIn(0, duration)) } }
-                .pointerInput(duration, ready) { detectDragGestures(onDragStart = { dragStart = it.x }, onDrag = { change, _ ->
+                .pointerInput(duration, ready) { detectDragGestures(orientationLock = null, onDragStart = { down, _, _ -> dragStart = down.position.x }, onDrag = { change, _ ->
                     if (ready && duration > 0) {
                         change.consume()
                         val a = (min(dragStart, change.position.x) / size.width * duration).toLong().coerceIn(0, duration)
@@ -290,6 +312,18 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
     Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Quick enhancement presets") {
         Text("Draft settings only until Render. Tap the selected preset again to remove it and restore prior settings.")
+        Text("For a broadband noise gate, select up to 30 seconds of representative noise above, then measure it. If the selection contains speech or another important sound, the gate may attenuate it. This is not a spectral noise profile or source separation.",style=MaterialTheme.typography.bodySmall)
+        OutlinedButton(onClick={
+            try { val (a,b)=selection(); noiseError=""; noiseRequested=true; model.measureNoise(actor,a,b) }
+            catch (_:Exception) { noiseError="Choose a valid interval to measure" }
+        },enabled=ready&&screen.analysis!=null) { Text("Measure selected noise floor") }
+        if (noiseError.isNotBlank()) Text(noiseError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
+        if (noiseRequested && (screen.job == "Measuring selected noise floor" || screen.failed)) {
+            if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
+            Text(screen.message,style=MaterialTheme.typography.bodySmall)
+            if (screen.job != null) TextButton(onClick=model::cancel) { Text("Cancel noise measurement") }
+        }
+        if (rack.noiseReference != null) Text("Measured gate threshold: ${"%.1f".format(java.util.Locale.ROOT,rack.noiseThresholdDb)} dBFS. The measurement is saved in this case. Gain and EQ before the gate can change the noise level.",style=MaterialTheme.typography.bodySmall)
         for ((name,preset) in rackPresets) FilterChip(selected=presetName==name,onClick={
             if(presetName==name) { draft=presetBackup; presetName="";presetBackup="" }
             else { if(presetName.isBlank()) presetBackup=draft; draft=preset.json().toString();presetName=name }
@@ -311,6 +345,8 @@ internal fun audioRevisionChildren(revisions: List<JSONObject>, currentId: Strin
             Numeric(buzz,{buzz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 100.0..20000.0}?.let{n->update(rack.copy(buzzHz=n))}},"Buzz notch Hz (below Nyquist)",ready)
             var echo by remember(rack.echoMs) { mutableStateOf(rack.echoMs.toString()) }
             Numeric(echo,{echo=it;it.toIntOrNull()?.takeIf{n->n in 1..500}?.let{n->update(rack.copy(echoMs=n))}},"Echo delay ms (1–500)",ready)
+            var noiseThreshold by remember(rack.noiseThresholdDb) { mutableStateOf(rack.noiseThresholdDb.toString()) }
+            Numeric(noiseThreshold,{noiseThreshold=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in -90.0..-10.0}?.let{n->update(rack.copy(noiseThresholdDb=n,noiseReference=null))}},"Noise gate threshold dBFS (−90 to −10)",ready,signed=true)
             Text("Frequency values apply when valid. Current: EQ ${rack.paramHz} Hz, Q ${rack.paramQ}; band ${rack.bandLowHz}–${rack.bandHighHz} Hz. All must be below the recording's Nyquist frequency.",style=MaterialTheme.typography.bodySmall)
             var paramHz by remember(rack.paramHz) { mutableStateOf(rack.paramHz.toString()) }
             Numeric(paramHz,{paramHz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 20.0..20000.0}?.let{n->update(rack.copy(paramHz=n))}},"EQ center Hz (20–20000)",ready)

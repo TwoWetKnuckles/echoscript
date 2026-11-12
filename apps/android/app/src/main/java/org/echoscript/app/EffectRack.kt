@@ -18,13 +18,20 @@ internal val effectSpecs = listOf(
     EffectSpec("echo", "Echo compensation", "Positive: add delayed signal. Negative: subtract estimated echo; set delay below."),
     EffectSpec("shift", "Time shift", "−100 to +100 ms · advance / delay, silence padding; duration unchanged"),
     EffectSpec("declip", "Declip", "Positive: short plateau interpolation (≤64 samples). Negative: emphasize residual; lost peaks cannot be recovered."),
-    EffectSpec("noise", "Denoise", "Envelope gate below −45 dBFS. Positive: attenuate up to 24 dB; negative: emphasize removed signal. Not source separation."),
+    EffectSpec("noise", "Denoise", "Adjustable broadband envelope gate. Positive: attenuate up to 24 dB; negative: emphasize removed signal. Not source separation."),
     EffectSpec("pitch", "Pitch shift", "−12 to +12 semitones, two-grain delay crossfade; fixed duration, latency/artifacts possible"),
     EffectSpec("width", "Stereo width", "−100: mono · 0: unchanged · +100: double side level. Stereo only.")
 )
 internal data class EffectValue(val enabled: Boolean = false, val strength: Int = 0) {
     init { require(strength in -100..100) }
     val amount get() = if (enabled) strength / 100.0 else 0.0
+}
+internal data class NoiseFloorReference(val artifactId: String, val sha256: String) {
+    init {
+        require(artifactId.matches(Regex("^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$")))
+        require(sha256.matches(Regex("^[0-9a-f]{64}$")))
+    }
+    fun json() = JSONObject().put("artifactId", artifactId).put("sha256", sha256)
 }
 internal data class EffectRack(
     val values: Map<String, EffectValue> = emptyMap(),
@@ -35,22 +42,26 @@ internal data class EffectRack(
     val paramQ: Double = 1.0,
     val bandLowHz: Double = 100.0,
     val bandHighHz: Double = 3000.0,
+    val noiseThresholdDb: Double = -45.0,
+    val noiseReference: NoiseFloorReference? = null,
 ) {
     init {
         require(values.keys.all { key -> effectSpecs.any { it.id == key } })
         require(humHz in setOf(50, 60) && buzzHz.isFinite() && buzzHz in 100.0..20000.0 && echoMs in 1..500)
         require(paramHz.isFinite() && paramHz in 20.0..20000.0 && paramQ.isFinite() && paramQ in .1..20.0)
         require(bandLowHz.isFinite() && bandHighHz.isFinite() && bandLowHz >= 20 && bandHighHz <= 20000 && bandLowHz < bandHighHz)
+        require(noiseThresholdDb.isFinite() && noiseThresholdDb in -90.0..-10.0)
     }
     fun amount(id: String) = values[id]?.amount ?: 0.0
-    fun json(): JSONObject = JSONObject().put("algorithm", "bounded-native-effect-rack/2")
+    fun json(): JSONObject = JSONObject().put("algorithm", "bounded-native-effect-rack/3")
         .put("humHz", humHz).put("buzzHz", buzzHz).put("echoMs", echoMs)
         .put("paramHz", paramHz).put("paramQ", paramQ).put("bandLowHz", bandLowHz).put("bandHighHz", bandHighHz)
+        .put("noiseThresholdDb", noiseThresholdDb).put("noiseReference", noiseReference?.json() ?: JSONObject.NULL)
         .put("mapping", JSONObject().put("gainDb", amount("gain") * 30)
             .put("lowEqDb", amount("bass") * 18).put("midEqDb", amount("presence") * 18).put("highEqDb", amount("treble") * 18)
             .put("parametricEqDb", amount("parametric") * 18).put("frequencyBandHz", JSONArray(listOf(bandLowHz, bandHighHz)))
             .put("timeShiftMs", amount("shift") * 100).put("pitchSemitones", amount("pitch") * 12)
-            .put("stereoSideMultiplier", 1 + amount("width")).put("gateThresholdDbFS", -45)
+            .put("stereoSideMultiplier", 1 + amount("width")).put("gateThresholdDbFS", noiseThresholdDb)
             .put("gateMaxAttenuationDb", kotlin.math.abs(amount("noise")) * 24)
             .put("speechBandHz", JSONArray(listOf(100,4000))).put("humHarmonics",4)
             .put("buzzQ",25).put("echoMix",amount("echo")*.8))
@@ -61,7 +72,8 @@ internal data class EffectRack(
         }))
     companion object {
         fun fromJson(json: JSONObject): EffectRack {
-            require(json.getString("algorithm") in setOf("bounded-native-effect-rack/1", "bounded-native-effect-rack/2"))
+            val algorithm = json.getString("algorithm")
+            require(algorithm in setOf("bounded-native-effect-rack/1", "bounded-native-effect-rack/2", "bounded-native-effect-rack/3"))
             val effects = json.getJSONArray("effects")
             require(effects.length() <= effectSpecs.size)
             val values = mutableMapOf<String, EffectValue>()
@@ -72,9 +84,16 @@ internal data class EffectRack(
                 val value = EffectValue(e.getBoolean("enabled"), e.getInt("strength"))
                 if (value != EffectValue()) values[id] = value
             }
+            val reference = if (algorithm.endsWith("/3")) {
+                require(json.has("noiseReference"))
+                if (json.isNull("noiseReference")) null else json.getJSONObject("noiseReference").let {
+                    NoiseFloorReference(it.getString("artifactId"), it.getString("sha256"))
+                }
+            } else null
             return EffectRack(values, json.getInt("humHz"), json.getDouble("buzzHz"), json.getInt("echoMs"),
                 json.optDouble("paramHz", 1000.0), json.optDouble("paramQ", 1.0),
-                json.optDouble("bandLowHz", 100.0), json.optDouble("bandHighHz", 3000.0))
+                json.optDouble("bandLowHz", 100.0), json.optDouble("bandHighHz", 3000.0),
+                if (algorithm.endsWith("/3")) json.getDouble("noiseThresholdDb") else -45.0, reference)
         }
     }
 }

@@ -21,11 +21,13 @@ Every effect has an enable switch, integer slider and numerical input from −10
 | Echo                   | Signed delayed feed-forward mix, up to 0.8 amplitude; 1–500 ms editable delay                                                      |
 | Time shift             | ±100 ms; advance/delay with silence padding, unchanged duration                                                                    |
 | Declip                 | Interpolates short saturated runs with unclipped endpoints within 32 samples each side; negative emphasizes interpolation residual |
-| Denoise                | Envelope gate below −45 dBFS, up to 24 dB attenuation; negative emphasizes removed signal                                          |
+| Denoise                | Broadband envelope gate with an adjustable −90 to −10 dBFS threshold (default −45); up to 24 dB attenuation. Negative emphasizes removed signal. |
 | Pitch                  | ±12 semitones using two-grain delay crossfade; fixed duration with possible latency/transient artifacts                            |
 | Stereo width           | Mid/side, zero to double side level; exactly two channels required                                                                 |
 
 These are transparent preliminary techniques, not universal standards presets or certified enhancement. Denoise is an envelope gate, not speech/source isolation. Delay subtraction is approximate echo/room compensation, not blind acoustic reconstruction. Interpolation cannot recover lost waveform peaks. Pitch, stereo processing and filtering can change perception or remove relevant content. Retain and compare originals and intermediate uncompressed renders.
+
+For a draft measured noise-floor setting, select up to 30 seconds of representative noise and choose **Measure selected noise floor**. The app measures broadband RMS independently on each channel, proposes the strongest channel's level as the gate threshold, and limits that threshold to −90 through −10 dBFS. It saves the measurement, interval, source hash and per-channel levels as an encrypted analysis artifact. A render using that threshold records the measurement as a parent; entering a manual threshold removes the measurement reference. Check the selection carefully: speech or other meaningful sounds in it may also be attenuated. Gain, EQ and other earlier effects can change the level reaching the gate. This is an amplitude threshold estimate, not a spectral noise profile. Synthetic and device validation of this draft remain pending.
 
 [SWGDE Best Practices for Enhancement of Digital Audio](https://www.swgde.org/documents/published-complete-listing/20-a-001-2/) recommends signal-specific evaluation, repeatable processing documentation and input/output comparison rather than a universal preset. No compliance or admissibility claim is made.
 
