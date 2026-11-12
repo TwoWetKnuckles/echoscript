@@ -12,6 +12,8 @@ internal fun renderRack(input: WaveReader, output: OutputStream, settings: Rende
     require(start >= 0 && start < end && end <= input.frames) { "Region exceeds the recording" }
     require(rack.amount("width") == 0.0 || channels == 2) { "Stereo width requires exactly two channels" }
     require(rack.amount("buzz") == 0.0 || rack.buzzHz < rate / 2.0) { "Buzz frequency must be below Nyquist" }
+    require(rack.amount("parametric") == 0.0 || rack.paramHz < rate / 2.0) { "EQ frequency must be below Nyquist" }
+    require(rack.amount("frequency") == 0.0 || rack.bandHighHz < rate / 2.0) { "Band frequencies must be below Nyquist" }
     val capacity = rate / 4 + 512
     val source = Array(channels) { DoubleArray(capacity) }
     val inBytes = ByteArray(PCM_BLOCK_BYTES); var inCount = 0; var inOffset = 0; var loaded = 0L
@@ -29,6 +31,8 @@ internal fun renderRack(input: WaveReader, output: OutputStream, settings: Rende
     }
     fun eq(cut: Double, db: Double) = List(channels) { if (db == 0.0) null else filter("peak", min(cut, rate * .4), .75, rate, db) }
     val bass = eq(180.0, rack.amount("bass") * 18); val mid = eq(1000.0, rack.amount("presence") * 18); val high = eq(4000.0, rack.amount("treble") * 18)
+    val parametric = List(channels) { if (rack.amount("parametric") == 0.0) null else filter("peak", rack.paramHz, rack.paramQ, rate, rack.amount("parametric") * 18) }
+    val frequency = List(channels) { if (rack.amount("frequency") == 0.0) emptyList() else listOf(filter("high", rack.bandLowHz, .7071, rate), filter("low", rack.bandHighHz, .7071, rate)) }
     val band = List(channels) { listOf(filter("high", 100.0, .7071, rate), filter("low", min(4000.0, rate * .4), .7071, rate)) }
     val hum = List(channels) { (1..4).map { filter("notch", rack.humHz * it.toDouble(), 28.0, rate) } }
     val buzz = List(channels) { if (rack.buzzHz < rate / 2.0) filter("notch", rack.buzzHz, 25.0, rate) else null }
@@ -64,7 +68,10 @@ internal fun renderRack(input: WaveReader, output: OutputStream, settings: Rende
             }
             x *= gain
             x = bass[c]?.next(x) ?: x; x = mid[c]?.next(x) ?: x; x = high[c]?.next(x) ?: x
-            var filtered = x; for (q in band[c]) filtered = q.next(filtered)
+            x = parametric[c]?.next(x) ?: x
+            var filtered = x; for (q in frequency[c]) filtered = q.next(filtered)
+            x += rack.amount("frequency") * (filtered - x)
+            filtered = x; for (q in band[c]) filtered = q.next(filtered)
             x += rack.amount("band") * (filtered - x)
             filtered = x; for (q in hum[c]) filtered = q.next(filtered)
             x += rack.amount("hum") * (filtered - x)

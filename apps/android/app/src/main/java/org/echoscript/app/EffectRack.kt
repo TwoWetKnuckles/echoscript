@@ -9,6 +9,8 @@ internal val effectSpecs = listOf(
     EffectSpec("bass", "Low frequency EQ", "180 Hz · −18 to +18 dB"),
     EffectSpec("presence", "Speech frequency EQ", "1 kHz · −18 to +18 dB"),
     EffectSpec("treble", "High frequency EQ", "Up to 4 kHz · −18 to +18 dB"),
+    EffectSpec("parametric", "Parametric EQ", "Adjustable center and Q · −18 to +18 dB"),
+    EffectSpec("frequency", "Selected frequency band", "Positive: isolate adjustable band. Negative: emphasize frequencies outside it."),
     EffectSpec("band", "Speech band / rumble", "Positive: blend 100–4000 Hz band. Negative: emphasize removed frequencies."),
     EffectSpec("hum", "Low hum isolation", "50 or 60 Hz and first four harmonics. Positive: remove; negative: emphasize residue."),
     EffectSpec("buzz", "High buzz isolation", "Adjustable tonal notch. Positive: remove; negative: emphasize residue."),
@@ -29,40 +31,50 @@ internal data class EffectRack(
     val humHz: Int = 60,
     val buzzHz: Double = 4000.0,
     val echoMs: Int = 120,
+    val paramHz: Double = 1000.0,
+    val paramQ: Double = 1.0,
+    val bandLowHz: Double = 100.0,
+    val bandHighHz: Double = 3000.0,
 ) {
     init {
         require(values.keys.all { key -> effectSpecs.any { it.id == key } })
         require(humHz in setOf(50, 60) && buzzHz.isFinite() && buzzHz in 100.0..20000.0 && echoMs in 1..500)
+        require(paramHz.isFinite() && paramHz in 20.0..20000.0 && paramQ.isFinite() && paramQ in .1..20.0)
+        require(bandLowHz.isFinite() && bandHighHz.isFinite() && bandLowHz >= 20 && bandHighHz <= 20000 && bandLowHz < bandHighHz)
     }
     fun amount(id: String) = values[id]?.amount ?: 0.0
-    fun json(): JSONObject = JSONObject().put("algorithm", "bounded-native-effect-rack/1")
+    fun json(): JSONObject = JSONObject().put("algorithm", "bounded-native-effect-rack/2")
         .put("humHz", humHz).put("buzzHz", buzzHz).put("echoMs", echoMs)
+        .put("paramHz", paramHz).put("paramQ", paramQ).put("bandLowHz", bandLowHz).put("bandHighHz", bandHighHz)
         .put("mapping", JSONObject().put("gainDb", amount("gain") * 30)
             .put("lowEqDb", amount("bass") * 18).put("midEqDb", amount("presence") * 18).put("highEqDb", amount("treble") * 18)
+            .put("parametricEqDb", amount("parametric") * 18).put("frequencyBandHz", JSONArray(listOf(bandLowHz, bandHighHz)))
             .put("timeShiftMs", amount("shift") * 100).put("pitchSemitones", amount("pitch") * 12)
             .put("stereoSideMultiplier", 1 + amount("width")).put("gateThresholdDbFS", -45)
             .put("gateMaxAttenuationDb", kotlin.math.abs(amount("noise")) * 24)
             .put("speechBandHz", JSONArray(listOf(100,4000))).put("humHarmonics",4)
             .put("buzzQ",25).put("echoMix",amount("echo")*.8))
-        .put("order", JSONArray(listOf("shift", "declip", "gain", "bass", "presence", "treble", "band", "hum", "buzz", "room", "echo", "noise", "pitch", "width", "optional-limiter")))
+        .put("order", JSONArray(listOf("shift", "declip", "gain", "bass", "presence", "treble", "parametric", "frequency", "band", "hum", "buzz", "room", "echo", "noise", "pitch", "width", "optional-limiter")))
         .put("effects", JSONArray(effectSpecs.map { spec ->
             val value = values[spec.id] ?: EffectValue()
             JSONObject().put("id", spec.id).put("enabled", value.enabled).put("strength", value.strength)
         }))
     companion object {
         fun fromJson(json: JSONObject): EffectRack {
-            require(json.getString("algorithm") == "bounded-native-effect-rack/1")
+            require(json.getString("algorithm") in setOf("bounded-native-effect-rack/1", "bounded-native-effect-rack/2"))
             val effects = json.getJSONArray("effects")
             require(effects.length() <= effectSpecs.size)
             val values = mutableMapOf<String, EffectValue>()
             val seen = mutableSetOf<String>()
             for (i in 0 until effects.length()) {
                 val e = effects.getJSONObject(i); val id = e.getString("id")
-                require(seen.add(id))
+                require(effectSpecs.any { it.id == id } && seen.add(id))
                 val value = EffectValue(e.getBoolean("enabled"), e.getInt("strength"))
                 if (value != EffectValue()) values[id] = value
             }
-            return EffectRack(values, json.getInt("humHz"), json.getDouble("buzzHz"), json.getInt("echoMs"))
+            return EffectRack(values, json.getInt("humHz"), json.getDouble("buzzHz"), json.getInt("echoMs"),
+                json.optDouble("paramHz", 1000.0), json.optDouble("paramQ", 1.0),
+                json.optDouble("bandLowHz", 100.0), json.optDouble("bandHighHz", 3000.0))
         }
     }
 }

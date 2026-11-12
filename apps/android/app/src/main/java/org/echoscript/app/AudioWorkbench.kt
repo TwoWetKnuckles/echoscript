@@ -29,9 +29,9 @@ import kotlin.math.*
         Text(title, style = MaterialTheme.typography.titleMedium); content()
     } }
 }
-@Composable private fun Numeric(value: String, change: (String) -> Unit, label: String, enabled: Boolean) {
+@Composable private fun Numeric(value: String, change: (String) -> Unit, label: String, enabled: Boolean, signed: Boolean = false) {
     OutlinedTextField(value, change, label = { Text(label) }, enabled = enabled, singleLine = true,
-        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
+        keyboardOptions = KeyboardOptions(keyboardType = if (signed) KeyboardType.Text else KeyboardType.Decimal), modifier = Modifier.fillMaxWidth())
 }
 
 @Composable internal fun AudioWorkbench(model: VaultModel, screen: VaultScreen, selected: JSONObject, actor: String, ready: Boolean, transcript: () -> Unit) {
@@ -51,6 +51,7 @@ import kotlin.math.*
     var position by remember { mutableLongStateOf(0) }
     var playing by remember { mutableStateOf(false) }
     var seek by remember { mutableFloatStateOf(0f) }
+    var scrubbing by remember { mutableStateOf(false) }
     var loop by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var note by remember { mutableStateOf("") }
     var comparisonId by rememberSaveable(screen.selected) { mutableStateOf("") }
@@ -161,7 +162,7 @@ import kotlin.math.*
             model.play(actor,next,time/1000.0)
         },enabled=ready) { Text(if(comparisonMode) "A/B: hear active render" else "A/B: hear reference") }
         Text("A/B seeks the same millisecond position. Pitch/echo/time-shift processing can alter alignment.",style=MaterialTheme.typography.bodySmall)
-        Slider(value=if(playing) position.toFloat().coerceIn(0f,duration.coerceAtLeast(1).toFloat()) else seek.coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={seek=it},onValueChangeFinished={model.playbackAt(actor,seek.toLong())},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=ready&&duration>0,modifier=Modifier.semantics { contentDescription="Playback position" })
+        Slider(value=(if(scrubbing) seek else position.toFloat()).coerceIn(0f,duration.coerceAtLeast(1).toFloat()),onValueChange={seek=it;scrubbing=true},onValueChangeFinished={model.playbackAt(actor,seek.toLong());scrubbing=false},valueRange=0f..duration.coerceAtLeast(1).toFloat(),enabled=ready&&duration>0,modifier=Modifier.semantics { contentDescription="Playback position" })
         Numeric(start,{start=it},"Selection start ms",ready); Numeric(end,{end=it},"Selection end ms",ready)
         TextButton(onClick={start="";end="";chosen=-1},enabled=ready) { Text("Use entire recording") }
         OutlinedButton(onClick={render(trim=true)},enabled=ready&&start.isNotBlank()&&end.isNotBlank()) { Text("Create clip from selection") }
@@ -199,13 +200,22 @@ import kotlin.math.*
                 Text(spec.description,style=MaterialTheme.typography.bodySmall)
                 Slider(value=value.strength.toFloat(),onValueChange={update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it.roundToInt()))))},valueRange=-100f..100f,steps=199,enabled=ready&&value.enabled,modifier=Modifier.semantics{contentDescription="${spec.title} strength"})
                 var number by remember(draft,spec.id) { mutableStateOf(value.strength.toString()) }
-                Numeric(number,{text->number=text;text.toIntOrNull()?.takeIf{it in -100..100}?.let{update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it))))}},"${spec.title} strength (−100 to 100)",ready&&value.enabled)
+                Numeric(number,{text->number=text;text.toIntOrNull()?.takeIf{it in -100..100}?.let{update(rack.copy(values=rack.values+(spec.id to value.copy(strength=it))))}},"${spec.title} strength (−100 to 100)",ready&&value.enabled,signed=true)
             }
             Row { for(hz in listOf(50,60)) FilterChip(rack.humHz==hz,{update(rack.copy(humHz=hz))},{Text("$hz Hz")},enabled=ready) }
             var buzz by remember(rack.buzzHz) { mutableStateOf(rack.buzzHz.toString()) }
             Numeric(buzz,{buzz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 100.0..20000.0}?.let{n->update(rack.copy(buzzHz=n))}},"Buzz notch Hz (below Nyquist)",ready)
             var echo by remember(rack.echoMs) { mutableStateOf(rack.echoMs.toString()) }
             Numeric(echo,{echo=it;it.toIntOrNull()?.takeIf{n->n in 1..500}?.let{n->update(rack.copy(echoMs=n))}},"Echo delay ms (1–500)",ready)
+            Text("Frequency values apply when valid. Current: EQ ${rack.paramHz} Hz, Q ${rack.paramQ}; band ${rack.bandLowHz}–${rack.bandHighHz} Hz. All must be below the recording's Nyquist frequency.",style=MaterialTheme.typography.bodySmall)
+            var paramHz by remember(rack.paramHz) { mutableStateOf(rack.paramHz.toString()) }
+            Numeric(paramHz,{paramHz=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in 20.0..20000.0}?.let{n->update(rack.copy(paramHz=n))}},"EQ center Hz (20–20000)",ready)
+            var paramQ by remember(rack.paramQ) { mutableStateOf(rack.paramQ.toString()) }
+            Numeric(paramQ,{paramQ=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n in .1..20.0}?.let{n->update(rack.copy(paramQ=n))}},"EQ Q (0.1–20)",ready)
+            var bandLow by remember(rack.bandLowHz) { mutableStateOf(rack.bandLowHz.toString()) }
+            Numeric(bandLow,{bandLow=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n>=20&&n<rack.bandHighHz}?.let{n->update(rack.copy(bandLowHz=n))}},"Band low Hz",ready)
+            var bandHigh by remember(rack.bandHighHz) { mutableStateOf(rack.bandHighHz.toString()) }
+            Numeric(bandHigh,{bandHigh=it;it.toDoubleOrNull()?.takeIf{n->n.isFinite()&&n>rack.bandLowHz&&n<=20000}?.let{n->update(rack.copy(bandHighHz=n))}},"Band high Hz",ready)
             Row { Checkbox(limit,{limit=it},enabled=ready);Text("Soft peak limiter (changes peaks)") }
             TextButton(onClick={update(EffectRack());limit=false},enabled=ready) { Text("Bypass all effects") }
         }

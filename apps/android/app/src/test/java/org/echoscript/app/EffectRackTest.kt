@@ -75,9 +75,38 @@ class EffectRackTest {
         assertTrue("Expected octave-up spectral peak, got $dominant Hz", abs(dominant-880)<=25)
         assertTrue(amplitude(dominant)>amplitude(440)*3)
     }
+    @Test fun adjustableEqAndBandAreMeasuredAndRecipesRoundTrip() {
+        val source=audio(frames=32000){n,_->(2500*sin(2*PI*500*n/16000)+2500*sin(2*PI*3000*n/16000)).toInt()}
+        fun process(rack:EffectRack): ByteArray = ByteArrayOutputStream().also { out ->
+            WaveReader(source.inputStream(),source.size.toLong()).use { renderWave(it,out,RenderSettings(rack=rack,limit=false,startMs=250,endMs=1750),{false},{}) }
+        }.toByteArray()
+        fun amplitude(bytes:ByteArray,hz:Int):Double {
+            val re=(8000 until 24000).sumOf{n->pcm16(bytes,44+2*n)*cos(2*PI*hz*n/16000)}
+            val im=(8000 until 24000).sumOf{n->pcm16(bytes,44+2*n)*sin(2*PI*hz*n/16000)}
+            return hypot(re,im)/8000
+        }
+        val eq=EffectRack(mapOf("parametric" to EffectValue(true,50)),paramHz=500.0,paramQ=2.0)
+        assertEquals(eq,EffectRack.fromJson(eq.json()))
+        val eqAudio=process(eq)
+        assertTrue(amplitude(eqAudio,500)>amplitude(source,500)*2.5)
+        assertTrue(amplitude(eqAudio,3000)<amplitude(source,3000)*1.2)
+        assertEquals(pcm16(source,44+1000*2),pcm16(eqAudio,44+1000*2))
+        assertArrayEquals(eqAudio,process(eq))
+        val band=EffectRack(mapOf("frequency" to EffectValue(true,100)),bandLowHz=200.0,bandHighHz=1000.0)
+        val bandAudio=process(band)
+        assertTrue(amplitude(bandAudio,500)>amplitude(source,500)*.85)
+        assertTrue(amplitude(bandAudio,3000)<amplitude(source,3000)*.15)
+        val invalid=EffectRack(mapOf("frequency" to EffectValue(true,100)),bandHighHz=9000.0)
+        assertThrows(IllegalArgumentException::class.java){process(invalid)}
+        val old=EffectRack().json().put("algorithm","bounded-native-effect-rack/1")
+        old.remove("paramHz");old.remove("paramQ");old.remove("bandLowHz");old.remove("bandHighHz")
+        assertEquals(EffectRack(),EffectRack.fromJson(old))
+    }
     @Test fun cancellationAndInvalidParametersFailBeforeFalseCompletion() {
         assertThrows(IllegalArgumentException::class.java){EffectValue(true,101)}
         assertThrows(IllegalArgumentException::class.java){EffectRack(mapOf("unknown" to EffectValue()))}
+        val badRecipe=EffectRack().json(); badRecipe.getJSONArray("effects").put(0,org.json.JSONObject().put("id","unknown").put("enabled",false).put("strength",0))
+        assertThrows(IllegalArgumentException::class.java){EffectRack.fromJson(badRecipe)}
         val s=audio{_,_->0}
         assertThrows(InterruptedException::class.java){WaveReader(s.inputStream(),s.size.toLong()).use{renderWave(it,ByteArrayOutputStream(),RenderSettings(rack=EffectRack()),{true},{})}}
     }

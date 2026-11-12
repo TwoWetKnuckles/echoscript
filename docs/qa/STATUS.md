@@ -106,4 +106,6 @@ Adds five togglable presets, fourteen signed effect controls with numerical entr
 
 ## OpenAI adapter work in progress
 
-The opt-in loopback server adds a separate Whisper endpoint with explicit provider/model/external consent, hash/duration validation, one-use authorization, bounded response handling and no credential forwarding to the Vosk child. Synthetic mock-transport tests require execution. No Android integration, live OpenAI request, deployment approval or provider qualification is claimed.
+The opt-in loopback server adds a separate Whisper endpoint with explicit provider/model/external consent, hash/duration validation, one-use authorization, bounded response handling and no credential forwarding to the Vosk child. The synthetic mock-transport tests passed in the web/API CI job on commit f6e2650. No Android integration, live OpenAI request, deployment approval or provider qualification is claimed.
+
+The next Android draft adds a single adjustable parametric EQ and a numeric frequency-band isolation control to the time-region rack, with parameters serialized in the render recipe and older rack recipes accepted. Synthetic frequency-response, determinism and selection-boundary tests have been added but must pass in CI before this change is treated as validated. Graphical frequency selection, spectrogram zoom/settings and broader release/device gates remain open.
