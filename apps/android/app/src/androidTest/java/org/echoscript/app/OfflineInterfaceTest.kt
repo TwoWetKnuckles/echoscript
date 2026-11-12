@@ -170,9 +170,12 @@ class OfflineInterfaceTest {
             ui.onNodeWithText("1: 200–1000 ms").performScrollTo().assertIsDisplayed()
             click("Audio revision history")
             screenshot("ui-effect-history.png")
-            click("Undo")
+            click("Undo to parent")
             waitFor("Active revision changed. Earlier versions remain in the case.")
-            assertNotEquals(rendered.getString("id"), vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.getString("activeArtifact"))
+            assertEquals(rendered.getJSONArray("parents").getString(0), vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.getString("activeArtifact"))
+            click("Redo revision ${rendered.getInt("revision")}")
+            waitFor("Active revision changed. Earlier versions remain in the case.")
+            assertEquals(rendered.getString("id"), vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }.getString("activeArtifact"))
             assertTrue(vault.verify(vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }).contains("agree"))
         } finally { assertTrue(File(context.filesDir,"EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively()) }
     }

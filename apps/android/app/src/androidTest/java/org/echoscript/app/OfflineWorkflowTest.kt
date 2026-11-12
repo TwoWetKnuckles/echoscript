@@ -67,7 +67,7 @@ class OfflineWorkflowTest {
                 assertEquals(enhanced.getString("id"), history.getString("activeArtifact"))
                 val enhancedRecord = history.items("audioRevisions").first { it.getString("id") == enhanced.getString("id") }
                 assertEquals(enhanced.getString("sha256"), enhancedRecord.getString("sha256"))
-                assertEquals(enhanced.getJSONObject("operation").toString(), enhancedRecord.getJSONObject("operation").toString())
+                assertArrayEquals(EvidenceVault.canonical(enhanced.getJSONObject("operation")), EvidenceVault.canonical(enhancedRecord.getJSONObject("operation")))
                 assertTrue(vault.verify(case).contains("agree"))
                 for (format in listOf(ExportFormat.PDF, ExportFormat.DOCX, ExportFormat.XLSX, ExportFormat.SRT)) {
                     val destination = ByteArrayOutputStream()
