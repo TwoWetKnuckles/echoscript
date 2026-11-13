@@ -2,13 +2,13 @@
 
 The owner requested a useful free product and premium access available through a subscription or a one-time purchase. The following division is a proposal for review, not a published offer. No prices, billing account, product IDs, payment processing or production entitlement service have been configured.
 
-| Capability | Proposed free access | Proposed premium access |
-| --- | --- | --- |
-| Local acquisition and storage | Import supported recordings, preserve originals, open saved cases and play audio | Same core access |
-| Basic editing | Waveform, playback, one selected region, clip, basic gain/EQ, standard hum/buzz and gentle noise-gate presets | Same, plus advanced effect controls and ordered/overlapping regions |
-| Spectral tools | Quick sampled overview | Full-recording coarse scan, detailed time/frequency inspection and measured noise-floor tools |
-| Speech and review | On-device transcription where supported, examiner review and notes | Same, plus any future advanced/provider features that are actually offered |
-| History and evidence | View and restore saved revisions, verify hashes and export audio, documents and protected cases | Same core access, plus advanced waveform/clipping comparison |
+| Capability                    | Proposed free access                                                                                          | Proposed premium access                                                                       |
+| ----------------------------- | ------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Local acquisition and storage | Import supported recordings, preserve originals, open saved cases and play audio                              | Same core access                                                                              |
+| Basic editing                 | Waveform, playback, one selected region, clip, basic gain/EQ, standard hum/buzz and gentle noise-gate presets | Same, plus advanced effect controls and ordered/overlapping regions                           |
+| Spectral tools                | Quick sampled overview                                                                                        | Full-recording coarse scan, detailed time/frequency inspection and measured noise-floor tools |
+| Speech and review             | On-device transcription where supported, examiner review and notes                                            | Same, plus any future advanced/provider features that are actually offered                    |
+| History and evidence          | View and restore saved revisions, verify hashes and export audio, documents and protected cases               | Same core access, plus advanced waveform/clipping comparison                                  |
 
 The same premium capability set is proposed for a subscription and a non-consumable one-time purchase. Price, billing periods, trial terms, one-time update/support scope, tax handling, distribution channels and any metered third-party transcription charges still need explicit decisions before sales. No external transcription usage is implicitly included or authorized.
 

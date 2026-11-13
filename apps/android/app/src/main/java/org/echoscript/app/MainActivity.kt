@@ -301,7 +301,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             if (BuildConfig.DEBUG) Section("Explore possible plans", "Compare access in this test build. No prices, purchases or subscriptions are active.") {
                                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                                     for (preview in AccessPreview.entries) FilterChip(model.accessPreview == preview, {
-                                        model.setAccessPreview(preview)
+                                        model.changeAccessPreview(preview)
                                     }, { Text(preview.label) }, enabled = ready, modifier = Modifier.heightIn(min = 48.dp))
                                 }
                                 Text("Free preview includes local import, playback, clipping, basic effects, transcription, history and exports. Premium previews add detailed analysis, advanced effects and multiple processing regions.", style = MaterialTheme.typography.bodySmall)
@@ -418,30 +418,37 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     var flaggedOnly by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var lowScores by rememberSaveable(screen.selected) { mutableStateOf(false) }
     var index by rememberSaveable(screen.selected) { mutableIntStateOf(0) }
-    OutlinedTextField(search,{search=it.take(256)},label={Text("Find transcript text")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+    OutlinedTextField(search,{search=it.take(256)},label={Text("Find transcript text or notes")},modifier=Modifier.fillMaxWidth(),singleLine=true)
     Row { FilterChip(flaggedOnly,{flaggedOnly=!flaggedOnly},{Text("Flagged only")}); Spacer(Modifier.width(8.dp)); FilterChip(lowScores,{lowScores=!lowScores},{Text("Low returned scores")}) }
     val matches=segments.indices.filter { i ->
         val item=segments[i]; val score=item.optJSONObject("confidence")?.optDouble("value",Double.NaN)?:Double.NaN
-        item.getString("text").contains(search,ignoreCase=true) && (!flaggedOnly || item.optJSONArray("flags")?.length()?.let{it>0}==true) && (!lowScores || (score.isFinite()&&score<.7))
+        (item.getString("text").contains(search,ignoreCase=true) || item.optString("examinerNote", "").contains(search,ignoreCase=true)) && (!flaggedOnly || item.optJSONArray("flags")?.length()?.let{it>0}==true) && (!lowScores || (score.isFinite()&&score<.7))
     }
     Text("${matches.size} matching segments; returned scores are not calibrated probabilities.",style=MaterialTheme.typography.bodySmall)
-    for(i in matches.take(30)) TextButton(onClick={if(model.reviewDrafts.isEmpty()) index=i else model.notice("Save or reset the current review draft before jumping")},enabled=ready) { Text("${i+1}: ${segments[i].getString("text").take(80)}") }
+    for(i in matches.take(30)) TextButton(onClick={if(model.reviewDrafts.isEmpty()) index=i else model.notice("Save or reset the current review draft before jumping")},enabled=ready) {
+        val item=segments[i]; val text=item.getString("text"); val note=item.optString("examinerNote", "")
+        Text("${i+1}: ${if(search.isNotBlank() && !text.contains(search,ignoreCase=true) && note.contains(search,ignoreCase=true)) "Note: ${note.take(80)}" else text.take(80)}")
+    }
     val current = index.coerceIn(0, segments.lastIndex)
     val segment = segments[current]
     val start = segment.getDouble("start"); val end = segment.getDouble("end"); val id = segment.getString("id")
     val draftKey = "${screen.selected}/${screen.transcriptRevision}/$id"
-    val draft = model.reviewDrafts[draftKey] ?: ReviewDraft(segment.getString("text"), segment.optString("speakerLabel", ""))
+    val draft = model.reviewDrafts[draftKey] ?: ReviewDraft(segment.getString("text"), segment.optString("speakerLabel", ""), note=segment.optString("examinerNote", ""))
     val text = draft.text
     val label = draft.label
+    val note = draft.note
     val verified = draft.verified
     val edit = model.reviewEditorKey == draftKey
     var details by rememberSaveable(screen.selected) { mutableStateOf(false) }
-    val dirty = text != segment.getString("text") || label != segment.optString("speakerLabel", "") || verified
+    val dirty = text != segment.getString("text") || label != segment.optString("speakerLabel", "") || note != segment.optString("examinerNote", "") || verified
     Section("Segment ${current + 1} of ${segments.size}", "${clock((start * 1000).toLong())} – ${clock((end * 1000).toLong())}") {
         val speaker = segment.optString("speakerLabel").ifBlank { if (segment.isNull("speaker")) "Unassigned speaker" else segment.getString("speaker") }
         Text(speaker, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
         TextButton(onClick = { model.reviewEditorKey = if (edit) null else draftKey }) { Text(if (edit) "Hide editor" else "Edit and verify segment") }
         SelectionContainer { Text(segment.getString("text"), style = MaterialTheme.typography.bodyLarge) }
+        segment.optString("examinerNote", "").takeIf { it.isNotEmpty() }?.let { savedNote ->
+            SelectionContainer { Text("Examiner note: $savedNote", style = MaterialTheme.typography.bodySmall) }
+        }
         Text(segment.getString("verification").replace('_', ' '), style = MaterialTheme.typography.labelSmall)
         Button(onClick = { model.play(actor, transcript.optString("audioArtifactId"), start) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Glyph(R.drawable.ic_play); Spacer(Modifier.width(8.dp)); Text("Play from timestamp") }
         if (segments.size > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
@@ -451,11 +458,13 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
         if (edit) {
             OutlinedTextField(text, { model.updateReviewDraft(draftKey, draft.copy(text = it.take(10000))) }, label = { Text("Examiner transcript text") }, enabled = ready, modifier = Modifier.fillMaxWidth())
             OutlinedTextField(label, { model.updateReviewDraft(draftKey, draft.copy(label = it.take(80))) }, label = { Text("Examiner speaker label") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(note, { model.updateReviewDraft(draftKey, draft.copy(note = it.take(4000))) }, label = { Text("Examiner note (not spoken words)") }, enabled = ready, modifier = Modifier.fillMaxWidth())
             Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
                 for(token in listOf("[inaudible]","[unintelligible]","[crosstalk]","[pause]","[background noise]")) TextButton(onClick={model.updateReviewDraft(draftKey,draft.copy(text=(text+" "+token).trim().take(10000)))},enabled=ready) { Text(token) }
             }
             Acknowledgement("I listened to and verified this segment.", verified, ready) { model.updateReviewDraft(draftKey, draft.copy(verified = it)) }
-            Button(onClick = { model.review(actor, id, text, label, verified) }, enabled = ready) { Text("Save examiner revision") }
+            Button(onClick = { model.review(actor, id, text, label, verified, note) }, enabled = ready && dirty) { Text("Save examiner revision") }
+            Text("Notes are separate from spoken words. Saving only a note does not verify the segment.", style = MaterialTheme.typography.bodySmall)
             Text("Save a revision to retain edits through an app or process restart.", style = MaterialTheme.typography.bodySmall)
             if (dirty) TextButton(onClick = { model.resetReviewDraft(draftKey) }, enabled = ready) { Text("Reset unsaved edits") }
         }

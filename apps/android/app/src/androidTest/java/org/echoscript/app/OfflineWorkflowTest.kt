@@ -86,9 +86,50 @@ class OfflineWorkflowTest {
             assertTrue("Vosk must return actual words", segment.getString("text").trim().length > 10)
             assertTrue("Vosk must return actual word timings", segment.getJSONArray("words").length() > 0)
             assertTrue(segment.getDouble("end") > segment.getDouble("start"))
-            val edited = workflow.review(case, actor, draft, segment.getString("id"), segment.getString("text"), "Synthetic examiner label", true)
+            val reviewedParent = if (index == 0) {
+                val note = "=SYNTHETIC examiner <note> & not speech"
+                val beforeNote = case.getJSONArray("artifacts").length()
+                assertThrows(IllegalArgumentException::class.java) {
+                    workflow.review(case, actor, draft, segment.getString("id"), segment.getString("text"), "", false, "x".repeat(4001))
+                }
+                assertEquals(beforeNote, case.getJSONArray("artifacts").length())
+                val noted = workflow.review(case, actor, draft, segment.getString("id"), segment.getString("text"), "", false, note)
+                val notedSegment = noted.items("segments").first()
+                assertEquals(note, notedSegment.getString("examinerNote"))
+                assertEquals("UNVERIFIED", notedSegment.getString("verification"))
+                assertEquals(transcript.getString("state"), noted.getString("state"))
+                assertEquals(segment.getString("text"), notedSegment.getString("text"))
+                assertEquals(segment.getJSONArray("words").length(), notedSegment.getJSONArray("words").length())
+                assertFalse(workflow.readJson(case, draft, 16 * 1024 * 1024).items("segments").first().has("examinerNote"))
+                val notedArtifact = checkNotNull(case.latestTranscript())
+                assertEquals(draft.getString("id"), notedArtifact.getJSONArray("parents").getString(0))
+                val cleared = workflow.review(case, actor, notedArtifact, segment.getString("id"), segment.getString("text"), "", false, "")
+                assertFalse(cleared.items("segments").first().has("examinerNote"))
+                val clearedArtifact = checkNotNull(case.latestTranscript())
+                assertEquals(note, workflow.readTranscript(case, notedArtifact).items("segments").first().getString("examinerNote"))
+                workflow.review(case, actor, clearedArtifact, segment.getString("id"), segment.getString("text"), "", false, note)
+                checkNotNull(case.latestTranscript())
+            } else draft
+            val edited = workflow.review(case, actor, reviewedParent, segment.getString("id"), segment.getString("text"), "Synthetic examiner label", true)
             assertEquals("Synthetic examiner label", edited.items("segments").first().getString("speakerLabel"))
             assertFalse(workflow.readJson(case, draft, 16 * 1024 * 1024).items("segments").first().has("speakerLabel"))
+            if (index == 0) {
+                val verifiedParent = checkNotNull(case.latestTranscript())
+                val updated = workflow.review(case, actor, verifiedParent, segment.getString("id"), segment.getString("text"), "Synthetic examiner label", false, "=SYNTHETIC examiner <note> & revised, not speech")
+                assertEquals("HUMAN_VERIFIED", updated.items("segments").first().getString("verification"))
+                assertEquals(edited.getString("state"), updated.getString("state"))
+                for (format in listOf(ExportFormat.JSON, ExportFormat.TXT, ExportFormat.CSV, ExportFormat.HTML)) {
+                    val destination = ByteArrayOutputStream()
+                    exportDocument(workflow, vault, case, actor, format, destination) { false }
+                    val text = destination.toString("UTF-8")
+                    assertTrue("$format should contain the note", text.contains("SYNTHETIC examiner"))
+                    if (format == ExportFormat.CSV) assertTrue(text.contains("\"'=SYNTHETIC examiner"))
+                    if (format == ExportFormat.HTML) assertTrue(text.contains("&lt;note&gt; &amp;"))
+                }
+                val subtitles = ByteArrayOutputStream()
+                exportDocument(workflow, vault, case, actor, ExportFormat.SRT, subtitles) { false }
+                assertFalse(subtitles.toString("UTF-8").contains("SYNTHETIC examiner"))
+            }
             vault.recordEvent(case, actor, "WORKLOAD_UPDATE", org.json.JSONObject().put("status", "IN_REVIEW"))
             assertTrue(vault.verify(case).contains("agree"))
             val wav = ByteArrayOutputStream()
@@ -114,6 +155,21 @@ class OfflineWorkflowTest {
                     assertTrue(bytes.isNotEmpty())
                     if (format == ExportFormat.PDF) assertEquals("%PDF", bytes.copyOfRange(0, 4).toString(Charsets.US_ASCII))
                     if (format in setOf(ExportFormat.DOCX, ExportFormat.XLSX)) assertEquals("PK", bytes.copyOfRange(0, 2).toString(Charsets.US_ASCII))
+                    if (format in setOf(ExportFormat.DOCX, ExportFormat.XLSX)) {
+                        val expectedPart = if (format == ExportFormat.DOCX) "word/document.xml" else "xl/worksheets/sheet1.xml"
+                        var found = false
+                        java.util.zip.ZipInputStream(bytes.inputStream()).use { entries ->
+                            while (true) {
+                                val entry = entries.nextEntry ?: break
+                                if (entry.name == expectedPart) {
+                                    val content = entries.readBytes().toString(Charsets.UTF_8)
+                                    assertTrue(content.contains("SYNTHETIC examiner &lt;note&gt; &amp;"))
+                                    found = true
+                                }
+                            }
+                        }
+                        assertTrue(found)
+                    }
                     File(outputDir, "synthetic-native-transcript.${format.extension}").writeBytes(bytes)
                 }
             }
@@ -142,6 +198,7 @@ class OfflineWorkflowTest {
             assertEquals(caseId, reopened.getString("caseId"))
             assertTrue(vault.verify(reopened).contains("agree"))
             if (index == 0) assertEquals(enhanced.getString("sha256"), checkNotNull(workflow.savedFullSpectrum(reopened)).getString("sourceSha256"))
+            if (index == 0) assertEquals("=SYNTHETIC examiner <note> & revised, not speech", workflow.readTranscript(reopened, checkNotNull(reopened.latestTranscript())).items("segments").first().getString("examinerNote"))
             assertEquals("CASE_IMPORT", reopened.items("audit").last().getString("action"))
             assertEquals("IN_REVIEW", reopened.items("audit").last { it.getString("action") == "WORKLOAD_UPDATE" }.getJSONObject("details").getString("status"))
             File(outputDir, "synthetic-offline-run-${index + 1}.echocase").writeBytes(zip)
@@ -162,6 +219,7 @@ class OfflineWorkflowTest {
             assertTrue(vault.verify(recovered).contains("mathematically valid"))
             assertEquals("PROTECTED_TRANSFER_IMPORT", recovered.items("audit").last().getString("action"))
             assertEquals(speechHash, recovered.items("artifacts").first().getString("sha256"))
+            if (index == 0) assertEquals("HUMAN_VERIFIED", workflow.readTranscript(recovered, checkNotNull(recovered.latestTranscript())).items("segments").first().getString("verification"))
             assertTrue(folder.deleteRecursively())
             count++
         }

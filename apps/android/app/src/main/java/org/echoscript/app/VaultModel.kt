@@ -23,7 +23,7 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.concurrent.atomic.AtomicBoolean
 
-internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false)
+internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false, val note: String = "")
 // In-memory workbench controls survive activity recreation without persisting a
 // document URI, audio data, or unsaved control state to shared preferences.
 internal data class WorkbenchDraftMemory(
@@ -93,7 +93,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var accessPreview by mutableStateOf(AccessPreview.EVALUATION); private set
     private var workbenchMemory: WorkbenchDraftMemory? = null
 
-    fun setAccessPreview(preview: AccessPreview) {
+    fun changeAccessPreview(preview: AccessPreview) {
         if (!BuildConfig.DEBUG || mutable.value.job != null || mutable.value.importPending) return
         accessPreview = preview
         notice("Access preview changed. No purchase or payment is involved.")
@@ -515,12 +515,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         val case = selected(); openTranscript(case, case.latestTranscript() ?: error("This case has no transcript yet"))
         "Saved transcript opened."
     }
-    fun review(actor: String, segment: String, text: String, label: String, verified: Boolean) {
+    fun review(actor: String, segment: String, text: String, label: String, verified: Boolean, note: String) {
         val draftKey = "${mutable.value.selected}/${mutable.value.transcriptRevision}/$segment"
         runJob("Saving examiner revision", completed = { resetReviewDraft(draftKey) }) {
             val case = selected()
             val parent = case.artifact(mutable.value.transcriptRevision ?: error("Open a transcript first"))
-            val transcript = workflow.review(case, actor, parent, segment, text, label, verified)
+            val transcript = workflow.review(case, actor, parent, segment, text, label, verified, note)
             updateState { it.copy(transcript = transcript, transcriptRevision = case.latestTranscript()?.getString("id")) }
             if (verified) "This segment is marked as reviewed by the examiner." else "Edits saved as a separate revision."
         }

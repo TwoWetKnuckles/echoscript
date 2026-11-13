@@ -18,6 +18,8 @@ Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Mate
 
 [Owner-confirmed working scope](docs/WORKING-SCOPE.md) includes items 1–20 and 23–28; browser parity and Termux are deferred, with physical-device/final workflow acceptance pending.
 
+A newer working draft explores [free and premium plans](docs/PLANS.md), including subscription and one-time access, and adds segment examiner notes. The plan selector is a debug-only simulation with no active purchases; these additions need their own validation and are not in the test package linked above.
+
 The 0.6.0 candidate adds presets, signed effect controls, region/overlap rendering, a playback/selection timeline, short-range spectral inspection, an optional coarse full-recording spectral scan, clips and restorable processing recipes. [Capabilities and limitations](docs/android/ENHANCEMENT-WORKBENCH.md) · [Workbench design direction](docs/android/WORKBENCH-DESIGN.md). Published release assets remain 0.5.1 until validation completes. The working draft also changes file intake: selecting a recording shows its name and an explicit **Import selected audio** action, with visible progress and retry. This draft is not yet in the published APK and needs physical-device validation.
 
 ### File selection in 0.5.1

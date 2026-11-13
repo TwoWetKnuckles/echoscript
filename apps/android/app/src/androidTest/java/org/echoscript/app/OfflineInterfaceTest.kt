@@ -468,6 +468,25 @@ class OfflineInterfaceTest {
             click("I listened to and verified this segment.")
             click("Save examiner revision")
             waitFor("This segment is marked as reviewed by the examiner.")
+            if (run == 0) {
+                click("Edit and verify segment")
+                val note = "SYNTHETIC_NOTE_SEARCH separate from speech"
+                ui.onNodeWithText("Examiner note (not spoken words)").performScrollTo().performTextReplacement(note)
+                closeSoftKeyboard()
+                recreateWithoutPersistingDraft(note)
+                ui.onNodeWithText("Examiner note (not spoken words)").performScrollTo().assertTextContains(note)
+                click("Save examiner revision")
+                waitFor("Edits saved as a separate revision.")
+                val annotated = vault.listCases().cases.single { it.getString("caseId") == id }
+                val saved = OfflineWorkflow(context, vault).readTranscript(annotated, checkNotNull(annotated.latestTranscript()))
+                assertEquals(note, saved.items("segments").first().getString("examinerNote"))
+                assertEquals("HUMAN_VERIFIED", saved.items("segments").first().getString("verification"))
+                ui.onNodeWithText("Find transcript text or notes").performScrollTo().performTextReplacement("SYNTHETIC_NOTE_SEARCH")
+                closeSoftKeyboard()
+                ui.onNodeWithText("1: Note: SYNTHETIC_NOTE_SEARCH separate from speech").performScrollTo().assertIsDisplayed()
+                ui.onNodeWithText("Find transcript text or notes").performScrollTo().performTextReplacement("")
+                closeSoftKeyboard()
+            }
             ui.onNodeWithContentDescription("Audit").performClick()
             click("Verify all hashes and custody records")
             waitFor("Source and derivative hashes, authenticated decryption and audit linkage agree. Independent custody and signatures require separate verification.")

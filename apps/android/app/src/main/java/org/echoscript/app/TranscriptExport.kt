@@ -36,6 +36,8 @@ private fun csv(value: String): String {
 }
 private fun flags(s: JSONObject) = s.getJSONArray("flags").let { a -> (0 until a.length()).map(a::getString) }
 private fun timestamped(s: JSONObject): String = "${clock((s.getDouble("start") * 1000).toLong())}–${clock((s.getDouble("end") * 1000).toLong())} ${speaker(s)}: ${s.getString("text")} [${s.getString("verification")}]"
+private fun note(s: JSONObject): String = s.optString("examinerNote", "")
+private fun withNote(s: JSONObject): String = timestamped(s) + if (note(s).isEmpty()) "" else "\nExaminer note: ${note(s)}"
 private fun timing(s: JSONObject, duration: Double) {
     val start = s.getDouble("start"); val end = s.getDouble("end")
     require(start.isFinite() && end.isFinite() && start >= 0 && end > start && end <= duration && flags(s).none { it in setOf("OUT_OF_RANGE", "TIMESTAMP_ANOMALY") }) { "Subtitle or CTM timing is invalid. Review the timestamps or export JSON." }
@@ -77,18 +79,18 @@ internal fun exportDocument(workflow: OfflineWorkflow, vault: EvidenceVault, man
     val segments = transcript.items("segments")
     val duration = transcript.optDouble("duration", Double.NaN)
     val verified = if (format == ExportFormat.PDF) vault.verify(manifest, cancelled) else null
-    val artifact = vault.addDerivative(manifest, actor, if (format == ExportFormat.PDF) "REPORT" else "DOCUMENT_EXPORT", listOf(parent.getString("id")), "Transcript.${format.extension}", "native-document-export", "1", maxBytes = 32L * 1024 * 1024) { output ->
+    val artifact = vault.addDerivative(manifest, actor, if (format == ExportFormat.PDF) "REPORT" else "DOCUMENT_EXPORT", listOf(parent.getString("id")), "Transcript.${format.extension}", "native-document-export", "2", maxBytes = 32L * 1024 * 1024) { output ->
         fun write(value: String) { if (cancelled()) throw InterruptedException("Export cancelled"); output.write(value.toByteArray(Charsets.UTF_8)) }
         when (format) {
             ExportFormat.JSON -> output.write(EvidenceVault.canonical(transcript))
-            ExportFormat.TXT -> { write("EchoScript ${transcript.getString("state")}\n$NOTICE\n\n"); for (s in segments) write(timestamped(s) + "\n") }
+            ExportFormat.TXT -> { write("EchoScript ${transcript.getString("state")}\n$NOTICE\n\n"); for (s in segments) write(withNote(s) + "\n") }
             ExportFormat.CSV -> {
-                write("start_seconds,end_seconds,speaker,transcript,verification,flags,decoder_score\r\n")
-                for (s in segments) write(listOf(seconds(s.getDouble("start")), seconds(s.getDouble("end")), csv(speaker(s)), csv(s.getString("text")), csv(s.getString("verification")), csv(flags(s).joinToString("|")), s.optJSONObject("confidence")?.optDouble("value")?.toString() ?: "").joinToString(",", postfix = "\r\n"))
+                write("start_seconds,end_seconds,speaker,transcript,verification,flags,decoder_score,examiner_note\r\n")
+                for (s in segments) write(listOf(seconds(s.getDouble("start")), seconds(s.getDouble("end")), csv(speaker(s)), csv(s.getString("text")), csv(s.getString("verification")), csv(flags(s).joinToString("|")), s.optJSONObject("confidence")?.optDouble("value")?.toString() ?: "", csv(note(s))).joinToString(",", postfix = "\r\n"))
             }
             ExportFormat.HTML -> {
                 write("<!doctype html><html lang=\"en\"><meta charset=\"utf-8\"><title>EchoScript transcript</title><h1>EchoScript transcript</h1><p>${xml(NOTICE)}</p><ol>")
-                for (s in segments) write("<li>${xml(timestamped(s))}</li>")
+                for (s in segments) write("<li>${xml(timestamped(s))}${if (note(s).isEmpty()) "" else "<br><strong>Examiner note:</strong> ${xml(note(s))}"}</li>")
                 write("</ol></html>")
             }
             ExportFormat.SRT, ExportFormat.VTT -> {
@@ -163,6 +165,7 @@ private fun renderReport(output: OutputStream, manifest: JSONObject, revision: J
             for (artifact in manifest.items("artifacts")) line("${artifact.getString("type")} ${artifact.getString("id")}\nSHA-256 ${artifact.getString("sha256")}\n${artifact.getJSONObject("operation")}")
             for (s in transcript.items("segments")) {
                 line(timestamped(s))
+                if (note(s).isNotEmpty()) line("Examiner note: ${note(s)}")
                 if (flags(s).isNotEmpty()) line(flags(s).joinToString(", "))
                 for (alt in s.items("alternatives")) line("Provider alternative ${alt.getString("text")} · decoder score ${alt.opt("score")}")
             }
@@ -196,14 +199,14 @@ private fun officeDocument(output: OutputStream, spreadsheet: Boolean, segments:
                 for ((index, value) in values.withIndex()) write("<c r=\"${'A' + index}$i\" t=\"inlineStr\"><is><t xml:space=\"preserve\">${xml(value)}</t></is></c>")
                 write("</row>")
             }
-            row(1, listOf(NOTICE)); row(2, listOf("Start seconds", "End seconds", "Speaker", "Transcript", "Verification"))
-            for ((i, s) in segments.withIndex()) row(i + 3, listOf(seconds(s.getDouble("start")), seconds(s.getDouble("end")), speaker(s), s.getString("text"), s.getString("verification")))
+            row(1, listOf(NOTICE)); row(2, listOf("Start seconds", "End seconds", "Speaker", "Transcript", "Verification", "Examiner note"))
+            for ((i, s) in segments.withIndex()) row(i + 3, listOf(seconds(s.getDouble("start")), seconds(s.getDouble("end")), speaker(s), s.getString("text"), s.getString("verification"), note(s)))
             write("</sheetData></worksheet>"); zip.closeEntry()
         } else {
             zip.putNextEntry(ZipEntry(part)); write("<w:document xmlns:w=\"$ns/wordprocessingml/2006/main\"><w:body>")
             fun paragraph(value: String) = write("<w:p><w:r><w:t xml:space=\"preserve\">${xml(value)}</w:t></w:r></w:p>")
             paragraph(NOTICE)
-            for (s in segments) paragraph(timestamped(s))
+            for (s in segments) { paragraph(timestamped(s)); if (note(s).isNotEmpty()) paragraph("Examiner note: ${note(s)}") }
             write("</w:body></w:document>"); zip.closeEntry()
         }
     }

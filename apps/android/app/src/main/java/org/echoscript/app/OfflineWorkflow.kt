@@ -272,22 +272,29 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return result
     }
 
-    fun review(manifest: JSONObject, actor: String, parent: JSONObject, segmentId: String, text: String, label: String, verified: Boolean): JSONObject {
+    fun review(manifest: JSONObject, actor: String, parent: JSONObject, segmentId: String, text: String, label: String, verified: Boolean, note: String? = null): JSONObject {
         require(text.length <= 10000 && text.none { it.code < 32 && it !in "\n\r\t" } && label.length <= 80 && label.none { it.code < 32 }) { "Review text or speaker label is invalid" }
+        require(note == null || (note.length <= 4000 && note.none { it.code < 32 && it !in "\n\r\t" })) { "Examiner note is invalid" }
         val transcript = readTranscript(manifest, parent)
         val segments = transcript.items("segments")
         val segment = segments.singleOrNull { it.getString("id") == segmentId } ?: error("Transcript segment is missing")
+        val noteChanged = note != null && note != segment.optString("examinerNote", "")
+        val reviewUnchanged = text == segment.getString("text") && label.trim() == segment.optString("speakerLabel", "") && !verified
+        if (noteChanged && note != null) {
+            if (note.isEmpty()) segment.remove("examinerNote") else segment.put("examinerNote", note)
+        }
         if (segment.getString("text") != text) {
             segment.put("text", text).put("words", JSONArray()).put("confidence", JSONObject.NULL)
             val flags = segment.getJSONArray("flags")
             if ((0 until flags.length()).none { flags.getString(it) == "HUMAN_TEXT_CHANGED" }) flags.put("HUMAN_TEXT_CHANGED")
         }
-        segment.put("speakerLabel", label.trim()).put("speakerLabelSource", "HUMAN_EXAMINER")
+        if (!reviewUnchanged) segment.put("speakerLabel", label.trim()).put("speakerLabelSource", "HUMAN_EXAMINER")
             .put("verification", if (verified) "HUMAN_VERIFIED" else "HUMAN_EDITED")
-        val state = if (segments.isNotEmpty() && segments.all { it.getString("verification") == "HUMAN_VERIFIED" }) "HUMAN_VERIFIED" else "HUMAN_EDITED"
+        val state = if (reviewUnchanged) transcript.getString("state") else if (segments.isNotEmpty() && segments.all { it.getString("verification") == "HUMAN_VERIFIED" }) "HUMAN_VERIFIED" else "HUMAN_EDITED"
         transcript.put("state", state)
-        vault.addDerivative(manifest, actor, "HUMAN_TRANSCRIPT", listOf(parent.getString("id")), "Reviewed transcript.json", "examiner-segment-revision", "1", maxBytes = 16L * 1024 * 1024) { out ->
-            out.write(EvidenceVault.canonical(transcript)); JSONObject().put("segmentId", segmentId).put("verified", verified).put("state", state)
+        vault.addDerivative(manifest, actor, "HUMAN_TRANSCRIPT", listOf(parent.getString("id")), "Reviewed transcript.json", "examiner-segment-revision", "2", maxBytes = 16L * 1024 * 1024) { out ->
+            out.write(EvidenceVault.canonical(transcript)); JSONObject().put("segmentId", segmentId).put("verified", verified)
+                .put("noteChanged", noteChanged).put("reviewUnchanged", reviewUnchanged).put("segmentVerification", segment.getString("verification")).put("state", state)
         }
         return transcript
     }
@@ -312,6 +319,7 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         for (segment in value.items("segments")) {
             val id = segment.getString("id")
             require(id.length in 1..128 && ids.add(id) && validText(segment.getString("text"), 10000) && validText(segment.optString("speakerLabel"), 80))
+            if (segment.has("examinerNote")) require(segment.opt("examinerNote") is String && validText(segment.getString("examinerNote"), 4000)) { "Invalid examiner note" }
             require(validTime(segment.getDouble("start")) && validTime(segment.getDouble("end")))
             require(segment.isNull("speaker") || segment.getString("speaker").matches(Regex("SPEAKER_[1-9][0-9]*")))
             require(segment.getString("verification") in setOf("UNVERIFIED", "HUMAN_EDITED", "HUMAN_VERIFIED"))

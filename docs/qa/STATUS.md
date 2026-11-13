@@ -120,7 +120,6 @@ A further draft corrects undo to follow the active audio's recorded parent and e
 
 On source commit 40739d27, the Android build, JVM unit tests, lint, instrumentation APK and unsigned release build passed in GitHub Actions, as did the synthetic disposable-signing checks. Android 10/API 29 and Android 16/API 36 emulator suites each failed two checks on this revision: an outdated Undo label in the interface test and a key-order-sensitive JSON assertion in the processing-history test. The actual picker import/cancel test passed on both emulators; the 750 MB streaming test passed on API 36 and was skipped on API 29. Corrections need a fresh run. These results do not establish behavior on a physical Galaxy S22+ or pass the full release gates.
 
-
 The corrected test-only commit c77f386 passed all seven quality jobs, including the API 29 and 36 emulator suites and the actual system file picker, after the earlier label and JSON-order test failures. Both CodeQL jobs also passed. These checks predate the later staged-intake change and do not establish behavior on a Galaxy S22+.
 
 After another Galaxy S22+ report that selection appeared to disappear, the working source adds an always-visible selected-file panel with an explicit import/retry action and clear error/cancellation feedback. The document URI remains in memory only; a non-sensitive interruption marker prompts users to inspect existing cases and reselect if the process is killed. Activity recreation and interruption tests were added, but this revision has not yet passed CI or a physical-device test. The exact cause of the reported Samsung behavior is not established.
@@ -160,5 +159,9 @@ On `a59d28ef`, all seven push quality jobs passed in [run 43292201243](https://g
 On November 12, the owner reported that things appeared to be working so far on the Galaxy S22+. This is an encouraging preliminary report; the exact installed build and specific operations were not documented, so it does not by itself pass the formal device or release gates.
 
 A later draft adds a debug-only free/premium plan simulation and more compact horizontal effect controls. It includes no real purchases or entitlement verification, defaults to all tools for evaluation, and preserves access to existing cases and exports. Its new policy and interface tests require a fresh run. [The plan draft](../PLANS.md) records proposed boundaries and production billing prerequisites.
+
+The first plan-preview build, `dd949cce`, failed Android compilation because an explicit setter name collided with Kotlin's generated property setter. The follow-up renames the action; a new build is required. The previously validated test APK is unaffected.
+
+The follow-up also adds revisioned segment examiner notes, note search, note-aware native documents and bounded cross-runtime validation. Local `npm test` passed all 36 tests, including optional-note validation; `npm run lint` passed. Native tests cover notes without implicit speech verification, earlier-revision retention, escaping/formula guards, subtitle exclusion, rotation without saved-instance text, and protected/plain case round trips. Android execution remains pending, and these additions are not part of the currently linked validated APK.
 
 A local draft adds an on-demand before/after peak-envelope overlay and near-full-scale sample counts from a chosen saved audio revision without changing the active revision. Synthetic provenance and UI checks need execution. This display is a bounded overview, not a sample-level de-clipping validation.
