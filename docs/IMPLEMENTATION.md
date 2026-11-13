@@ -1,5 +1,7 @@
 # Implementation record
 
+The owner-requested Fumadocs site is a standalone Next.js/MDX app in `apps/docs`, generated with the official latest scaffolder. It retains search, `/docs` routes, Markdown/LLM exports and OG images, with EchoScript's graphite/cyan theme. Canonical repository documentation is mirrored without rewriting its body; headings become frontmatter and links are adjusted. Local production build, type checks and 24-page HTTP/search/export/image checks passed, with zero known npm audit findings. Remote-browser visual review and separate hosted deployment still require the Vercel team access grant. See [the app's executed validation and deployment instructions](../apps/docs/README.md).
+
 Latest working follow-up: compact horizontal effect panels, a reversible debug-only preview of free/subscription/one-time access, and searchable segment examiner notes retained in native revisions and document exports. Payment processing and production entitlements remain unconfigured. The owner reported that the preceding test build appeared to work on the Galaxy S22+; formal exact-build device acceptance remains open. See [executed and pending checks](qa/STATUS.md) and [the proposed access model](PLANS.md).
 
 Public repository development was authorized on 2026-11-01. Source publication does not authorize evidence or credential publication.

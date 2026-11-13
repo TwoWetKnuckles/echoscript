@@ -2,6 +2,8 @@
 
 All paths are relative to the public monorepo. Generated output, downloaded models and QA artifacts are ignored.
 
+The standalone Fumadocs app is in `apps/docs/`: `app/` owns its Next.js routes, `content/docs/` owns the introduction and synchronized MDX guides, `lib/` owns source/navigation settings, and `scripts/` checks content and the served site. Its package lock and styles are separate. See [development and deployment instructions](../apps/docs/README.md); `.github/workflows/docs-site.yml` checks this app independently.
+
 | Path                                                                 | Purpose                                                                                                            |
 | -------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `AGENTS.md`, `.github/copilot-instructions.md`                       | Evidence invariants and agent build/test instructions                                                              |

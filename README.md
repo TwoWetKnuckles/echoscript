@@ -24,6 +24,12 @@ The [owner-confirmed scope](docs/WORKING-SCOPE.md) includes items 1â€“20 and 23â
 
 In **Cases**, choose a recording, confirm its name under **Selected recording**, then tap **Import selected audio**. The panel shows progress and keeps a retry action on failure. **Choose with another file picker** offers Android's alternative picker. All openable files are shown, including recordings with incorrect MIME labels; the decoder determines supported audio from its contents. Emulator system-picker tests pass. The original Galaxy-specific cause is not established by the owner's preliminary positive report.
 
+## Documentation site
+
+The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
+
+From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. Separate hosting setup is documented in the app README; a live documentation deployment is not yet claimed.
+
 ## Responsibility and limitations
 
 **The examiner and deploying organization are responsible for lawful use and case-specific evidence handling.** Before each use, determine the recording/access authority, consent requirements, jurisdiction, agency and court rules, confidentiality obligations, retention and legal holds applicable to that particular matter. Preserve originals and independent custody records; control devices, keys and exports; validate the exact build and workflow; independently review all processing, transcription and reports before relying on or submitting them. A hash match establishes byte consistency against a trusted reference, not lawful acquisition, speaker identity, completeness or legal admissibility.
