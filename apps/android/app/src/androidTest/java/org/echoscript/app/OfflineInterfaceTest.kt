@@ -37,7 +37,16 @@ class OfflineInterfaceTest {
     private fun click(text: String, navigation: Boolean = false) {
         waitFor(text, 30000)
         val node = ui.onNodeWithText(text)
-        if (!navigation) node.performScrollTo()
+        if (!navigation) {
+            // First reveal the horizontal strip in the outer vertical viewport,
+            // then reveal its target chip within the strip. performScrollTo on
+            // the chip alone only reaches its nearest scrollable ancestor.
+            for (tag in listOf("effect-presets", "effect-groups", "effect-choices")) {
+                if (ui.onAllNodes(hasText(text) and hasAnyAncestor(hasTestTag(tag))).fetchSemanticsNodes().isNotEmpty())
+                    ui.onNodeWithTag(tag).performScrollTo()
+            }
+            node.performScrollTo()
+        }
         ui.waitUntil(timeoutMillis = 30000) { ui.onAllNodes(hasText(text) and isEnabled()).fetchSemanticsNodes().isNotEmpty() }
         node.assertIsDisplayed().performClick()
     }
@@ -371,6 +380,11 @@ class OfflineInterfaceTest {
             screenshot("ui-workbench-timeline.png")
             ui.onNodeWithTag("effects-overview").performScrollTo().assertIsDisplayed()
             screenshot("ui-effects-overview.png")
+            click("Pitch & stereo")
+            click("Stereo width")
+            ui.onNodeWithContentDescription("Stereo width enabled").performScrollTo().assertIsDisplayed()
+            click("Gain & EQ")
+            click("Parametric EQ")
             click("Filters")
             click("Low hum isolation")
             ui.onNodeWithContentDescription("Low hum isolation enabled").performScrollTo().assertIsDisplayed()
@@ -379,6 +393,9 @@ class OfflineInterfaceTest {
             click("Denoise")
             ui.onNodeWithContentDescription("Denoise enabled").performScrollTo().assertIsDisplayed()
             click("Gain & EQ")
+            // Revisiting a group reveals the newly selected first effect even
+            // after the previous visit scrolled to its rightmost chip.
+            ui.onNode(hasText("Preamp / gain") and hasAnyAncestor(hasTestTag("effect-choices"))).assertIsDisplayed()
             ui.onNodeWithContentDescription("Preamp / gain enabled").performScrollTo().performClick()
             ui.onNodeWithText("Preamp / gain strength (−100 to 100)").performScrollTo().performTextReplacement("101")
             ui.onNodeWithText("Enter a whole number from −100 to 100. The last valid value remains in the draft.").performScrollTo().assertIsDisplayed()

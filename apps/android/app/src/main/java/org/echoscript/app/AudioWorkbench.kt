@@ -349,7 +349,7 @@ private val effectGroups = linkedMapOf(
             OutlinedButton(onClick={model.togglePlayback(actor)},enabled=ready) { Text(if(playing) "Pause playback" else if(model.player!=null) "Resume playback" else "Play recording") }
         }
         Text("Draft settings only until Render. Tap the selected preset again to remove it and restore prior settings.")
-        Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+        Row(Modifier.fillMaxWidth().testTag("effect-presets").horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
             for ((name,preset) in rackPresets) FilterChip(selected=presetName==name,onClick={
                 if(presetName==name) { draft=presetBackup; presetName="";presetBackup="" }
                 else { if(presetName.isBlank()) presetBackup=draft; draft=preset.json().toString();presetName=name }
@@ -357,8 +357,8 @@ private val effectGroups = linkedMapOf(
         }
         TextButton(onClick={showEffects=!showEffects}) { Text(if(showEffects) "Hide effect controls" else "Effect controls") }
         if(showEffects) {
-            Text("Effect groups",style=MaterialTheme.typography.labelMedium)
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+            Text("Effect groups · swipe for more",style=MaterialTheme.typography.labelMedium)
+            Row(Modifier.fillMaxWidth().testTag("effect-groups").horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
                 for (group in effectGroups.keys) FilterChip(effectCategory==group,{
                     effectCategory=group; selectedEffect=effectSpecs.first { it.id in effectGroups.getValue(group) }.id
                 },{Text(group)},enabled=ready)
@@ -367,8 +367,10 @@ private val effectGroups = linkedMapOf(
             Text(if(enabledEffects.isEmpty()) "No effects enabled" else "Enabled: ${enabledEffects.joinToString(", ")}",style=MaterialTheme.typography.bodySmall)
             val groupEffects=effectSpecs.filter { it.id in effectGroups.getValue(effectCategory) }
             val currentEffect=groupEffects.firstOrNull { it.id == selectedEffect } ?: groupEffects.first()
-            Row(Modifier.fillMaxWidth().horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
-                for (effect in groupEffects) FilterChip(currentEffect.id==effect.id,{selectedEffect=effect.id},{Text(effect.title)},enabled=ready)
+            key(effectCategory) {
+                Row(Modifier.fillMaxWidth().testTag("effect-choices").horizontalScroll(rememberScrollState()), horizontalArrangement=Arrangement.spacedBy(8.dp)) {
+                    for (effect in groupEffects) FilterChip(currentEffect.id==effect.id,{selectedEffect=effect.id},{Text(effect.title)},enabled=ready)
+                }
             }
             val spec=currentEffect; val value=rack.values[spec.id]?:EffectValue()
             if (!model.canPreview(PremiumCapability.ADVANCED_EFFECTS) && PlanPreviewPolicy.renderRequirement(listOf(RenderSettings(rack=rack))) == PremiumCapability.ADVANCED_EFFECTS)
