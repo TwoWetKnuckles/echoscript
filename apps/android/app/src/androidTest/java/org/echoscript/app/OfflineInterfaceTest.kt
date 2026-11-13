@@ -208,6 +208,16 @@ class OfflineInterfaceTest {
             saved = vault.listCases().cases.single { it.getString("caseId") == id }
             assertTrue(saved.items("artifacts").any { it.getString("type") == "ENHANCED_AUDIO" })
             assertEquals(sourceHash, saved.items("artifacts").first().getString("sha256"))
+            val clippedRevision = saved.getString("activeArtifact")
+            val beforeBlockedRender = saved.getJSONArray("artifacts").length()
+            ui.runOnIdle {
+                val model = androidx.lifecycle.ViewModelProvider(ui.activity)[VaultModel::class.java]
+                model.renderPlan("EXAMINER", case.getString("activeArtifact"), listOf(RenderSettings(rack=EffectRack(mapOf("pitch" to EffectValue(true, 20))))))
+            }
+            waitFor("Advanced effects is Premium in the Free preview. Switch previews in Settings; no payment is set up.")
+            saved = vault.listCases().cases.single { it.getString("caseId") == id }
+            assertEquals(clippedRevision, saved.getString("activeArtifact"))
+            assertEquals(beforeBlockedRender, saved.getJSONArray("artifacts").length())
             click("Export", navigation = true)
             click("I understand and will protect exported files.")
             ui.onNodeWithText("New transfer passphrase").performScrollTo().performTextReplacement("SYNTHETIC test password 42")

@@ -1,5 +1,7 @@
 # Implementation record
 
+Latest working follow-up: compact horizontal effect panels, a reversible debug-only preview of free/subscription/one-time access, and searchable segment examiner notes retained in native revisions and document exports. Payment processing and production entitlements remain unconfigured. The owner reported that the preceding test build appeared to work on the Galaxy S22+; formal exact-build device acceptance remains open. See [executed and pending checks](qa/STATUS.md) and [the proposed access model](PLANS.md).
+
 Public repository development was authorized on 2026-11-01. Source publication does not authorize evidence or credential publication.
 
 Confirmed scope: Android 10+ and web companion; encrypted immutable local evidence; deterministic DSP and analysis; local/qualified replaceable speech providers; revisioned transcript review; exports and independent verification; narrowly approved opt-in metadata synchronization.
