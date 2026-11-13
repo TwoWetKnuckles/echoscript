@@ -1,0 +1,34 @@
+---
+title: "EchoScript Android 10 Offline Test Candidate 0.6"
+description: "EchoScript reference: EchoScript Android 10 Offline Test Candidate 0.6."
+---
+
+Development evaluation release for Android 10/API 29 or later. **BETA GATE: NOT PASSED.**
+
+- ClearVoice FRCRN speech enhancement runs on the phone with a bundled, hash-verified model. Enable or disable it and choose before/after effects. Recipe replay retains the original base, placement and completed stages; disabling it does not compound an earlier enhanced result.
+- Vosk remains the on-device default. Choose Whisper API before starting transcription to use the key already configured on your companion server. The phone prepares and hashes exact audio chunks, shows destination/model/payload details and requires approval before upload. Cancel sends nothing. Completed raw results can be reused on an approved retry.
+- The workbench uses the documentation's graphite/cyan palette and bordered cards, with the existing compact effect groups, waveform/spectrum, examiner notes and non-destructive history.
+- All implemented tools are available. Technical memory, storage, parser, codec and provider limits still apply.
+- Inference telemetry is disabled before initialization. Originals, derivatives, raw provider responses, normalized transcripts and submission manifests retain encrypted storage and provenance.
+
+## Installation
+
+Install `EchoScript-Android10-Offline-Test-Candidate-0.6.apk` directly or extract the dedicated `EchoScript-Android` folder from `EchoScript-Android10-Offline-Test-Candidate-0.6.zip` and follow `INSTALL.txt`. The label is **EchoScript 0.6 Candidate**, application ID `org.echoscript.app.candidate06`, version `0.6.0-candidate.1` (code 9). Its separate vault starts empty and preserves earlier installed test apps. Retain and independently verify protected exports before any uninstall/reset.
+
+Vosk and ClearVoice need no server or first-run model download. Whisper requires a configured companion address/session token; the OpenAI key stays server-side. Remote hosts require HTTPS; a loopback tunnel is supported. This remains a single-operator development companion. Project-specific OpenAI retention has not been qualified. API charges apply only when that route is explicitly approved.
+
+## Executed validation
+
+The APK is unchanged from source `ef5da08a9be8a2cf5fd38e2668fcb2d510de9258` in the passing [installer run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442474145). All eight push quality jobs, all eight [PR quality jobs](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442484477) and both [CodeQL jobs](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442484612) passed. Documentation checks passed independently.
+
+Android 10: 28 ordinary instrumentation passes and two designated skips. Android 16: 29 passes and one designated skip. The focused Whisper check also passed before each full suite. The separately invoked actual process-kill intake subset passed on both. Each emulator produced 32 case exports that passed the independent verifier, including ClearVoice and Whisper integration cases. The Android 16 matrix exercised the 750 MB decode/render subset. Native/JVM tests: 35 passes; case-security JVM tests: 10 passes; Node tests: 37 passes.
+
+The real bundled model tests check before/after/off replay, unchanged source, mono 16 kHz frame preservation, repeated output, cancellation and zero app-UID network traffic during enhancement. Whisper device tests use an explicit synthetic contract server; a separate real configured-key request on the licensed synthetic fixture returned HTTP 200, 16 word timestamps and one segment. These do not establish faint-speech or multi-speaker accuracy.
+
+The exact APK's v2 signature, package metadata, ZIP alignment, 64-bit native ELF alignment and bundled model hash were checked. A 16 KB kernel runtime was not tested. Installer documentation/checksums were added after CI; no APK bytes were changed. `VALIDATION.txt` and `EchoScript-Candidate-0.6-validation.zip` preserve scope and original report archives.
+
+## Remaining acceptance
+
+The APK is debuggable and development-signed. Physical Galaxy S22+/tablet/accessibility and device-resource acceptance, complete interruption/background resumption, unresolved advanced scope, trust/deployment policy and owner-controlled production signing/upgrades remain open. The seven repeated engine/UI subsets do not pass the seven complete accepted product workflows. See the source request reconciliation and release gates. No flawless, compliance or admissibility claim is made.
+
+Standalone documentation-site design/deployment remains paused. [Previous 0.6 Test rollback](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) remains available. Preserve case exports before switching packages.

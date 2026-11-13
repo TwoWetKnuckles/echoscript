@@ -1,0 +1,98 @@
+{
+  "android/enhancement-workbench.mdx": {
+    "source": "docs/android/ENHANCEMENT-WORKBENCH.md",
+    "sha256": "5e1ab09a65978ddf4b014d83e4905df88429152fe484ffeed11f644a45ec5910"
+  },
+  "android/offline.mdx": {
+    "source": "docs/android/OFFLINE.md",
+    "sha256": "ffd4a8160d047c741c9f7d639b5693e512caec806d22249b248971d0fd6e8def"
+  },
+  "android/owner-signing.mdx": {
+    "source": "docs/android/OWNER-SIGNING.md",
+    "sha256": "c968e1726dbeea42c37e3305f10d402b4b746b866fc86c388ac3788efcaacbf0"
+  },
+  "android/workbench-design.mdx": {
+    "source": "docs/android/WORKBENCH-DESIGN.md",
+    "sha256": "3ac44f2a2ce137af66c86567436cd9c283850fd7c81a2de94a73a9c3f32f8797"
+  },
+  "architecture.mdx": {
+    "source": "docs/architecture.md",
+    "sha256": "de1705a2ffdd6ad435d8b63830292bf45696e7da5c8a6c23ca493c13cb7f9d6c"
+  },
+  "evidence/protected-transfer.mdx": {
+    "source": "docs/evidence/PROTECTED-TRANSFER.md",
+    "sha256": "4f00d9aacf6eefe16c3d4fcf64084da33ab5ba4eee1d1ab5d148ef547b5df7d3"
+  },
+  "file-tree.mdx": {
+    "source": "docs/FILE-TREE.md",
+    "sha256": "8fafc43057521192a72fd6dd9819d6c3948b9853397049f4008d8fc9babe19c5"
+  },
+  "implementation.mdx": {
+    "source": "docs/IMPLEMENTATION.md",
+    "sha256": "c21c725786ba19374811b27bf4415a6e676eb20f6c0938185c7f61401e45c00a"
+  },
+  "legal/licensing.mdx": {
+    "source": "docs/legal/LICENSING.md",
+    "sha256": "1a13aedbc8bc54c0815928724de47c25c51afe55c09ca423343ee78940370f8c"
+  },
+  "providers/clearvoice.mdx": {
+    "source": "docs/providers/clearvoice.md",
+    "sha256": "b0deceec42fbe88ee3fffadb16901fba585763d41bbc1935c75e78539e3f5e8c"
+  },
+  "providers/local-vosk.mdx": {
+    "source": "docs/providers/local-vosk.md",
+    "sha256": "b9803a2ee4bf1287f01ac5d3ce4ab2adbe24fee8283a89769919ad79828f10c5"
+  },
+  "providers/openai-whisper.mdx": {
+    "source": "docs/providers/openai-whisper.md",
+    "sha256": "88e85a2feecf3c977b7c6d839c9e46e55adf1bd50f4f864882863728df7cd579"
+  },
+  "qa/rc-acceptance.mdx": {
+    "source": "docs/qa/RC-ACCEPTANCE.md",
+    "sha256": "54815c359f20a8f4a2085649badb851030f95d7d196cdd893cfbaabc32384863"
+  },
+  "qa/request-reconciliation.mdx": {
+    "source": "docs/qa/REQUEST-RECONCILIATION.md",
+    "sha256": "e31fdc0c97be98f827181ef04f983712bb079dfa24186cfc8b6a16d728414127"
+  },
+  "qa/status.mdx": {
+    "source": "docs/qa/STATUS.md",
+    "sha256": "cb9bb4bc363fdf23ef5ad2d5ed5235084acbff223d4c706df379ed6b10047f68"
+  },
+  "release-candidate.mdx": {
+    "source": "docs/RELEASE-CANDIDATE.md",
+    "sha256": "fabe29e768a0e948ef20638c9caf22ca8c56dc3e04f51cda6f36db7b478bc7b5"
+  },
+  "security/operations.mdx": {
+    "source": "docs/security/OPERATIONS.md",
+    "sha256": "2679c814769baf751f7a3f1a6f01a5e097b9458c11b95c65175b9e0681cde7b8"
+  },
+  "security/threat-model.mdx": {
+    "source": "docs/security/THREAT_MODEL.md",
+    "sha256": "2b6a8eec3a33022191914055e142ef5b75d1b393c2477f31a35b310c2038f886"
+  },
+  "working-scope.mdx": {
+    "source": "docs/WORKING-SCOPE.md",
+    "sha256": "6d01acca91becf6b79833a2e6bdd8b1c462366e1b815f931eeaf210b44cc013b"
+  },
+  "downloads/index.mdx": {
+    "source": "downloads/README.md",
+    "sha256": "4a407c942d97c5c7ac3abb6d091c1b86393a2c2dd89b396b4350869c8d0f8431"
+  },
+  "releases/0.6-test.mdx": {
+    "source": "downloads/android/RELEASE-NOTES-0.6.0.md",
+    "sha256": "492a8f4f9d3b40cf43fad84e8f7f120011ca67de7ed892b9f8ff56c0f9d0c22d"
+  },
+  "legal/responsibilities.mdx": {
+    "source": "DISCLAIMER.md",
+    "sha256": "f19f5b5ce94f4c36972a77a44ce6d85d1ae65943ca7be2dafb441a3fe3dd1636"
+  },
+  "security/reporting.mdx": {
+    "source": "SECURITY.md",
+    "sha256": "0456960f138ac36b4638b7fef2da0ceb278bf7a8300db42e10fbabd1ccb58f53"
+  },
+  "development/contributing.mdx": {
+    "source": "CONTRIBUTING.md",
+    "sha256": "65ca266bab360bb2b90a45e5c01823907a57107a260d5c473aa6c57a5c3c7e24"
+  }
+}

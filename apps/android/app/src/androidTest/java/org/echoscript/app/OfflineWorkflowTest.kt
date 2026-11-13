@@ -27,13 +27,57 @@ class OfflineWorkflowTest {
             }
             assertEquals(speechHash, case.activeAudio().getString("sha256"))
             val analysis = workflow.analyze(case, actor, { false }, {})
+            val analyzedAudioId = case.activeAudio().getString("id")
             val artifactCount = case.getJSONArray("artifacts").length()
             assertArrayEquals(EvidenceVault.canonical(analysis), EvidenceVault.canonical(checkNotNull(workflow.savedAnalysis(case))))
             assertEquals(artifactCount, case.getJSONArray("artifacts").length())
             assertTrue(analysis.getJSONArray("peaks").length() > 0)
             assertTrue(analysis.getJSONArray("spectrum").length() > 0)
-            val enhanced = workflow.enhance(case, actor, RenderSettings(gainDb = 3.0, highPassHz = 70.0), { false }, {})
+            val settings = if (index == 0) RenderSettings(rack = EffectRack(mapOf("gain" to EffectValue(true, 10))), limit = false)
+                else RenderSettings(gainDb = 3.0, highPassHz = 70.0)
+            val enhanced = workflow.enhance(case, actor, settings, { false }, {})
             assertNotEquals(speechHash, enhanced.getString("sha256"))
+            if (index == 0) {
+                assertEquals("3", enhanced.getJSONObject("operation").getString("version"))
+                assertEquals("bounded-native-effect-rack/3", enhanced.operationParameters().getJSONObject("effectRack").getString("algorithm"))
+                val beforeComparison = case.getJSONArray("artifacts").length()
+                val referenceOverview = workflow.compareAudio(case, actor, analyzedAudioId, { false }, {})
+                assertArrayEquals(EvidenceVault.canonical(analysis), EvidenceVault.canonical(referenceOverview))
+                assertEquals(beforeComparison, case.getJSONArray("artifacts").length())
+                assertEquals(enhanced.getString("id"), case.activeAudio().getString("id"))
+                val freshComparison = workflow.compareAudio(case, actor, enhanced.getString("id"), { false }, {})
+                assertTrue(freshComparison.has("clippedSamples"))
+                assertEquals(beforeComparison + 1, case.getJSONArray("artifacts").length())
+                assertEquals(enhanced.getString("id"), case.activeAudio().getString("id"))
+                workflow.analyze(case, actor, { false }, {})
+                val speechAnalysis = checkNotNull(workflow.savedAnalysisArtifact(case))
+                workflow.inspectSpectrum(case, actor, DetailSpectrumSettings(200, 1000), { false }, {})
+                assertEquals(speechAnalysis.getString("id"), checkNotNull(workflow.savedAnalysisArtifact(case)).getString("id"))
+                val beforeSpectrum = case.getJSONArray("artifacts").length()
+                assertThrows(InterruptedException::class.java) { workflow.inspectFullSpectrum(case, actor, { true }, {}) }
+                assertEquals(beforeSpectrum, case.getJSONArray("artifacts").length())
+                val full = workflow.inspectFullSpectrum(case, actor, { false }, {})
+                assertEquals(enhanced.getString("id"), full.getString("audioArtifactId"))
+                assertEquals(enhanced.getString("sha256"), full.getString("sourceSha256"))
+                assertEquals(128, full.getJSONArray("columns").length())
+                assertArrayEquals(EvidenceVault.canonical(full), EvidenceVault.canonical(checkNotNull(workflow.savedFullSpectrum(case))))
+                assertEquals(speechAnalysis.getString("id"), checkNotNull(workflow.savedAnalysisArtifact(case)).getString("id"))
+                val measurement = workflow.measureNoise(case, actor, 200, 1000, { false }, {})
+                assertEquals(speechAnalysis.getString("id"), checkNotNull(workflow.savedAnalysisArtifact(case)).getString("id"))
+                val ref = measurement.getJSONObject("reference")
+                val reference = NoiseFloorReference(ref.getString("artifactId"), ref.getString("sha256"))
+                val threshold = measurement.getDouble("gateThresholdDb")
+                val rack = EffectRack(mapOf("noise" to EffectValue(true, 50)), noiseThresholdDb=threshold, noiseReference=reference)
+                val beforeMismatch = case.getJSONArray("artifacts").length()
+                assertThrows(IllegalArgumentException::class.java) {
+                    workflow.enhance(case, actor, RenderSettings(rack=rack.copy(noiseThresholdDb=if(threshold < -10.0) -10.0 else -90.0)), { false }, {})
+                }
+                assertEquals(beforeMismatch, case.getJSONArray("artifacts").length())
+                assertThrows(IllegalArgumentException::class.java) {
+                    workflow.enhance(case, actor, RenderSettings(rack=rack.copy(noiseReference=reference.copy(sha256="0".repeat(64)))), { false }, {})
+                }
+                assertEquals(beforeMismatch, case.getJSONArray("artifacts").length())
+            }
             val draft = workflow.transcribe(case, actor, { false }, {})
             val transcript = workflow.readJson(case, draft, 16 * 1024 * 1024)
             assertEquals("vosk-android-local", transcript.getString("provider"))
@@ -42,9 +86,50 @@ class OfflineWorkflowTest {
             assertTrue("Vosk must return actual words", segment.getString("text").trim().length > 10)
             assertTrue("Vosk must return actual word timings", segment.getJSONArray("words").length() > 0)
             assertTrue(segment.getDouble("end") > segment.getDouble("start"))
-            val edited = workflow.review(case, actor, draft, segment.getString("id"), segment.getString("text"), "Synthetic examiner label", true)
+            val reviewedParent = if (index == 0) {
+                val note = "=SYNTHETIC examiner <note> & not speech"
+                val beforeNote = case.getJSONArray("artifacts").length()
+                assertThrows(IllegalArgumentException::class.java) {
+                    workflow.review(case, actor, draft, segment.getString("id"), segment.getString("text"), "", false, "x".repeat(4001))
+                }
+                assertEquals(beforeNote, case.getJSONArray("artifacts").length())
+                val noted = workflow.review(case, actor, draft, segment.getString("id"), segment.getString("text"), "", false, note)
+                val notedSegment = noted.items("segments").first()
+                assertEquals(note, notedSegment.getString("examinerNote"))
+                assertEquals("UNVERIFIED", notedSegment.getString("verification"))
+                assertEquals(transcript.getString("state"), noted.getString("state"))
+                assertEquals(segment.getString("text"), notedSegment.getString("text"))
+                assertEquals(segment.getJSONArray("words").length(), notedSegment.getJSONArray("words").length())
+                assertFalse(workflow.readJson(case, draft, 16 * 1024 * 1024).items("segments").first().has("examinerNote"))
+                val notedArtifact = checkNotNull(case.latestTranscript())
+                assertEquals(draft.getString("id"), notedArtifact.getJSONArray("parents").getString(0))
+                val cleared = workflow.review(case, actor, notedArtifact, segment.getString("id"), segment.getString("text"), "", false, "")
+                assertFalse(cleared.items("segments").first().has("examinerNote"))
+                val clearedArtifact = checkNotNull(case.latestTranscript())
+                assertEquals(note, workflow.readTranscript(case, notedArtifact).items("segments").first().getString("examinerNote"))
+                workflow.review(case, actor, clearedArtifact, segment.getString("id"), segment.getString("text"), "", false, note)
+                checkNotNull(case.latestTranscript())
+            } else draft
+            val edited = workflow.review(case, actor, reviewedParent, segment.getString("id"), segment.getString("text"), "Synthetic examiner label", true)
             assertEquals("Synthetic examiner label", edited.items("segments").first().getString("speakerLabel"))
             assertFalse(workflow.readJson(case, draft, 16 * 1024 * 1024).items("segments").first().has("speakerLabel"))
+            if (index == 0) {
+                val verifiedParent = checkNotNull(case.latestTranscript())
+                val updated = workflow.review(case, actor, verifiedParent, segment.getString("id"), segment.getString("text"), "Synthetic examiner label", false, "=SYNTHETIC examiner <note> & revised, not speech")
+                assertEquals("HUMAN_VERIFIED", updated.items("segments").first().getString("verification"))
+                assertEquals(edited.getString("state"), updated.getString("state"))
+                for (format in listOf(ExportFormat.JSON, ExportFormat.TXT, ExportFormat.CSV, ExportFormat.HTML)) {
+                    val destination = ByteArrayOutputStream()
+                    exportDocument(workflow, vault, case, actor, format, destination) { false }
+                    val text = destination.toString("UTF-8")
+                    assertTrue("$format should contain the note", text.contains("SYNTHETIC examiner"))
+                    if (format == ExportFormat.CSV) assertTrue(text.contains("\"'=SYNTHETIC examiner"))
+                    if (format == ExportFormat.HTML) assertTrue(text.contains("&lt;note&gt; &amp;"))
+                }
+                val subtitles = ByteArrayOutputStream()
+                exportDocument(workflow, vault, case, actor, ExportFormat.SRT, subtitles) { false }
+                assertFalse(subtitles.toString("UTF-8").contains("SYNTHETIC examiner"))
+            }
             vault.recordEvent(case, actor, "WORKLOAD_UPDATE", org.json.JSONObject().put("status", "IN_REVIEW"))
             assertTrue(vault.verify(case).contains("agree"))
             val wav = ByteArrayOutputStream()
@@ -54,6 +139,15 @@ class OfflineWorkflowTest {
             val jsonHash = exportDocument(workflow, vault, case, actor, ExportFormat.JSON, json) { false }
             assertEquals(EvidenceVault.sha(json.toByteArray()), jsonHash)
             if (index == 0) {
+                val historyOut = ByteArrayOutputStream()
+                val historyHash = exportProcessingHistory(workflow, vault, case, actor, historyOut) { false }
+                assertEquals(EvidenceVault.sha(historyOut.toByteArray()), historyHash)
+                val history = org.json.JSONObject(historyOut.toString("UTF-8"))
+                assertEquals(enhanced.getString("id"), history.getString("activeArtifact"))
+                val enhancedRecord = history.items("audioRevisions").first { it.getString("id") == enhanced.getString("id") }
+                assertEquals(enhanced.getString("sha256"), enhancedRecord.getString("sha256"))
+                assertArrayEquals(EvidenceVault.canonical(enhanced.getJSONObject("operation")), EvidenceVault.canonical(enhancedRecord.getJSONObject("operation")))
+                assertTrue(vault.verify(case).contains("agree"))
                 for (format in listOf(ExportFormat.PDF, ExportFormat.DOCX, ExportFormat.XLSX, ExportFormat.SRT)) {
                     val destination = ByteArrayOutputStream()
                     exportDocument(workflow, vault, case, actor, format, destination) { false }
@@ -61,9 +155,37 @@ class OfflineWorkflowTest {
                     assertTrue(bytes.isNotEmpty())
                     if (format == ExportFormat.PDF) assertEquals("%PDF", bytes.copyOfRange(0, 4).toString(Charsets.US_ASCII))
                     if (format in setOf(ExportFormat.DOCX, ExportFormat.XLSX)) assertEquals("PK", bytes.copyOfRange(0, 2).toString(Charsets.US_ASCII))
+                    if (format in setOf(ExportFormat.DOCX, ExportFormat.XLSX)) {
+                        val expectedPart = if (format == ExportFormat.DOCX) "word/document.xml" else "xl/worksheets/sheet1.xml"
+                        var found = false
+                        java.util.zip.ZipInputStream(bytes.inputStream()).use { entries ->
+                            while (true) {
+                                val entry = entries.nextEntry ?: break
+                                if (entry.name == expectedPart) {
+                                    val content = entries.readBytes().toString(Charsets.UTF_8)
+                                    assertTrue(content.contains("SYNTHETIC examiner &lt;note&gt; &amp;"))
+                                    found = true
+                                }
+                            }
+                        }
+                        assertTrue(found)
+                    }
                     File(outputDir, "synthetic-native-transcript.${format.extension}").writeBytes(bytes)
                 }
             }
+            val checkpoint = DeviceCheckpoint(context).create(vault, case, actor) { false }
+            val fingerprint = checkpoint.operationParameters().getString("keySha256")
+            assertEquals(fingerprint, vault.verifyCheckpoints(case).single().keySha256)
+            val protectedOutput = ByteArrayOutputStream()
+            val transferPassword = if (index == 0) "SYNTHETIC test 密码 é 😀 42" else "SYNTHETIC test transfer password 42"
+            val testPassword = transferPassword.toCharArray()
+            val protectedHash = try { ProtectedTransfer.export(vault, case, actor, protectedOutput, testPassword) { false } }
+                finally { testPassword.fill('\u0000') }
+            val protectedBytes = protectedOutput.toByteArray()
+            assertEquals(protectedHash, EvidenceVault.sha(protectedBytes))
+            assertEquals("ECHOCS01", protectedBytes.copyOfRange(0, 8).toString(Charsets.US_ASCII))
+            File(outputDir, "synthetic-protected-run-${index + 1}.echocase.enc").writeBytes(protectedBytes)
+            File(outputDir, "synthetic-protected-run-${index + 1}.key-sha256.txt").writeText(fingerprint + "\n")
             val archive = ByteArrayOutputStream()
             val digest = vault.exportPackage(case, archive, actor)
             val zip = archive.toByteArray()
@@ -75,9 +197,29 @@ class OfflineWorkflowTest {
             val reopened = vault.importPackage(zip.inputStream(), actor, digest, { false }, {})
             assertEquals(caseId, reopened.getString("caseId"))
             assertTrue(vault.verify(reopened).contains("agree"))
+            if (index == 0) assertEquals(enhanced.getString("sha256"), checkNotNull(workflow.savedFullSpectrum(reopened)).getString("sourceSha256"))
+            if (index == 0) assertEquals("=SYNTHETIC examiner <note> & revised, not speech", workflow.readTranscript(reopened, checkNotNull(reopened.latestTranscript())).items("segments").first().getString("examinerNote"))
             assertEquals("CASE_IMPORT", reopened.items("audit").last().getString("action"))
             assertEquals("IN_REVIEW", reopened.items("audit").last { it.getString("action") == "WORKLOAD_UPDATE" }.getJSONObject("details").getString("status"))
             File(outputDir, "synthetic-offline-run-${index + 1}.echocase").writeBytes(zip)
+            assertTrue(folder.deleteRecursively())
+            // A receiving installation never replaces an existing case or needs
+            // the originating device's private signing/vault keys.
+            if (index == 0) {
+                assertThrows(Exception::class.java) { ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, protectedHash,
+                    "WRONG synthetic password".toCharArray(), { false }, {}) }
+                assertFalse(folder.exists())
+                assertThrows(Exception::class.java) { ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, "0".repeat(64),
+                    "SYNTHETIC test transfer password 42".toCharArray(), { false }, {}) }
+                assertFalse(folder.exists())
+            }
+            val recovered = ProtectedTransfer.import(vault, protectedBytes.inputStream(), actor, protectedHash,
+                transferPassword.toCharArray(), { false }, {})
+            assertEquals(caseId, recovered.getString("caseId"))
+            assertTrue(vault.verify(recovered).contains("mathematically valid"))
+            assertEquals("PROTECTED_TRANSFER_IMPORT", recovered.items("audit").last().getString("action"))
+            assertEquals(speechHash, recovered.items("artifacts").first().getString("sha256"))
+            if (index == 0) assertEquals("HUMAN_VERIFIED", workflow.readTranscript(recovered, checkNotNull(recovered.latestTranscript())).items("segments").first().getString("verification"))
             assertTrue(folder.deleteRecursively())
             count++
         }

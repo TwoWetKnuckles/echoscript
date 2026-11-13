@@ -1,0 +1,14 @@
+ClearVoice FRCRN_SE_16K neural speech-enhancement model
+Copyright Alibaba Inc. and ClearerVoice-Studio contributors.
+Code and model weights: Apache License 2.0.
+https://github.com/modelscope/ClearerVoice-Studio
+https://huggingface.co/alibabasglab/FRCRN_SE_16K
+Checkpoint revision: 3766e6a64b0d8cb58f08d913d617bf129f11ed53
+Converted with ClearVoice 0.1.2 and PyTorch 2.10.0+cpu to a static ONNX opset-17 graph.
+See inventory.json and scripts/export-clearvoice-onnx.py for provenance and reproduction.
+Android inference: Microsoft ONNX Runtime 1.32.0, MIT License, https://github.com/microsoft/onnxruntime
+No model accuracy, identity or recovery guarantee is implied.
+
+The binary graph is reproduced in CI and bundled into the APK, rather than
+stored in Git. Generate it locally with the pinned export environment before
+building. The build verifies its inventory hash and the native runtime pins it.

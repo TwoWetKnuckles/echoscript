@@ -22,3 +22,29 @@ jobs:
           languages: javascript-typescript, python
           build-mode: none
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066 # v4.39.3
+  android-and-case-security:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      actions: read
+      contents: read
+      security-events: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: "17"
+      - uses: github/codeql-action/init@33d7b85da1a04171e211befe2c739303b9a4c066
+        with:
+          languages: java-kotlin
+          build-mode: manual
+      - name: Trace Android Kotlin/Java and independent verifier compilation
+        run: |
+          apps/android/gradlew -p tools/case-protect build --no-daemon --no-build-cache --rerun-tasks
+          # Trace all app sources without packaging neural-model assets. Actual APK
+          # construction and pinned-model validation belong to the Quality workflow.
+          apps/android/gradlew -p apps/android :app:compileDebugKotlin :app:compileDebugJavaWithJavac --no-daemon --no-build-cache --rerun-tasks
+      - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066
+        with:
+          category: /language:java-kotlin

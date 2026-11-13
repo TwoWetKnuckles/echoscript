@@ -4,11 +4,31 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.4.0/EchoScript-Android-preview.zip)** · [Installation and checksums](downloads/README.md) · [Project roadmap](https://github.com/TwoWetKnuckles/echoscript/projects)
+**[Download the latest test APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android10-offline-test-candidate-0.6.0-dev.20261113) · [Installation guide](downloads/android/INSTALL.txt)
 
-Android 10 or later. Extract the ZIP, open the APK and tap **Install**. The Material interface defaults to a dark graphite theme with cyan accents. In **Cases**, choose **Load synthetic speech sample** to try the workflow. Import prepares the waveform automatically, and **Render & transcribe** opens the resulting draft for review. The app includes its English speech and speaker models and runs on the device without an account, server or web interface.
+**EchoScript Android 10 Offline Test Candidate 0.6** includes bundled ClearVoice speech enhancement with before/after-effects placement, default on-device Vosk and selectable Whisper API with exact-payload approval. The graphite/cyan workbench retains waveform/spectrum selection, compact effects, clips, restorable history and searchable examiner notes. All implemented tools are available.
 
-**Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** Read the [installation guide](downloads/android/INSTALL.txt) before installing or upgrading.
+The exact APK source `ef5da08a9be8a2cf5fd38e2668fcb2d510de9258` passed all eight push/PR quality jobs, Android 10/16 emulator suites and both CodeQL jobs. [Validation and checksums](downloads/android/VALIDATION-0.6.0.txt) distinguish these subsets from physical-device and full-product acceptance. **BETA GATE: NOT PASSED.** The APK is development-signed and debuggable.
+
+The candidate uses `org.echoscript.app.candidate06`, with a separate empty vault alongside earlier test apps. Preserve and independently verify protected exports before uninstall/reset. [Previous 0.6 Test rollback](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) remains available.
+
+### Workbench
+
+The optional full-recording scan is a coarse spectral overview; short-range inspection provides separate FFT/hop/window controls. It is not a high-resolution full-file spectrogram. Restoration, noise-floor gating and clipping counts retain their documented limits. [Workbench guide](docs/android/ENHANCEMENT-WORKBENCH.md) · [Design direction](docs/android/WORKBENCH-DESIGN.md).
+
+All implemented tools are available without artificial usage restrictions. External provider billing and technical resource limits still apply.
+
+The [owner-confirmed scope](docs/WORKING-SCOPE.md) includes items 1–20 and 23–28; browser parity and Termux are deferred. Formal exact-build Galaxy S22+ acceptance, outstanding feature work, owner signing/upgrades and the [complete release gates](docs/RELEASE-CANDIDATE.md) remain open. Protected case transfer and device checkpoints are available; [trust and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md) still apply.
+
+### Local file selection
+
+In **Cases**, choose a recording, confirm its name under **Selected recording**, then tap **Import selected audio**. The panel shows progress and keeps a retry action on failure. **Choose with another file picker** offers Android's alternative picker. All openable files are shown, including recordings with incorrect MIME labels; the decoder determines supported audio from its contents. Emulator system-picker tests pass. The original Galaxy-specific cause is not established by the owner's preliminary positive report.
+
+## Documentation site
+
+The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
+
+From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The existing protected documentation deployment predates this candidate. Further documentation-site design and deployment changes are paused; the Android workbench uses its palette.
 
 ## Responsibility and limitations
 
@@ -20,12 +40,12 @@ Read the [responsibility and disclaimer notice](DISCLAIMER.md), [licensing guide
 
 ## What works
 
-| Component                   | Available in the development preview                                                                                                                                                                                      |
-| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Android 10+                 | Encrypted original intake, waveform/spectral overview, speech-region candidates, non-destructive WAV rendering, offline English transcription, draft speaker groups, examiner revisions, audit and explicit case transfer |
-| Browser companion           | Session-only PCM WAV workbench with time-frequency selections, deterministic DSP and revision comparisons. Real Vosk speech is available through the separately started loopback service                                  |
-| Android and browser exports | WAV, transcript and document formats, case package and SHA-256. The native case package is plaintext and unsigned. The browser offers encrypted case export and processing-history bundles                                |
-| Independent tools           | Streaming Node case verifier and bounded-buffer Rust PCM16 renderer for development and independent checks                                                                                                                |
+| Component                   | Available in the development preview                                                                                                                                                                                                                                |
+| --------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android 10+                 | Encrypted original intake, waveform/spectral overview, speech-region candidates, non-destructive WAV rendering, offline English transcription, draft speaker groups, examiner revisions, audit and explicit case transfer                                           |
+| Browser companion           | Session-only PCM WAV workbench with time-frequency selections, deterministic DSP and revision comparisons. Real Vosk speech is available through the separately started loopback service                                                                            |
+| Android and browser exports | WAV, transcript and document formats, case package and SHA-256. Native protected case containers and optional device-signed historical checkpoints; individual files and legacy ZIPs remain plaintext. Browser encrypted case export and processing-history bundles |
+| Independent tools           | Streaming Node case verifier and bounded-buffer Rust PCM16 renderer for development and independent checks                                                                                                                                                          |
 
 The [Android guide](docs/android/OFFLINE.md) lists native filters, codecs and device limits. Draft speaker groups are local acoustic estimates. The loopback web adapter leaves speaker identity unassigned. Both paths preserve returned score semantics and alternatives when available. CTM requires genuine word alignment. Human text edits invalidate that alignment.
 
@@ -72,20 +92,25 @@ Set the matching API URL/token in Settings, explicitly disable the provider proh
 
 For installation without development tools, use the [Android download](downloads/README.md).
 
-The pinned build uses JDK 17, Gradle 9.8.2, AGP 9.5.0 and Android SDK/build tools 36.0.0. Android 10/API 29 is the minimum. With an installed SDK, accepted SDK license and Python 3.11 or later on the build host:
+The pinned build uses JDK 17, Gradle 9.8.2, AGP 9.5.0 and Android SDK/build tools 36.0.0. Android 10/API 29 is the minimum. With an installed SDK, accepted SDK license and Python 3.12 on the build host, reproduce the pinned ClearVoice graph before building. The graph is generated locally rather than checked into Git:
 
 ```sh
+python3.12 -m venv .clearvoice-export
+.clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+.clearvoice-export/bin/pip check
+.clearvoice-export/bin/python scripts/setup-clearvoice.py models/clearvoice --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
+.clearvoice-export/bin/python scripts/export-clearvoice-onnx.py models/clearvoice assets/clearvoice/frcrn-16k-2s.onnx
 cd apps/android
 ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleRelease
 ./gradlew :app:connectedDebugAndroidTest
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The debug APK uses the separate `org.echoscript.app.preview` application ID. The release APK is unsigned until an independently controlled signing configuration is supplied. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
+This source builds **EchoScript 0.6 Candidate** (`org.echoscript.app.candidate06`), with its own vault alongside the earlier published test apps. Physical-device validation remains open. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
-Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
+Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. Vosk remains on device by default. Optional companion processing requires explicit payload approval and network access. See the offline guide for codec, editing, transfer and recovery limits.
 
-Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Native exports are explicitly **unencrypted and unsigned**; protect their destinations.
+Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Preview 0.5.1 offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
 
 ## Verification and QA
 
@@ -94,6 +119,8 @@ node tools/case-verify/index.mjs case.echocase --sha256 INDEPENDENTLY_RETAINED_P
 ```
 
 For encrypted browser packages, supply `ECHOSCRIPT_PACKAGE_PASSPHRASE` through the environment. The verifier never repairs packages. It checks schemas, canonical manifest bytes, SHA-256, inventory, ZIP CRC, provenance and audit linkage. Unsigned hashes do not establish identity or custody against an attacker who can rewrite an entire package. Keep trusted external checkpoints.
+
+For native protected containers, build the [independent Java tool](tools/case-protect/README.md) and supply the same environment variable. Add `--trusted-key-sha256 INDEPENDENT_SIGNER_FINGERPRINT` to require a checkpoint covering all current evidence from an independently trusted key. Signature validity, unsigned tail events, examiner identity and organizational trust are reported separately. Verification does not stage a plaintext native ZIP.
 
 ```sh
 cargo fmt --all --check
@@ -107,11 +134,11 @@ python3 tools/qa-stress.py
 
 ## Data, hosting and cost boundary
 
-Source audio, derivatives, transcripts, notes, audit and manifests remain local. The current application sends no evidence to Supabase. OIDC/team roles and approved preference/workload synchronization are outstanding; the existing Supabase reference project is not an evidence store. External speech adapters stay disabled until deployment, retention, agreements, credentials and cost are qualified.
+Source audio, derivatives, transcripts, notes, audit and manifests remain in the encrypted local vault. Optional Whisper submission sends only explicitly approved prepared audio through the configured companion. The application sends no evidence to Supabase. Team roles and approved preference/workload synchronization remain outside the current local workflow; the existing Supabase reference project is not an evidence store.
 
-The tested path uses open-source local speech and no paid speech API. Workflows use standard public-repository runners; [GitHub documents these as free](https://docs.github.com/en/billing/concepts/product-billing/github-actions), with separate artifact/cache limits. No paid service, larger runner, billing change or domain registration was performed. Existing hosting/account quotas and ongoing operational support are not guaranteed by a free tier. [GitHub Pages usage limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) do not permit commercial SaaS hosting.
+Vosk and ClearVoice run locally. Whisper API use is optional and is charged to the configured OpenAI account; a live check used only the licensed synthetic fixture. Workflows use standard public-repository runners; [GitHub documents these as free](https://docs.github.com/en/billing/concepts/product-billing/github-actions), with separate artifact/cache limits. No hosting plan change, larger runner or domain registration was performed. Existing provider/hosting quotas and ongoing operational support remain separate deployment responsibilities. [GitHub Pages usage limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) do not permit commercial SaaS hosting.
 
-The existing companion is published through Sites with its existing owner-private audience. The public repository does not change that audience. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
+The existing companion is published through Sites with its existing audience. Source publication does not change Site access. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
 
 ## Project map and licensing
 

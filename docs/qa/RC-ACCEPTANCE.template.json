@@ -1,0 +1,102 @@
+{
+  "schema": "org.echoscript.release-record/1",
+  "sourceCommit": "0000000000000000000000000000000000000000",
+  "apkSha256": "0000000000000000000000000000000000000000000000000000000000000000",
+  "deployment": {
+    "organization": "UNRESOLVED — responsible deploying organization required",
+    "jurisdiction": "UNRESOLVED — country/state, agency and court policies required",
+    "policyRevision": "UNRESOLVED — approved retention, custody, recovery, provider and distribution policies required",
+    "distribution": "UNRESOLVED — direct APK and/or MDM"
+  },
+  "gates": [
+    {
+      "id": "DEVICE_UI",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Physical phones and tablets on the supported OS matrix; accessibility service, large text, dark/light, rotation and landscape workflows.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "EVIDENCE",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Immutable encrypted intake, all artifact/audit/provenance/tamper checks, independently trusted checkpoints, protected transfer and approved tested recovery policy.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "REAL_WORKFLOW",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Actual supported file providers, microphone acquisition, authorized roles and the full accepted application workflow, with genuine user-interface interaction.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "DEVICE_RESOURCES",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Declared device-specific RAM, descriptor, disk, duration, thermal and battery thresholds; sustained large-file, cancellation and cleanup measurements within those limits.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "RECOVERY",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Process-kill and power-loss matrix at each long-running stage, source preservation, honest incomplete states, resumable jobs and protected clean-device recovery.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "ENHANCEMENT",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Native time-frequency selection, measured noise profiles, agreed disclosed restoration, delay, before/after comparison and non-destructive deterministic history/render/export parity.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "SPEECH",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Controlled multi-speaker/overlap and uncertainty accuracy evaluation; genuine score/word timing/alternative semantics; provider/model/deployment permission and policy qualification.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "TEAM_PORTABILITY",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Authenticated roles, authorization/revocation/cross-user tests, explicit approved metadata fields, conflict handling and no hidden evidence synchronization.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "DISTRIBUTION",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Owner-controlled non-debug production signing, independently pinned certificate, upgrade/key custody and tested direct APK/MDM policy for the selected deployment.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "GOVERNANCE",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Exact jurisdiction, organizational and case authority, retention/legal holds, licensing and required executed agreements reviewed for the actual deployed configuration.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    },
+    {
+      "id": "SEVEN_FULL_RUNS",
+      "result": "NOT EXECUTABLE",
+      "observed": "Pending independent execution and deployment review. Seven consecutive full accepted workflows on the exact release APK/source, after the other gates pass. A failure resets the consecutive counter; partial/subset runs never count.",
+      "reviewer": "UNASSIGNED",
+      "acceptedAtUtc": null,
+      "evidence": []
+    }
+  ],
+  "runs": []
+}

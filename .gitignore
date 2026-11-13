@@ -19,3 +19,6 @@ __pycache__/
 /dist/
 /apps/web/dist/
 .openai/
+
+/.clearvoice-export/
+/assets/clearvoice/*.onnx

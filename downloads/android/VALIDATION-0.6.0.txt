@@ -1,0 +1,48 @@
+EchoScript Android 10 Offline Test Candidate 0.6 — validation record
+APK source: ef5da08a9be8a2cf5fd38e2668fcb2d510de9258
+APK SHA-256: 664854f670987ad3136e9030262861c194ba62fe877742ee009024e18a8b8f82
+APK bytes: 341821357
+Development signing certificate SHA-256: 35e4939a1ec478355d175f541e637317b8eb498520766857f94f574831abd250
+Bundled ClearVoice model SHA-256: 5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2
+Application ID: org.echoscript.app.candidate06
+Version: 0.6.0-candidate.1 / 9; min API 29, target API 36
+
+Passing push quality: https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442474145
+Passing PR quality: https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442484477
+Passing CodeQL: https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442484612
+Passing documentation push: https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442474029
+Passing documentation PR: https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442484614
+
+All eight push and PR quality jobs passed. Android 10 ordinary suite: 28 passes,
+two designated skips (large-source case and separately invoked crash check).
+Android 16: 29 passes, one designated skip (separately invoked crash check).
+The focused Whisper consent/transport test passed before each full suite.
+The host process-kill import check passed separately on both emulators.
+32 independently verified case exports per emulator, including ClearVoice and
+Whisper integration cases and seven core/UI/protected subsets. This is not the
+seven complete accepted product runs. Synthetic fixtures only.
+35 Android JVM tests; 10 case-security JVM tests; 37 Node tests passed.
+Rust format/clippy/tests/release, desktop streaming stress and dependency checks passed.
+
+ClearVoice checks: real bundled model, before/after effects order, saved-base
+replay with enhancement disabled, deterministic PCM on one device, 88400 mono
+16 kHz frames, source preservation, cancellation and no app-UID network bytes.
+This is a short synthetic fixture; not a large-file model-performance or speech
+intelligibility benchmark. No physical thermal/battery measurements were made.
+
+Whisper UI checks: Vosk default; route selection before start; zero requests
+before approval or on cancel; prepared payload hash; immutable raw/normalized
+results; audit; source preservation and independent export verification. The
+Android test endpoint is a declared synthetic contract fixture. A separate
+real configured-key synthetic request returned 16 words and one segment.
+
+Installer checks: APK v2 signature valid, matching metadata/model hash,
+zipalign -c -P 16 4 passed. All 11 64-bit native libraries have >=16 KiB ELF
+LOAD alignment; 12 32-bit libraries meet their 4 KiB boundary. No execution
+on a 16 KiB kernel was performed. No claim of universal device compatibility.
+The installation ZIP was repackaged with updated documents after CI; its APK
+is byte-identical to the passing Android 16 push-job build.
+
+BETA GATE: NOT PASSED. Physical-device/resource/recovery, remaining scope,
+owner signing/upgrades and trust/deployment acceptance remain open. The
+release-record JSON preserves unaccepted mandatory gates. See source docs.
