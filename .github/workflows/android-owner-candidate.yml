@@ -27,6 +27,7 @@ jobs:
         run: |
           python -m venv .clearvoice-export
           .clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+          .clearvoice-export/bin/pip check
           .clearvoice-export/bin/python scripts/setup-clearvoice.py "$RUNNER_TEMP/clearvoice" --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
           .clearvoice-export/bin/python scripts/export-clearvoice-onnx.py "$RUNNER_TEMP/clearvoice" assets/clearvoice/frcrn-16k-2s.onnx
       - name: Validate owner-provisioned signing inputs

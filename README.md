@@ -92,16 +92,21 @@ Set the matching API URL/token in Settings, explicitly disable the provider proh
 
 For installation without development tools, use the [Android download](downloads/README.md).
 
-The pinned build uses JDK 17, Gradle 9.8.2, AGP 9.5.0 and Android SDK/build tools 36.0.0. Android 10/API 29 is the minimum. With an installed SDK, accepted SDK license and Python 3.11 or later on the build host:
+The pinned build uses JDK 17, Gradle 9.8.2, AGP 9.5.0 and Android SDK/build tools 36.0.0. Android 10/API 29 is the minimum. With an installed SDK, accepted SDK license and Python 3.12 on the build host, reproduce the pinned ClearVoice graph before building. The graph is generated locally rather than checked into Git:
 
 ```sh
+python3.12 -m venv .clearvoice-export
+.clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+.clearvoice-export/bin/pip check
+.clearvoice-export/bin/python scripts/setup-clearvoice.py models/clearvoice --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
+.clearvoice-export/bin/python scripts/export-clearvoice-onnx.py models/clearvoice assets/clearvoice/frcrn-16k-2s.onnx
 cd apps/android
 ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleRelease
 ./gradlew :app:connectedDebugAndroidTest
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-The 0.6 debug draft uses `org.echoscript.app.preview06`, separate from the 0.5.1 preview and its vault. Side-by-side installation passed an Android 16 emulator check; physical-device validation remains open. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
+This source builds **EchoScript 0.6 Candidate** (`org.echoscript.app.candidate06`), with its own vault alongside the earlier published test apps. Physical-device validation remains open. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. Vosk remains on device by default. Optional companion processing requires explicit payload approval and network access. See the offline guide for codec, editing, transfer and recovery limits.
 

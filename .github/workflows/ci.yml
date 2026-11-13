@@ -24,6 +24,7 @@ jobs:
         run: |
           python -m venv .clearvoice-export
           .clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+          .clearvoice-export/bin/pip check
           .clearvoice-export/bin/python scripts/setup-clearvoice.py "$RUNNER_TEMP/clearvoice" --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
           .clearvoice-export/bin/python scripts/export-clearvoice-onnx.py "$RUNNER_TEMP/clearvoice" assets/clearvoice/frcrn-16k-2s.onnx
           python - <<'PYMODEL'
@@ -135,10 +136,6 @@ jobs:
         with:
           name: ClearVoice-pinned-offline-graph
           path: assets/clearvoice/
-      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-        with:
-          name: ClearVoice-pinned-offline-graph
-          path: assets/clearvoice/
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           distribution: temurin
@@ -168,10 +165,6 @@ jobs:
         api: [29, 36]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
-        with:
-          name: ClearVoice-pinned-offline-graph
-          path: assets/clearvoice/
       - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
         with:
           name: ClearVoice-pinned-offline-graph
