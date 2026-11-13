@@ -1,0 +1,83 @@
+EchoScript 0.6 Test — executed validation
+========================================
+Reviewed November 12, 2026 (America/Los_Angeles).
+CI completed November 13, 2026 UTC.
+
+SYNTHETIC DEVELOPMENT EVALUATION ONLY. BETA GATE: NOT PASSED.
+This record reports executed subsets and does not pass missing product gates.
+
+APK source: cc19e7a3c49eed1fdc1b32064fb27a21531f87df
+APK version: 0.6.0-preview (versionCode 8)
+Application ID: org.echoscript.app.preview06
+Visible label: EchoScript 0.6 Test
+APK SHA-256:
+0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3
+
+Push quality checks (all seven jobs passed):
+https://github.com/TwoWetKnuckles/echoscript/actions/runs/43358193917
+Pull-request quality checks (all seven jobs passed):
+https://github.com/TwoWetKnuckles/echoscript/actions/runs/43358201796
+CodeQL (both jobs passed):
+https://github.com/TwoWetKnuckles/echoscript/actions/runs/43358201829
+
+Observed results
+----------------
+- Android build, unsigned release, lint and 33 JVM unit tests: PASS.
+- Disposable synthetic-key signing/certificate-rejection checks: PASS.
+  This is not owner enrollment, production signing or upgrade validation.
+- Android 10/API 29: 27 tests passed, zero failures/errors, two designated
+  skips (large-file test and process-kill test executed separately).
+- Android 16/API 36: 28 tests passed, zero failures/errors, one designated
+  skip (process-kill test executed separately).
+- Native suites include actual emulator DocumentsUI/content-URI intake and
+  cancellation, selected-file rotation/retry, presets, horizontal controls,
+  recipes/history, spectral/noise tools, notes and plan-preview behavior.
+- Seven core and seven interface synthetic workflows per emulator: PASS.
+  Controlled picker responses in repeated workflows are distinguished from
+  the separate real emulator DocumentsUI test. They do not establish Samsung
+  My Files or the complete physical-provider matrix.
+- Actual host force-stop during acquisition, original preservation,
+  incomplete-data reporting and no false-complete case: PASS on both APIs.
+  Power loss, all-stage recovery and automatic resumable jobs remain open.
+- Host independent checks of plain/protected native cases: PASS.
+- Android 16 side-by-side coexistence with pinned 0.5.1 and the existing
+  750,000,000-byte synthetic decode/render workflow: PASS. This is not a
+  750 MB full-spectrum performance benchmark or physical-phone upgrade test.
+- Browser/API/evidence: build, lint, 36 Node tests, dependency audit and
+  seven real loopback Vosk workflows: PASS. Whisper transport uses synthetic
+  mocks; no live Whisper request, Android integration or hosted deployment.
+- Rust format, clippy, tests, release build and one-hour desktop streaming
+  resource/determinism/failure-cleanup suite: PASS.
+- Protected-case cross-runtime tests: PASS. A valid device checkpoint does
+  not establish examiner identity, organizational trust or trusted time.
+- Exact Android 16 job APK: signature v2 and 16 KiB alignment checked in CI;
+  expected package/label checked; no Internet/network-state permission.
+- Downloaded CI archives match their recorded GitHub SHA-256 digests. The
+  original APK ZIP inventory/checksums and build source/run were verified.
+
+Packaging
+---------
+The release APK is byte-identical to the tested API 36 job APK. Updated
+INSTALL.txt, RELEASE-NOTES.md and this VALIDATION.txt are added after CI;
+SHA256SUMS.txt is regenerated for the release package. BUILD.txt retains the
+APK source/run and records this documentation-only repackaging. No app code,
+resources, model weights, signature or permissions are changed by packaging.
+
+Original CI APK archive SHA-256:
+8a8502df7006eb97f60ba0b52fbb2bdf03d0ae10b20fdc99b2ecdeac11eca8bd
+Original CI APK archive artifact: 14007198371
+The separate validation ZIP retains the original synthetic report archives
+and their GitHub digests. It excludes provider credentials and real cases.
+
+Open requirements
+-----------------
+Formal exact-build Galaxy S22+ acceptance, physical accessibility/microphone/
+provider/resource testing, continuous high-resolution inspection, advanced
+isolation/restoration qualification, individual-effect ordering, broader
+providers/codecs and speaker/overlap validation, background/resumable work,
+team authorization and approved metadata sync, signer/key/time lifecycle,
+owner production signing and vault-preserving upgrades, deployment-specific
+governance and seven complete accepted workflows remain outstanding.
+
+The Free/subscription/one-time modes are debug-only design simulations.
+No prices, payment processing or verified production entitlements are active.

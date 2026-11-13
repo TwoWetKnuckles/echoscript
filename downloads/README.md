@@ -1,17 +1,22 @@
 # EchoScript downloads
 
-## Temporary test package for local audio selection
+## Latest: EchoScript 0.6 Test
 
-**[Download the 0.6.0 development test package](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43292201243/artifacts/13978247007)** (GitHub sign-in required; expires November 19, 2026). The ZIP includes the APK, installation instructions and checksums. After picking a recording, verify its name under **Selected recording**, then tap **Import selected audio**. This is a debug-signed synthetic-evaluation build from commit `a59d28ef0168053ea4fe83d81fd025afc2b2438b`, not a production release. It includes the revised layout, picker handling and optional coarse full-recording spectral scan.
+**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-Android-preview.zip)** · [Release](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) · [Installation](android/INSTALL-CANDIDATE.txt) · [Release notes](android/RELEASE-NOTES-0.6.0.md) · [Validation record](android/VALIDATION-0.6.0.txt)
 
-| File | SHA-256 |
-| --- | --- |
-| Downloaded Actions ZIP | `77960cfc57e59fac7765424fa9145c15d63d75f0a7098b48f4e4909d6dec7d90` |
-| APK inside ZIP | `c8ec69acc7566669a3d488c8d5ab6e497bb312ad7f8e153f8c919b7432cf49ad` |
+Android 10 or later. Development preview for synthetic evaluation; **BETA GATE: NOT PASSED**. This package includes the latest compact workbench, local-file confirmation and retry, optional coarse full-recording spectrum, searchable examiner notes and reversible Free/Premium design previews. No prices or payments are active.
 
-All seven quality jobs passed for this source in [the test run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43292201243). The originally reported Galaxy S22+ behavior has not been verified fixed on that physical device. This build installs alongside the 0.5.1 preview and its test vault starts empty. Separate 0.6 debug builds may have different signing keys; do not remove or reset any app without first exporting and independently verifying cases you need, because uninstalling can erase its vault.
+| File                     | SHA-256                                                            |
+| ------------------------ | ------------------------------------------------------------------ |
+| APK                      | `0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3` |
+| Installation ZIP         | `fe9c11095b10fe4dbff30c69e22570a4c1d356e4dbce6ff35755bd5c2c8daa46` |
+| Synthetic validation ZIP | `67e521643bb3e70972deec39fab2c9813779506167247d13276cd316fdcda213` |
 
-## Android preview 0.5.1
+The APK is unchanged from source `cc19e7a3c49eed1fdc1b32064fb27a21531f87df` in [the passing quality run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43358193917). Updated installation/release documentation and package checksums were added after CI. The [validation ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-validation.zip) preserves original synthetic report archives and their digests; [SHA256SUMS.txt](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/SHA256SUMS.txt) covers all release assets. The permanent release replaces the earlier expiring Actions download.
+
+Choose a recording, verify its name under **Selected recording**, then tap **Import selected audio**. The test app uses `org.echoscript.app.preview06`, separate from 0.5.1, and starts with an empty vault. Different 0.6 CI builds may use different signing keys. Do not remove or reset any app until needed cases have been exported, independently verified and safely stored. Formal Galaxy S22+ acceptance and production upgrades remain open.
+
+## Previous preview: 0.5.1
 
 **[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-Android-preview.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.5.1) · [Plain-text install instructions](android/INSTALL.txt)
 

@@ -1,6 +1,6 @@
 # Working release scope — owner decision
 
-Decision recorded November 11, 2026 (America/Los_Angeles), after the numbered historical feature reconciliation. The published 0.5.1 development preview remains the download until a replacement is validated. The 0.6.0 workbench is an unfinished candidate, not an accepted release candidate.
+Decision recorded November 11, 2026 (America/Los_Angeles), after the numbered historical feature reconciliation. EchoScript 0.6 Test is now the published synthetic-evaluation preview. It remains incomplete against this scope and is not an accepted release candidate.
 
 ## Scope decisions
 
@@ -14,34 +14,34 @@ Decision recorded November 11, 2026 (America/Los_Angeles), after the numbered hi
 
 ## Confirmed feature inventory
 
-| ID | Confirmed feature |
-| --- | --- |
-| 1 | Zoomable waveform/spectrogram with short-event inspection. |
-| 2 | Combined time/frequency selections and frequency isolation. |
-| 3 | FFT/hop/window/frequency-scale/dB-range controls. |
-| 4 | Looped selection playback. |
-| 5 | Synchronized original/parent/processed A/B comparison. |
-| 6 | Markers/bookmarks/timestamped notes. |
-| 7 | Editable speech-event candidates. |
-| 8 | Measured noise-profile selection and reduction. |
-| 9 | More capable speech/noise isolation. |
-| 10 | Parametric EQ with frequency/Q/gain. |
-| 11 | Improved measured echo/reverb reduction with explicit limitations. |
-| 12 | De-clipping review and before/after visualization. |
-| 13 | Reorderable processing chains and alternative-chain comparison. |
-| 14 | Standalone processing-changelog export and bundled handoff. |
-| 15 | Selectable local/self-hosted/cloud transcription providers. |
-| 16 | Whisper/OpenAI transcription option. |
-| 17 | Provider qualification matrix and exact-payload submission consent. |
-| 18 | Measured multi-speaker/overlap handling. |
-| 19 | Transcript search/uncertainty filtering and examiner-managed annotations. |
-| 20 | Explicit broader codec/container support and failure matrix. |
-| 23 | Background processing and resumable jobs. |
-| 24 | Full interruption/recovery coverage. |
-| 25 | Team identity/roles/authorization/revocation/isolation. |
-| 26 | Explicitly approved preferences/workload metadata synchronization and conflicts; no evidence upload by default. |
-| 27 | Trusted signer enrollment/revocation/key-custody/recovery lifecycle and trusted timestamping. |
-| 28 | Owner-controlled production signing, certificate continuity and vault-preserving upgrades. |
+| ID  | Confirmed feature                                                                                               |
+| --- | --------------------------------------------------------------------------------------------------------------- |
+| 1   | Zoomable waveform/spectrogram with short-event inspection.                                                      |
+| 2   | Combined time/frequency selections and frequency isolation.                                                     |
+| 3   | FFT/hop/window/frequency-scale/dB-range controls.                                                               |
+| 4   | Looped selection playback.                                                                                      |
+| 5   | Synchronized original/parent/processed A/B comparison.                                                          |
+| 6   | Markers/bookmarks/timestamped notes.                                                                            |
+| 7   | Editable speech-event candidates.                                                                               |
+| 8   | Measured noise-profile selection and reduction.                                                                 |
+| 9   | More capable speech/noise isolation.                                                                            |
+| 10  | Parametric EQ with frequency/Q/gain.                                                                            |
+| 11  | Improved measured echo/reverb reduction with explicit limitations.                                              |
+| 12  | De-clipping review and before/after visualization.                                                              |
+| 13  | Reorderable processing chains and alternative-chain comparison.                                                 |
+| 14  | Standalone processing-changelog export and bundled handoff.                                                     |
+| 15  | Selectable local/self-hosted/cloud transcription providers.                                                     |
+| 16  | Whisper/OpenAI transcription option.                                                                            |
+| 17  | Provider qualification matrix and exact-payload submission consent.                                             |
+| 18  | Measured multi-speaker/overlap handling.                                                                        |
+| 19  | Transcript search/uncertainty filtering and examiner-managed annotations.                                       |
+| 20  | Explicit broader codec/container support and failure matrix.                                                    |
+| 23  | Background processing and resumable jobs.                                                                       |
+| 24  | Full interruption/recovery coverage.                                                                            |
+| 25  | Team identity/roles/authorization/revocation/isolation.                                                         |
+| 26  | Explicitly approved preferences/workload metadata synchronization and conflicts; no evidence upload by default. |
+| 27  | Trusted signer enrollment/revocation/key-custody/recovery lifecycle and trusted timestamping.                   |
+| 28  | Owner-controlled production signing, certificate continuity and vault-preserving upgrades.                      |
 
 ## Requests already included before reconciliation
 

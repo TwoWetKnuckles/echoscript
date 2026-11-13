@@ -31,6 +31,23 @@ optional full-recording scan covers the recording with overlapping windows and
 shows a coarse overview. It can take a long time for large files. Keep the app
 open, and use Cancel if needed. For finer detail, inspect a selected time range.
 
+Quick presets, effect groups and effect choices scroll horizontally. Swipe to
+reach more controls. Each effect has an enable switch, a signed strength slider
+and a numerical field. Changes remain drafts until rendered. Saved renders and
+their recipes remain in revision history when an earlier state is restored.
+
+Settings includes Explore possible plans: All tools, Free preview, Subscription
+preview and One-time preview. All tools is the evaluation default. The other
+choices only simulate proposed access; they do not create or record a purchase.
+No prices, payments, subscription or production license service are active.
+Existing cases, playback, history, verification and exports remain accessible
+in every preview. The choice resets when the app process restarts.
+
+Transcript segments accept a separate Examiner note (not spoken words). Notes
+are searchable and save as new transcript revisions; adding a note alone does
+not verify speech. Native documents label notes separately. SRT, VTT and CTM
+contain speech/timing only. Review the saved revision before exporting.
+
 The app is local-first and runs its bundled English speech model on the device.
 The optional experimental Whisper service in the source tree is not connected
 to this Android build. Individual WAV and document exports are plaintext;

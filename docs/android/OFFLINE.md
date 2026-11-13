@@ -54,6 +54,6 @@ Production distribution needs an owner-controlled signing key, verified upgrade 
 
 See [owner-signing setup](OWNER-SIGNING.md) and [the exact-build acceptance record](../qa/RC-ACCEPTANCE.md). The manual signing workflow produces an evaluation artifact only; it does not publish a release candidate or count debug/emulator results as tests of a different signed APK.
 
-### File selection in the 0.6 working draft
+### File selection in 0.6 Test
 
-After choosing a file, the draft displays the selected filename above the scrolling page. Tap **Import selected audio** to preserve it; failed imports keep a **Retry import** action. Cancelling or receiving an empty picker result produces a visible message. If Android kills the app after selection, the URI is not persisted; the app asks the user to check existing cases and choose the file again. The owner reported that things appeared to work so far on the Galaxy S22+, but the exact build and individual device workflows were not documented for formal acceptance. The published 0.5.1 preview retains its previous automatic-import flow.
+After choosing a file, the test build displays the selected filename above the scrolling page. Tap **Import selected audio** to preserve it; failed imports keep a **Retry import** action. Cancelling or receiving an empty picker result produces a visible message. If Android kills the app after selection, the URI is not persisted; the app asks the user to check existing cases and choose the file again. The owner reported that things appeared to work so far on the Galaxy S22+, but the exact build and individual device workflows were not documented for formal acceptance. The published 0.5.1 preview retains its previous automatic-import flow.

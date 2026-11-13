@@ -16,7 +16,7 @@ The same premium capability set is proposed for a subscription and a non-consuma
 
 In debug builds, **Settings → Explore possible plans** provides in-memory **Free preview**, **Subscription preview** and **One-time preview** choices, plus the default **All tools** evaluation mode. These switches simulate the table above and never create, represent or persist a purchase. Free preview blocks new advanced operations before they change a revision, while keeping existing recordings, history, verification and exports available. Changes reset to All tools when the app process restarts. The release build has no preview selector or active commercial gate. Do not use the preview switch as a license or security mechanism.
 
-The provisional free/premium split can be changed before release. Tests cover the policy, the two premium preview modes, basic clipping, blocked premium analysis, preserved source hashes and protected export in free preview. The newest changes need a completed CI/device run before a pass is recorded.
+The provisional free/premium split can be changed before release. Tests cover the policy, the two premium preview modes, basic clipping, blocked premium analysis, preserved source hashes and protected export in free preview. Policy/unit and Android 10/16 emulator paths passed on `cc19e7a3`, including blocked advanced rendering without active-revision or artifact changes. Physical-device acceptance and production billing are still outstanding.
 
 ## Production billing and trust boundaries
 
