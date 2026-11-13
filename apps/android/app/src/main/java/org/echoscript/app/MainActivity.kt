@@ -400,7 +400,7 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     val transcript = screen.transcript
     if (transcript == null) {
         Section("Transcribe active audio", "Choose the route before starting. Review draft words and timestamps against the audio.") {
-            ProviderControls(model, ready)
+            ProviderControls(model, ready, placementSelection = false)
             Button(onClick = {
                 if (model.clearVoiceEnabled) model.enhanceClearVoice(actor) { model.transcribe(actor) }
                 else model.transcribe(actor)

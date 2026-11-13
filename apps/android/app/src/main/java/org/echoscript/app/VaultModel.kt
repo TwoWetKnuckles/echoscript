@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
 import org.json.JSONObject
+import org.json.JSONArray
 import java.util.concurrent.atomic.AtomicBoolean
 
 internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false, val note: String = "")
@@ -33,6 +34,7 @@ internal data class WorkbenchDraftMemory(
     val showEffects: Boolean, val effectCategory: String, val selectedEffect: String, val appliedNoiseMeasurement: String,
     val showComparison: Boolean, val comparisonId: String, val showDetail: Boolean, val selectFrequency: Boolean,
     val detailFft: Int, val detailOverlap: Int, val detailWindow: String, val detailScale: String, val detailFloor: Int,
+    val clearVoiceEnabled: Boolean, val clearVoicePlacement: ClearVoicePlacement, val transcriptionProvider: TranscriptionProvider,
 )
 internal const val INTERRUPTED_AUDIO_SELECTION = "A file selection or import was interrupted. Check Cases for a preserved copy, then choose the recording again if needed."
 
@@ -413,18 +415,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             "Comparison is ready. Review the overlay and near-full-scale counts."
         }
     }
-    fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) {
+    fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, clearVoice: ClearVoicePlacement? = null, completed: () -> Unit = {}) {
         runJob("Rendering effect plan", completed) {
-            require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
             val manifest = selected()
-            vault.selectRevision(manifest, actor, baseId)
             // A failed render can select a new revision; clear stale review data.
             updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
-            for ((index, settings) in regions.withIndex()) {
-                if (cancelled.get()) throw InterruptedException("Render cancelled; completed revisions remain in history")
-                val completedSettings = settings.copy(workbenchPlan = completedRegionPlan(settings.workbenchPlan, index + 1))
-                workflow.enhance(manifest, actor, completedSettings, cancelled::get, reportProgress("frames rendered"))
-            }
+            LocalRenderPipeline(getApplication(), vault, workflow).render(manifest, actor, baseId, regions, clearVoice, cancelled::get, reportProgress("frames rendered"))
             val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
             updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
             "Effect plan rendered. Earlier audio and settings remain in revision history."
@@ -492,13 +488,15 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun enhanceClearVoice(actor: String, baseId: String? = null, completed: (String) -> Unit = {}) {
+    fun enhanceClearVoice(actor: String, completed: (String) -> Unit = {}) {
         var renderedId: String? = null
-        val placement = clearVoicePlacement.name
         runJob("Enhancing with ClearVoice on this device", completed = { completed(checkNotNull(renderedId)) }) {
             val manifest = selected()
-            if (baseId != null && manifest.getString("activeArtifact") != baseId) vault.selectRevision(manifest, actor, baseId)
-            val result = ClearVoiceNative(getApplication(), vault, workflow).enhance(manifest, actor, placement, cancelled::get, reportProgress("frames enhanced"))
+            // Direct transcription enhances the selected audio. No rack is replayed.
+            val plan = JSONObject().put("baseId", manifest.getString("activeArtifact")).put("rack", EffectRack().json())
+                .put("regions", JSONArray()).put("limit", false)
+            val result = ClearVoiceNative(getApplication(), vault, workflow).enhance(manifest, actor, ClearVoicePlacement.AFTER.name, cancelled::get, reportProgress("frames enhanced"),
+                withClearVoiceRecipe(plan.toString(), ClearVoicePlacement.AFTER, true))
             renderedId = result.getString("id")
             val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
             updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, comparisonAnalysis = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }

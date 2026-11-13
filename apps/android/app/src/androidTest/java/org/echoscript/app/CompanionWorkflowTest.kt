@@ -21,6 +21,13 @@ class CompanionWorkflowTest {
     @get:Rule val ui = createAndroidComposeRule<MainActivity>()
     private fun waitFor(text: String) = ui.waitUntil(60000) { ui.onAllNodesWithText(text, substring = true).fetchSemanticsNodes().isNotEmpty() }
     private fun click(text: String) { ui.onNodeWithText(text).performScrollTo().performClick() }
+    private fun screenshot(name: String) {
+        val instrumentation = androidx.test.platform.app.InstrumentationRegistry.getInstrumentation()
+        val folder = androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { java.io.File(it).apply { mkdirs() } } ?: return
+        val image = checkNotNull(instrumentation.uiAutomation.takeScreenshot())
+        try { java.io.File(folder, name).outputStream().use { image.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) } }
+        finally { image.recycle() }
+    }
 
     @Test fun whisperSelectionPreparesWithoutSendingAndRequiresExplicitApproval() {
         val context = ApplicationProvider.getApplicationContext<Context>()
@@ -36,14 +43,16 @@ class CompanionWorkflowTest {
             val case = vault.listCases().cases.single { it.getString("caseId") !in prior }
             val sourceHash = case.items("artifacts").first().getString("sha256")
             try {
+                lateinit var model: VaultModel
                 ui.runOnIdle {
-                    val model = ViewModelProvider(ui.activity)[VaultModel::class.java]
+                    model = ViewModelProvider(ui.activity)[VaultModel::class.java]
                     assertEquals(TranscriptionProvider.VOSK, model.transcriptionProvider)
                     assertFalse(model.clearVoiceEnabled)
                     model.companionAddress = "http://127.0.0.1:${server.port}"
                     model.companionToken = server.token
                 }
                 click("Whisper API")
+                screenshot("ui-provider-choice.png")
                 click("Render & transcribe")
                 waitFor("Approve Whisper transcription")
                 assertEquals(0, server.requests.size)
@@ -54,8 +63,20 @@ class CompanionWorkflowTest {
                 click("Render & transcribe")
                 waitFor("Approve Whisper transcription")
                 click("I approve sending this prepared audio to the destination above.")
+                ui.onNodeWithText("Confirm & start").assertIsEnabled()
+                screenshot("ui-whisper-approval.png")
                 ui.onNodeWithText("Confirm & start").performClick()
-                waitFor("Whisper draft saved.")
+                try {
+                    ui.waitUntil(60000) {
+                        server.failure.get()?.let { throw AssertionError("Synthetic companion failed; paths=${server.requests}", it) }
+                        val status = model.state.value
+                        check(!status.failed) { "Whisper workflow failed: ${status.message}; paths=${server.requests}" }
+                        status.job == null && status.message.startsWith("Whisper draft saved.")
+                    }
+                } catch (failure: Throwable) {
+                    screenshot("ui-whisper-failure.png")
+                    throw AssertionError("Whisper did not complete: ${model.state.value.message}; paths=${server.requests}", failure)
+                }
                 server.failure.get()?.let { throw AssertionError("Synthetic companion failed", it) }
                 assertEquals(listOf("/v1/consents", "/v1/transcriptions/openai-whisper"), server.requests.toList())
                 val saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }

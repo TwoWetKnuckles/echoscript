@@ -199,6 +199,7 @@ jobs:
           working-directory: apps/android
           script: |
             python3 ../../scripts/qa-android-coexistence.py setup ${{ matrix.api }}
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=org.echoscript.app.CompanionWorkflowTest
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
             python3 ../../scripts/qa-android-coexistence.py check ${{ matrix.api }}
             cd ../.. && python3 scripts/qa-android-crash.py

@@ -44,7 +44,7 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
         return destination
     }
 
-    fun enhance(manifest: JSONObject, actor: String, placement: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+    fun enhance(manifest: JSONObject, actor: String, placement: String, cancelled: () -> Boolean, progress: (Long) -> Unit, workbenchPlan: String? = null): JSONObject {
         if (cancelled()) throw InterruptedException("Enhancement cancelled")
         val model = modelFile(cancelled)
         val audio = workflow.prepareAudio(manifest, actor, cancelled, progress)
@@ -104,6 +104,7 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
                         .put("placement", placement).put("transport", "IN_PROCESS_ONLY").put("runtimeTelemetry", "DISABLED_BEFORE_INITIALIZATION").put("sampleRate", 16000).put("channels", 1).put("frames", frames)
                         .put("windowFrames", CLEARVOICE_WINDOW).put("hopFrames", CLEARVOICE_CORE).put("contextFrames", CLEARVOICE_CONTEXT)
                         .put("windows", windows).put("clippedOutputSamples", clipped).put("intraOpThreads", 1)
+                        .put("workbenchPlan", workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL)
                 }
             }
         }

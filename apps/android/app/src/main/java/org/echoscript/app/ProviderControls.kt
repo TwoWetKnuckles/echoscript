@@ -17,7 +17,7 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 @OptIn(ExperimentalLayoutApi::class)
-internal fun ProviderControls(model: VaultModel, ready: Boolean) {
+internal fun ProviderControls(model: VaultModel, ready: Boolean, placementSelection: Boolean = true) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
         Text("Speech workflow", style = MaterialTheme.typography.titleMedium)
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -35,7 +35,7 @@ internal fun ProviderControls(model: VaultModel, ready: Boolean) {
                 modifier = Modifier.semantics { contentDescription = "ClearVoice speech enhancement" })
         }
         if (model.clearVoiceEnabled) {
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+            if (placementSelection) FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (placement in ClearVoicePlacement.entries) FilterChip(model.clearVoicePlacement == placement,
                     { model.clearVoicePlacement = placement }, { Text(placement.label) }, enabled = ready, modifier = Modifier.heightIn(min = 48.dp))
             }

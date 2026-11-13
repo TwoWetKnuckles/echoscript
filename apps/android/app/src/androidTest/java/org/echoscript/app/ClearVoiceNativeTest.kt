@@ -6,6 +6,8 @@ import androidx.test.platform.app.InstrumentationRegistry
 import org.junit.Assert.*
 import org.junit.Test
 import java.io.File
+import org.json.JSONArray
+import org.json.JSONObject
 
 class ClearVoiceNativeTest {
     @Test fun actualBundledModelPreservesSourceAndTimingAndProducesRepeatableProtectedRevisions() {
@@ -23,21 +25,39 @@ class ClearVoiceNativeTest {
             val beforeCancel = case.getJSONArray("artifacts").length()
             assertThrows(InterruptedException::class.java) { ClearVoiceNative(context, vault, workflow).enhance(case, "SYNTHETIC_QA", "AFTER", { true }, {}) }
             assertEquals(beforeCancel, case.getJSONArray("artifacts").length())
-            val first = ClearVoiceNative(context, vault, workflow).enhance(case, "SYNTHETIC_QA", "AFTER", { false }, {})
-            val parameters = first.operationParameters()
+            val baseId = decoded.getString("id")
+            val recipe = JSONObject().put("baseId", baseId).put("rack", EffectRack().json()).put("regions", JSONArray()).put("limit", false)
+            val settings = listOf(RenderSettings(limit = false, workbenchPlan = recipe.toString()))
+            val pipeline = LocalRenderPipeline(context, vault, workflow)
+            val first = pipeline.render(case, "SYNTHETIC_QA", baseId, settings, ClearVoicePlacement.BEFORE, { false }, {})
+            val neural = case.artifact(first.getJSONArray("parents").getString(0))
+            assertEquals("clearvoice-frcrn-onnx-context-render", neural.getJSONObject("operation").getString("algorithm"))
+            val parameters = neural.operationParameters()
             assertEquals(CLEARVOICE_ONNX_HASH, parameters.getString("modelSha256"))
             assertEquals("IN_PROCESS_ONLY", parameters.getString("transport"))
             assertEquals("DISABLED_BEFORE_INITIALIZATION", parameters.getString("runtimeTelemetry"))
             assertEquals(88400L, parameters.getLong("frames"))
             assertEquals(16000, parameters.getInt("sampleRate"))
             assertEquals(1, parameters.getInt("channels"))
-            assertEquals(decoded.getString("id"), first.getJSONArray("parents").getString(0))
+            assertEquals(baseId, neural.getJSONArray("parents").getString(0))
+            assertEquals(baseId, first.operationParameters().getJSONObject("workbenchPlan").getString("baseId"))
+            assertEquals(ClearVoicePlacement.BEFORE, clearVoiceFromRecipe(first.operationParameters().getJSONObject("workbenchPlan")))
             vault.open(id, first.getString("id")).use { input -> WaveReader(input, first.getLong("bytes")).use { wave ->
                 assertEquals(88400L, wave.frames); assertEquals(PcmFormat(16000,1), wave.format)
             } }
-            vault.selectRevision(case, "SYNTHETIC_QA", decoded.getString("id"))
-            val second = ClearVoiceNative(context, vault, workflow).enhance(case, "SYNTHETIC_QA", "BEFORE", { false }, {})
+            val second = pipeline.render(case, "SYNTHETIC_QA", baseId, settings, ClearVoicePlacement.AFTER, { false }, {})
+            assertEquals("clearvoice-frcrn-onnx-context-render", second.getJSONObject("operation").getString("algorithm"))
+            val effects = case.artifact(second.getJSONArray("parents").getString(0))
+            assertEquals("native-pcm16-iir-enhancement", effects.getJSONObject("operation").getString("algorithm"))
+            assertEquals(baseId, effects.getJSONArray("parents").getString(0))
+            val replay = second.operationParameters().getJSONObject("workbenchPlan")
+            assertEquals(baseId, replay.getString("baseId"))
+            assertTrue(replay.getJSONObject("clearVoice").getBoolean("applied"))
+            assertEquals(ClearVoicePlacement.AFTER, clearVoiceFromRecipe(replay))
             assertEquals(first.getString("sha256"), second.getString("sha256"))
+            val disabled = pipeline.render(case, "SYNTHETIC_QA", replay.getString("baseId"), settings, null, { false }, {})
+            assertEquals("Disabling must replay the original base", decoded.getString("sha256"), disabled.getString("sha256"))
+            assertNull(clearVoiceFromRecipe(disabled.operationParameters().getJSONObject("workbenchPlan")))
             assertEquals("Local enhancement sent network bytes", sentBefore, android.net.TrafficStats.getUidTxBytes(uid))
             assertEquals("Local enhancement received network bytes", receivedBefore, android.net.TrafficStats.getUidRxBytes(uid))
             assertEquals(source.getString("sha256"), case.artifact(source.getString("id")).getString("sha256"))

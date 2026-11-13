@@ -42,7 +42,9 @@ jobs:
       - name: Trace Android Kotlin/Java and independent verifier compilation
         run: |
           apps/android/gradlew -p tools/case-protect build --no-daemon --no-build-cache --rerun-tasks
-          apps/android/gradlew -p apps/android :app:assembleDebug --no-daemon --no-build-cache --rerun-tasks
+          # Trace all app sources without packaging neural-model assets. Actual APK
+          # construction and pinned-model validation belong to the Quality workflow.
+          apps/android/gradlew -p apps/android :app:compileDebugKotlin :app:compileDebugJavaWithJavac --no-daemon --no-build-cache --rerun-tasks
       - uses: github/codeql-action/analyze@33d7b85da1a04171e211befe2c739303b9a4c066
         with:
           category: /language:java-kotlin

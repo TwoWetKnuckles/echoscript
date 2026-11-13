@@ -466,7 +466,7 @@ class EvidenceVault(private val context: Context) {
     @Synchronized
     fun recordEvent(manifest: JSONObject, actor: String, action: String, details: JSONObject) {
         actorCheck(actor)
-        require(action in setOf("PLAYBACK_REQUEST", "VERIFICATION", "ANNOTATION", "BOOKMARK", "LOCAL_TRANSCRIPTION", "WORKLOAD_UPDATE", "REVISION_SELECT", "EXPORT_ARTIFACT", "PROTECTED_TRANSFER_EXPORT", "PROTECTED_TRANSFER_IMPORT"))
+        require(action in setOf("PLAYBACK_REQUEST", "VERIFICATION", "ANNOTATION", "BOOKMARK", "LOCAL_TRANSCRIPTION", "AUDIO_SUBMISSION_APPROVED", "AUDIO_CHUNK_SUBMISSION", "WORKLOAD_UPDATE", "REVISION_SELECT", "EXPORT_ARTIFACT", "PROTECTED_TRANSFER_EXPORT", "PROTECTED_TRANSFER_IMPORT"))
         val next = JSONObject(manifest.toString())
         check(latestRevision(next.getString("caseId")) == next.getJSONArray("audit").length()) { "Case history changed. Reopen the case." }
         appendAudit(next, actor, action, details); saveSnapshot(next); replaceManifest(manifest, next)

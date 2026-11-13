@@ -37,7 +37,7 @@
   },
   "providers/clearvoice.mdx": {
     "source": "docs/providers/clearvoice.md",
-    "sha256": "46e96873c0334c45ebe8ceb9d34fb2c23071d75980235fce4eebf1d12b88e9e8"
+    "sha256": "b0deceec42fbe88ee3fffadb16901fba585763d41bbc1935c75e78539e3f5e8c"
   },
   "providers/local-vosk.mdx": {
     "source": "docs/providers/local-vosk.md",
@@ -57,7 +57,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "b31e123e722332ea49797ae4cab81cb3e525c219d3de02153cadcd162391822f"
+    "sha256": "f1454dc8a0d28ef18364408130c009e427b574ca05919d20d2d20f6e11e9b093"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",

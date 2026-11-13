@@ -145,6 +145,7 @@ private val effectGroups = linkedMapOf(
             showDetail=restored.showDetail; selectFrequency=restored.selectFrequency
             detailFft=restored.detailFft; detailOverlap=restored.detailOverlap; detailWindow=restored.detailWindow
             detailScale=restored.detailScale; detailFloor=restored.detailFloor
+            model.clearVoiceEnabled=restored.clearVoiceEnabled; model.clearVoicePlacement=restored.clearVoicePlacement; model.transcriptionProvider=restored.transcriptionProvider
             loadedRevision=active; workbenchLoaded=true
             return@LaunchedEffect
         }
@@ -153,6 +154,9 @@ private val effectGroups = linkedMapOf(
         try {
         val parameters = selected.artifact(active).operationParameters()
         val plan = parameters.optJSONObject("workbenchPlan")
+        val savedClearVoice = clearVoiceFromRecipe(plan)
+        model.clearVoiceEnabled = savedClearVoice != null
+        model.clearVoicePlacement = savedClearVoice ?: ClearVoicePlacement.AFTER
         if (plan != null) {
             require(plan.getJSONArray("regions").length() <= 32)
             baseId = plan.getString("baseId"); draft = plan.getJSONObject("rack").toString()
@@ -166,6 +170,7 @@ private val effectGroups = linkedMapOf(
         chosen = -1; presetName = ""; presetBackup = ""; selectedEventId = null
         } catch (_: Exception) {
             baseId = active; draft = EffectRack().json().toString(); regionsJson = "[]"; start = ""; end = ""; chosen = -1; selectedEventId = null
+            model.clearVoiceEnabled = false; model.clearVoicePlacement = ClearVoicePlacement.AFTER
             model.notice("This revision has an unsupported effect recipe. Audio is retained; start a new recipe or restore an earlier revision.")
         }
         loadedRevision = active; workbenchLoaded = true
@@ -178,6 +183,7 @@ private val effectGroups = linkedMapOf(
             appliedNoiseMeasurement=appliedNoiseMeasurement, showComparison=showComparison, comparisonId=comparisonId,
             showDetail=showDetail, selectFrequency=selectFrequency, detailFft=detailFft, detailOverlap=detailOverlap,
             detailWindow=detailWindow, detailScale=detailScale, detailFloor=detailFloor,
+            clearVoiceEnabled=model.clearVoiceEnabled, clearVoicePlacement=model.clearVoicePlacement, transcriptionProvider=model.transcriptionProvider,
         ))
     }
     fun update(next: EffectRack) { draft = next.json().toString(); presetName = "" }
@@ -215,13 +221,7 @@ private val effectGroups = linkedMapOf(
             }
             val selectedBase = if (trim) active else baseId
             val useClearVoice = model.clearVoiceEnabled && !trim
-            if (useClearVoice && model.clearVoicePlacement == ClearVoicePlacement.BEFORE) {
-                model.enhanceClearVoice(actor, selectedBase) { enhanced -> model.renderPlan(actor, enhanced, settings, after) }
-            } else {
-                model.renderPlan(actor, selectedBase, settings) {
-                    if (useClearVoice) model.enhanceClearVoice(actor) { after() } else after()
-                }
-            }
+            model.renderPlan(actor, selectedBase, settings, if (useClearVoice) model.clearVoicePlacement else null, after)
         } catch (e: Exception) { model.notice(e.message ?: "Check effects and region values") }
     }
     WorkCard("Recording timeline") {
