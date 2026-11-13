@@ -8,13 +8,13 @@ export const docsContentRoute = "/llms.mdx/docs";
 export const gitConfig = {
   user: "TwoWetKnuckles",
   repo: "echoscript",
-  branch: "feature/release-gate-hardening",
+  branch: "feature/clearvoice-whisper-beta",
 };
 
 export const releaseUrl =
-  "https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113";
+  "https://github.com/TwoWetKnuckles/echoscript/releases/tag/android10-offline-test-candidate-0.6.0-dev.20261113";
 export const apkUrl =
-  "https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk";
+  "https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk";
 
 const getContentUrl = createGetUrl(docsContentRoute);
 

@@ -7,7 +7,7 @@ const app = fileURLToPath(new URL("../", import.meta.url));
 const repo = resolve(app, "../..");
 const content = join(app, "content/docs");
 const check = process.argv.includes("--check");
-const branch = "feature/release-gate-hardening";
+const branch = "feature/clearvoice-whisper-beta";
 const repository = "https://github.com/TwoWetKnuckles/echoscript";
 const entries = [];
 
@@ -47,7 +47,7 @@ if (targets.size !== entries.length)
 
 const descriptions = {
   "docs/android/OFFLINE.md":
-    "Install EchoScript 0.6 Test and use local acquisition, analysis, transcription, examiner review and exports.",
+    "Install the Android 0.6 test candidate and use local analysis, speech enhancement, transcription, examiner review and exports.",
   "docs/android/ENHANCEMENT-WORKBENCH.md":
     "Presets, signed controls, time/frequency inspection, overlapping regions and non-destructive render history.",
   "docs/android/WORKBENCH-DESIGN.md":
@@ -59,13 +59,13 @@ const descriptions = {
   "docs/evidence/PROTECTED-TRANSFER.md":
     "Encrypted case transfers, device checkpoints, independent verification and recovery/trust boundaries.",
   "docs/providers/openai-whisper.md":
-    "The experimental opt-in server adapter, consent boundaries and unfinished Android/provider integration.",
+    "Selectable Vosk/Whisper routing, exact-payload consent and server-side API credentials.",
   "docs/providers/local-vosk.md":
     "The local speech runtime, pinned model provenance and observed capabilities and limits.",
   "docs/qa/STATUS.md":
     "Recorded development checks, regression repairs and remaining exact-build validation work.",
   "downloads/README.md":
-    "Download the verified EchoScript 0.6 Test APK, installation ZIP, checksums and validation records.",
+    "Download the verified Android 0.6 test candidate, installation ZIP, checksums and validation records.",
   "DISCLAIMER.md":
     "Case-specific examiner responsibilities, technical verification limits and software warranty boundaries.",
 };

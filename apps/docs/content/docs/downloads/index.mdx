@@ -1,32 +1,26 @@
 ---
 title: "EchoScript downloads"
-description: "Download the verified EchoScript 0.6 Test APK, installation ZIP, checksums and validation records."
+description: "Download the verified Android 0.6 test candidate, installation ZIP, checksums and validation records."
 ---
 
-## Latest: EchoScript 0.6 Test
+## Current: Android 10 Offline Test Candidate 0.6
 
-**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-Android-preview.zip)** · [Release](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) · [Installation](https://github.com/TwoWetKnuckles/echoscript/blob/feature/release-gate-hardening/downloads/android/INSTALL-CANDIDATE.txt) · [Release notes](/docs/releases/0.6-test) · [Validation record](https://github.com/TwoWetKnuckles/echoscript/blob/feature/release-gate-hardening/downloads/android/VALIDATION-0.6.0.txt)
+**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.zip)** · [Release](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android10-offline-test-candidate-0.6.0-dev.20261113) · [Installation](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/downloads/android/INSTALL.txt) · [Release notes](/docs/releases/0.6-test) · [Validation](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/downloads/android/VALIDATION-0.6.0.txt)
 
-Android 10 or later. Development preview for synthetic evaluation; **BETA GATE: NOT PASSED**. This package includes the latest compact workbench, local-file confirmation and retry, optional coarse full-recording spectrum, searchable examiner notes. All implemented tools are available.
+Android 10/API 29 or later. **Development evaluation candidate. BETA GATE: NOT PASSED.** All implemented tools are available. Vosk and ClearVoice run on the phone with bundled models; Whisper is selected before transcription and requires a configured companion and explicit payload approval. The OpenAI key stays on that server.
 
-| File                     | SHA-256                                                            |
-| ------------------------ | ------------------------------------------------------------------ |
-| APK                      | `0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3` |
-| Installation ZIP         | `fe9c11095b10fe4dbff30c69e22570a4c1d356e4dbce6ff35755bd5c2c8daa46` |
-| Synthetic validation ZIP | `67e521643bb3e70972deec39fab2c9813779506167247d13276cd316fdcda213` |
+| File             | SHA-256                                                            |
+| ---------------- | ------------------------------------------------------------------ |
+| APK              | `664854f670987ad3136e9030262861c194ba62fe877742ee009024e18a8b8f82` |
+| Installation ZIP | `77bb3d9507c232a334c61e8f845e8f30312a55d42b2cd40603b43fc048ea9bbf` |
+| Validation ZIP   | `d016671b03278d9bf2899365c48b7d5238f8741872ac7e6de1cb284a2a99d80a` |
 
-The APK is unchanged from source `cc19e7a3c49eed1fdc1b32064fb27a21531f87df` in [the passing quality run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43358193917). Updated installation/release documentation and package checksums were added after CI. The [validation ZIP](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-validation.zip) preserves original synthetic report archives and their digests; [SHA256SUMS.txt](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/SHA256SUMS.txt) covers all release assets. The permanent release replaces the earlier expiring Actions download.
+The unchanged APK comes from source `ef5da08a9be8a2cf5fd38e2668fcb2d510de9258` in [the passing installer run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43442474145). Installer documents and package checksums were added after CI. The [validation archive](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Candidate-0.6-validation.zip) preserves original synthetic report archives, independent-verifier results and acceptance limits; [SHA256SUMS.txt](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/SHA256SUMS.txt) covers release assets. Permanent release downloads replace expiring Actions artifacts.
 
-Choose a recording, verify its name under **Selected recording**, then tap **Import selected audio**. The test app uses `org.echoscript.app.preview06`, separate from 0.5.1, and starts with an empty vault. Different 0.6 CI builds may use different signing keys. Do not remove or reset any app until needed cases have been exported, independently verified and safely stored. Formal Galaxy S22+ acceptance and production upgrades remain open.
+Install `EchoScript-Android10-Offline-Test-Candidate-0.6.apk`, or extract the dedicated `EchoScript-Android` folder from the ZIP. The app label is **EchoScript 0.6 Candidate**, ID `org.echoscript.app.candidate06`, with its own empty vault. Preserve and independently verify protected exports before removing/resetting an earlier app. Development signing does not establish production upgrade continuity.
 
-## Previous preview: 0.5.1
+## One previous rollback: 0.6 Test
 
-**[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-Android-preview.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.5.1) · [Plain-text install instructions](https://github.com/TwoWetKnuckles/echoscript/blob/feature/release-gate-hardening/downloads/android/INSTALL.txt)
+[Previous release, APK, ZIP and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113). Its APK source is `cc19e7a3c49eed1fdc1b32064fb27a21531f87df`, APK SHA-256 `0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3`, application ID `org.echoscript.app.preview06`. This is the older test build; use the candidate above for the new speech workflow. Older immutable GitHub releases still require a separate permanent-removal decision; they are not current download recommendations.
 
-Android 10 or later. Extract the `EchoScript-Android` folder, open `EchoScript-offline-preview.apk`, then choose **Load synthetic speech sample** in **Cases**. The APK includes its speech models. The dark Material interface offers automatic import analysis, **Render & transcribe**, saved examiner settings and review edits that survive navigation and rotation. Create device-signed checkpoints directly in Export and choose a passphrase-protected case package; passphrase fields have Show/Hide controls. Individual files and legacy ZIPs remain plaintext. The ZIP includes `INSTALL.txt`, `SHA256SUMS.txt`, build provenance and license notices.
-
-**Development preview for synthetic evaluation. BETA GATE: NOT PASSED.** The APK is debuggable and development-signed. Verify the checksum before installing. Preserve test case exports before removing an older preview if Android rejects the update. Retain transfer passphrases, package hashes and independently trusted signer fingerprints separately. Use protected storage for plaintext exports.
-
-See the [Android workflow](/docs/android/offline), [executed checks](/docs/qa/status) and [operator responsibilities](/docs/legal/responsibilities). Repository ZIPs contain source code. The installable APK is in the linked release asset.
-
-[Release candidate gates](/docs/release-candidate) describe the remaining work. The published release records the exact tested commit, run and checksums.
+Read the [Android workflow](/docs/android/offline), [executed checks](/docs/qa/status), [request reconciliation](/docs/qa/request-reconciliation) and [release gates](/docs/release-candidate). Physical-device/resource/recovery, remaining scope, owner signing and trust/deployment acceptance remain open. Individual exports and legacy ZIPs are plaintext; protected case containers have a different confidentiality boundary.

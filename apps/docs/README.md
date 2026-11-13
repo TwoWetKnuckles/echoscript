@@ -30,7 +30,7 @@ The HTTP verification starts a temporary production server on loopback, checks e
 
 Edit canonical Markdown, run synchronization and commit the updated MDX/source map together. `check:content` detects drift without changing files. `meta.json` files explicitly order navigation. Add new hand-authored MDX pages with a title and description, and list them in the relevant metadata. Never edit the generated `.source/` folder.
 
-Brand/navigation settings live in `lib/layout.shared.tsx`; repository, release and route settings live in `lib/shared.ts`. Pages stay under `/docs`. Public links point to the verified 0.6 Test release; no payments or production entitlement service is implied by the plans page.
+Brand/navigation settings live in `lib/layout.shared.tsx`; repository, release and route settings live in `lib/shared.ts`. Pages stay under `/docs`. Download links point to the current verified Android 0.6 test candidate. All implemented tools are available.
 
 ## Deploy independently
 
@@ -40,6 +40,6 @@ The app builds solely from its committed directory. Synchronization requires a f
 
 ## Executed validation
 
-Local Node 24 checks passed: content synchronization/verification, route/TypeScript checking, the optimized production build, all 24 documentation page responses, internal navigation targets, examiner-note search, LLM index/full export, Markdown negotiation and suffix routes, OG image generation and a 404 response. `npm audit --audit-level=high` reported zero known findings. The starter dev server also rendered `/docs` with HTTP 200.
+Local Node 24 checks passed: content synchronization/verification, route/TypeScript checking, the optimized production build, all 25 documentation page responses, internal navigation targets, examiner-note search, LLM index/full export, Markdown negotiation and suffix routes, OG image generation and a 404 response. `npm audit --audit-level=high` reported zero known findings. The starter dev server also rendered `/docs` with HTTP 200.
 
-The remote browser could not connect to the workspace's loopback server, so these HTTP/build results are not a visual phone/browser acceptance claim. Separate Vercel deployment is blocked by team authorization; inspect the eventual hosted preview before treating visual interaction checks as passed.
+The remote browser could not connect to the workspace's loopback server, so these HTTP/build results are not a visual phone/browser acceptance claim. The existing protected Vercel deployment predates this candidate. Further standalone docs design/deployment work is paused; these source changes keep release links and factual content consistent.

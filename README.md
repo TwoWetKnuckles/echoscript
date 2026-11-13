@@ -4,15 +4,15 @@ Local-first audio evidence development platform, designed to support defensible 
 
 ## Download for Android
 
-**[Download the latest APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-Android-preview.zip)** · [Release notes and verified checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) · [Installation guide](downloads/android/INSTALL-CANDIDATE.txt)
+**[Download the latest test APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android10-offline-test-candidate-0.6.0-dev.20261113) · [Installation guide](downloads/android/INSTALL.txt)
 
-**EchoScript 0.6 Test** is the latest development preview for synthetic evaluation. Android 10 or later. It includes explicit selected-file confirmation/import/retry, the Material-dark workbench, waveform/spectrum selection and playback, five removable presets, 16 signed effect controls, ordered overlapping regions, clips and restorable render history. Searchable examiner notes stay separate from spoken text. The bundled English speech model runs on the device without an account or server.
+**EchoScript Android 10 Offline Test Candidate 0.6** includes bundled ClearVoice speech enhancement with before/after-effects placement, default on-device Vosk and selectable Whisper API with exact-payload approval. The graphite/cyan workbench retains waveform/spectrum selection, compact effects, clips, restorable history and searchable examiner notes. All implemented tools are available.
 
-The APK was built from `cc19e7a3c49eed1fdc1b32064fb27a21531f87df`. Android 10/16 emulator suites, all seven quality jobs and both CodeQL jobs passed. [The validation record](downloads/android/VALIDATION-0.6.0.txt) distinguishes those subsets from the open physical-device and complete-product gates. **BETA GATE: NOT PASSED.** This is a debuggable, development-signed test app.
+The exact APK source `ef5da08a9be8a2cf5fd38e2668fcb2d510de9258` passed all eight push/PR quality jobs, Android 10/16 emulator suites and both CodeQL jobs. [Validation and checksums](downloads/android/VALIDATION-0.6.0.txt) distinguish these subsets from physical-device and full-product acceptance. **BETA GATE: NOT PASSED.** The APK is development-signed and debuggable.
 
-It uses `org.echoscript.app.preview06` and a separate, initially empty vault alongside 0.5.1. Separate 0.6 CI builds can have different signing keys. Do not remove or reset any app until needed cases have been exported, independently verified and safely stored; uninstalling can erase its vault. See [downloads and checksums](downloads/README.md). [Previous 0.5.1 preview](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.5.1) remains available.
+The candidate uses `org.echoscript.app.candidate06`, with a separate empty vault alongside earlier test apps. Preserve and independently verify protected exports before uninstall/reset. [Previous 0.6 Test rollback](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) remains available.
 
-### Workbench and proposed plans
+### Workbench
 
 The optional full-recording scan is a coarse spectral overview; short-range inspection provides separate FFT/hop/window controls. It is not a high-resolution full-file spectrogram. Restoration, noise-floor gating and clipping counts retain their documented limits. [Workbench guide](docs/android/ENHANCEMENT-WORKBENCH.md) · [Design direction](docs/android/WORKBENCH-DESIGN.md).
 
@@ -28,7 +28,7 @@ In **Cases**, choose a recording, confirm its name under **Selected recording**,
 
 The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
 
-From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. Separate hosting setup is documented in the app README; a live documentation deployment is not yet claimed.
+From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The existing protected documentation deployment predates this candidate. Further documentation-site design and deployment changes are paused; the Android workbench uses its palette.
 
 ## Responsibility and limitations
 
@@ -134,11 +134,11 @@ python3 tools/qa-stress.py
 
 ## Data, hosting and cost boundary
 
-Source audio, derivatives, transcripts, notes, audit and manifests remain local. The current application sends no evidence to Supabase. OIDC/team roles and approved preference/workload synchronization are outstanding; the existing Supabase reference project is not an evidence store. External speech adapters stay disabled until deployment, retention, agreements, credentials and cost are qualified.
+Source audio, derivatives, transcripts, notes, audit and manifests remain in the encrypted local vault. Optional Whisper submission sends only explicitly approved prepared audio through the configured companion. The application sends no evidence to Supabase. Team roles and approved preference/workload synchronization remain outside the current local workflow; the existing Supabase reference project is not an evidence store.
 
-The tested path uses open-source local speech and no paid speech API. Workflows use standard public-repository runners; [GitHub documents these as free](https://docs.github.com/en/billing/concepts/product-billing/github-actions), with separate artifact/cache limits. No paid service, larger runner, billing change or domain registration was performed. Existing hosting/account quotas and ongoing operational support are not guaranteed by a free tier. [GitHub Pages usage limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) do not permit commercial SaaS hosting.
+Vosk and ClearVoice run locally. Whisper API use is optional and is charged to the configured OpenAI account; a live check used only the licensed synthetic fixture. Workflows use standard public-repository runners; [GitHub documents these as free](https://docs.github.com/en/billing/concepts/product-billing/github-actions), with separate artifact/cache limits. No hosting plan change, larger runner or domain registration was performed. Existing provider/hosting quotas and ongoing operational support remain separate deployment responsibilities. [GitHub Pages usage limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) do not permit commercial SaaS hosting.
 
-The existing companion is published through Sites with its existing owner-private audience. The public repository does not change that audience. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
+The existing companion is published through Sites with its existing audience. Source publication does not change Site access. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
 
 ## Project map and licensing
 
