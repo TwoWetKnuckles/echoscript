@@ -535,18 +535,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             "Whisper draft saved. Original and earlier revisions are preserved."
         }
     }
-    fun renderAndTranscribe(actor: String, settings: RenderSettings, completed: () -> Unit) {
-        runJob("Rendering and transcribing", completed) {
-            val manifest = selected()
-            workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("units rendered"))
-            updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, transcript = null, transcriptRevision = null) }
-            val artifact = workflow.transcribe(manifest, actor, cancelled::get, reportProgress("units transcribed"))
-            openTranscript(manifest, artifact)
-            val overview = workflow.savedAnalysis(manifest)
-            updateState { it.copy(analysis = overview) }
-            "Draft transcript saved. Review the words, timestamps and speaker groups."
-        }
-    }
     private fun openTranscript(case: JSONObject, artifact: JSONObject) {
         val transcript = workflow.readTranscript(case, artifact)
         updateState { it.copy(transcript = transcript, transcriptRevision = artifact.getString("id")) }

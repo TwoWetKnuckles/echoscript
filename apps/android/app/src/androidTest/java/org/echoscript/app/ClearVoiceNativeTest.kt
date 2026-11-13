@@ -14,6 +14,11 @@ class ClearVoiceNativeTest {
         val case = context.assets.open("synthetic-speech.wav").use { vault.importSource(it, "SYNTHETIC ClearVoice.wav", "Synthetic ClearVoice test", "SYNTHETIC_QA") }
         val id = case.getString("caseId"); val source = case.activeAudio()
         try {
+            assertEquals("1", android.system.Os.getenv("ORT_DISABLE_TELEMETRY"))
+            val uid = android.os.Process.myUid()
+            val sentBefore = android.net.TrafficStats.getUidTxBytes(uid)
+            val receivedBefore = android.net.TrafficStats.getUidRxBytes(uid)
+            assertTrue("UID network accounting must be available", sentBefore >= 0 && receivedBefore >= 0)
             val decoded = workflow.prepareAudio(case, "SYNTHETIC_QA", { false }, {})
             val beforeCancel = case.getJSONArray("artifacts").length()
             assertThrows(InterruptedException::class.java) { ClearVoiceNative(context, vault, workflow).enhance(case, "SYNTHETIC_QA", "AFTER", { true }, {}) }
@@ -22,6 +27,7 @@ class ClearVoiceNativeTest {
             val parameters = first.operationParameters()
             assertEquals(CLEARVOICE_ONNX_HASH, parameters.getString("modelSha256"))
             assertEquals("IN_PROCESS_ONLY", parameters.getString("transport"))
+            assertEquals("DISABLED_BEFORE_INITIALIZATION", parameters.getString("runtimeTelemetry"))
             assertEquals(88400L, parameters.getLong("frames"))
             assertEquals(16000, parameters.getInt("sampleRate"))
             assertEquals(1, parameters.getInt("channels"))
@@ -32,6 +38,8 @@ class ClearVoiceNativeTest {
             vault.selectRevision(case, "SYNTHETIC_QA", decoded.getString("id"))
             val second = ClearVoiceNative(context, vault, workflow).enhance(case, "SYNTHETIC_QA", "BEFORE", { false }, {})
             assertEquals(first.getString("sha256"), second.getString("sha256"))
+            assertEquals("Local enhancement sent network bytes", sentBefore, android.net.TrafficStats.getUidTxBytes(uid))
+            assertEquals("Local enhancement received network bytes", receivedBefore, android.net.TrafficStats.getUidRxBytes(uid))
             assertEquals(source.getString("sha256"), case.artifact(source.getString("id")).getString("sha256"))
             assertTrue(vault.verify(case).contains("agree"))
             val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it).apply { mkdirs() } }

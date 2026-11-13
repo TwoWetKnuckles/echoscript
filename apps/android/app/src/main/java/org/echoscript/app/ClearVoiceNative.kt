@@ -56,7 +56,8 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
                     .put("resampling", "linear with low-pass on downsampling")
             } }
         }
-        val environment = OrtEnvironment.getEnvironment()
+        check(android.system.Os.getenv("ORT_DISABLE_TELEMETRY") == "1") { "Inference telemetry must be disabled before initialization" }
+        val environment = OrtEnvironment.getEnvironment().apply { setTelemetry(false) }
         OrtSession.SessionOptions().use { options ->
             options.setIntraOpNumThreads(1); options.setInterOpNumThreads(1)
             options.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
@@ -100,7 +101,7 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
                     } }
                     JSONObject().put("model", CLEARVOICE_MODEL).put("modelSha256", CLEARVOICE_ONNX_HASH)
                         .put("checkpointRevision", "3766e6a64b0d8cb58f08d913d617bf129f11ed53").put("runtime", "onnxruntime-android/1.32.0")
-                        .put("placement", placement).put("transport", "IN_PROCESS_ONLY").put("sampleRate", 16000).put("channels", 1).put("frames", frames)
+                        .put("placement", placement).put("transport", "IN_PROCESS_ONLY").put("runtimeTelemetry", "DISABLED_BEFORE_INITIALIZATION").put("sampleRate", 16000).put("channels", 1).put("frames", frames)
                         .put("windowFrames", CLEARVOICE_WINDOW).put("hopFrames", CLEARVOICE_CORE).put("contextFrames", CLEARVOICE_CONTEXT)
                         .put("windows", windows).put("clippedOutputSamples", clipped).put("intraOpThreads", 1)
                 }

@@ -5,10 +5,12 @@ import argparse
 import hashlib
 import json
 import os
+os.environ['ORT_DISABLE_TELEMETRY'] = '1'
 from pathlib import Path
 import numpy as np
 import torch
 import onnxruntime as ort
+ort.disable_telemetry_events()
 from clearvoice import ClearVoice
 
 parser = argparse.ArgumentParser()

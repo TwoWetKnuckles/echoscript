@@ -37,7 +37,7 @@
   },
   "providers/clearvoice.mdx": {
     "source": "docs/providers/clearvoice.md",
-    "sha256": "b63dbbae52438c9f1414390884e1f1e03cff0dc71e2340e6a4a0ad088af4d5d5"
+    "sha256": "46e96873c0334c45ebe8ceb9d34fb2c23071d75980235fce4eebf1d12b88e9e8"
   },
   "providers/local-vosk.mdx": {
     "source": "docs/providers/local-vosk.md",
