@@ -25,7 +25,7 @@ joblib==1.6.0
 lazy-loader==0.6
 librosa==0.10.2.post1
 llvmlite==0.50.0
-MarkupSafe==3.0.3
+MarkupSafe==3.0.4
 ml_dtypes==0.5.4
 mpmath==1.3.0
 msgpack==1.2.4
