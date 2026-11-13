@@ -25,8 +25,8 @@ def inspect(apk, tools, expected):
     if not package or package[1] != "org.echoscript.app" or not minimum or int(minimum[1]) != 29:
         raise ValueError("Unexpected package identity or Android compatibility boundary")
     permissions = subprocess.check_output([str(tools / "aapt"), "dump", "permissions", str(apk)], text=True)
-    if re.search(r"android\.permission\.(INTERNET|ACCESS_NETWORK_STATE)\b", permissions):
-        raise ValueError("The offline APK unexpectedly requests network access")
+    if "android.permission.INTERNET" not in permissions or "android.permission.ACCESS_NETWORK_STATE" in permissions:
+        raise ValueError("Unexpected optional-companion permission set")
     return {"applicationId": package[1], "versionCode": int(package[2]), "versionName": package[3], "minSdk": 29, "debuggable": False, "signerCertificateSha256": fingerprints[0].lower()}
 
 

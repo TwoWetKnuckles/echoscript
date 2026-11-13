@@ -64,7 +64,7 @@ private fun Glyph(@DrawableRes resource: Int, description: String? = null) {
 
 @Composable
 private fun Section(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+    Card(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
         Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
             Text(title, style = MaterialTheme.typography.titleMedium)
             if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
@@ -95,7 +95,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     val screen by model.state.collectAsStateWithLifecycle()
     val activity = LocalActivity.current as? ComponentActivity
     val view = LocalView.current
-    val busy = screen.job != null || screen.importPending
+    val busy = screen.job != null || screen.importPending || model.remoteApproval != null
     val selected = screen.cases.firstOrNull { it.getString("caseId") == screen.selected }
     var tab by rememberSaveable { mutableStateOf("Cases") }
     val title = model.acquisitionTitle
@@ -165,7 +165,8 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         if (tab == "Transcript" && screen.ready && !busy && screen.transcript == null && selected?.latestTranscript() != null) model.openTranscript()
     }
     EchoTheme(appearance) {
-        val dark = MaterialTheme.colorScheme.background == Color(0xFF0A1017)
+        SubmissionApproval(model)
+        val dark = MaterialTheme.colorScheme.background == Color(0xFF0B1219)
         SideEffect {
             activity?.window?.let { window ->
                 WindowCompat.getInsetsController(window, view).apply {
@@ -298,14 +299,8 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                                     }, { Text(mode) }, modifier = Modifier.heightIn(min = 48.dp))
                                 }
                             }
-                            if (BuildConfig.DEBUG) Section("Explore possible plans", "Compare access in this test build. No prices, purchases or subscriptions are active.") {
-                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                                    for (preview in AccessPreview.entries) FilterChip(model.accessPreview == preview, {
-                                        model.changeAccessPreview(preview)
-                                    }, { Text(preview.label) }, enabled = ready, modifier = Modifier.heightIn(min = 48.dp))
-                                }
-                                Text("Free preview includes local import, playback, clipping, basic effects, transcription, history and exports. Premium previews add detailed analysis, advanced effects and multiple processing regions.", style = MaterialTheme.typography.bodySmall)
-                                Text("All tools is the default for evaluating this build. Existing recordings, revisions and exports stay accessible in every preview.", style = MaterialTheme.typography.bodySmall)
+                            Section("Companion processing", "Optional Whisper connection") {
+                                CompanionSettings(model, ready)
                             }
                             Section("Examiner", "This identifier is supplied locally and recorded with your actions.") {
                                 var draft by rememberSaveable(actor) { mutableStateOf(actor) }
@@ -404,8 +399,12 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
     Text("Transcript review", style = MaterialTheme.typography.headlineSmall)
     val transcript = screen.transcript
     if (transcript == null) {
-        Section("Transcribe on this device", "The English model is included. Review draft words, timing and speaker groups against the audio.") {
-            Button(onClick = { model.transcribe(actor) }, enabled = ready) { Text("Transcribe active audio on device") }
+        Section("Transcribe active audio", "Choose the route before starting. Review draft words and timestamps against the audio.") {
+            ProviderControls(model, ready)
+            Button(onClick = {
+                if (model.clearVoiceEnabled) model.enhanceClearVoice(actor) { model.transcribe(actor) }
+                else model.transcribe(actor)
+            }, enabled = ready) { Text(if (model.transcriptionProvider == TranscriptionProvider.VOSK && !model.clearVoiceEnabled) "Transcribe active audio on device" else "Prepare transcription") }
         }
         return
     }

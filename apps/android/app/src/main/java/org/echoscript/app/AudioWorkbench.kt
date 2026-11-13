@@ -59,7 +59,8 @@ private val effectGroups = linkedMapOf(
 )
 
 @Composable private fun WorkCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth()) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
+    Card(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
+        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
         Text(title, style = MaterialTheme.typography.titleMedium); content()
     } }
 }
@@ -118,7 +119,6 @@ private val effectGroups = linkedMapOf(
     val fullOverview = screen.fullSpectrum?.takeIf {
         it.optString("audioArtifactId") == active && it.optString("sourceSha256") == selected.artifact(active).getString("sha256")
     }
-    fun previewLabel(label: String, capability: PremiumCapability) = if (model.canPreview(capability)) label else "$label · Premium"
     val comparison = screen.comparisonAnalysis?.takeIf { screen.comparisonAudioId == comparisonId }
     LaunchedEffect(model.player,loop,start,end) {
         while (true) {
@@ -213,7 +213,15 @@ private val effectGroups = linkedMapOf(
                 plan.put("startMs", interval?.first ?: 0).put("endMs", interval?.second ?: JSONObject.NULL)
                 listOf(RenderSettings(rack = rack, startMs = interval?.first ?: 0, endMs = interval?.second, limit = limit, workbenchPlan = plan.toString()))
             }
-            model.renderPlan(actor, if (trim) active else baseId, settings, after)
+            val selectedBase = if (trim) active else baseId
+            val useClearVoice = model.clearVoiceEnabled && !trim
+            if (useClearVoice && model.clearVoicePlacement == ClearVoicePlacement.BEFORE) {
+                model.enhanceClearVoice(actor, selectedBase) { enhanced -> model.renderPlan(actor, enhanced, settings, after) }
+            } else {
+                model.renderPlan(actor, selectedBase, settings) {
+                    if (useClearVoice) model.enhanceClearVoice(actor) { after() } else after()
+                }
+            }
         } catch (e: Exception) { model.notice(e.message ?: "Check effects and region values") }
     }
     WorkCard("Recording timeline") {
@@ -289,8 +297,7 @@ private val effectGroups = linkedMapOf(
             Text(if (fullOverview == null) "Spectral overview · up to 128 brief Hann-window snapshots across the file, not continuous. Events between snapshots can be missed."
                 else "Full-recording spectral overview · overlapping windows cover the recording. The 128 time columns and 32 frequency bands show peak magnitudes, so brief sounds can blur; inspect and listen to a selection for detail.",
                 modifier=Modifier.testTag("spectrogram"), style=MaterialTheme.typography.labelSmall)
-            OutlinedButton(onClick={model.inspectFullSpectrum(actor)},enabled=ready) { Text(previewLabel(if(fullOverview == null) "Scan full recording spectrum" else "Rescan full recording spectrum", PremiumCapability.FULL_SPECTRUM)) }
-            if (!model.canPreview(PremiumCapability.FULL_SPECTRUM)) Text("Premium in this Free preview. Change the preview in Settings to try it.",style=MaterialTheme.typography.bodySmall)
+            OutlinedButton(onClick={model.inspectFullSpectrum(actor)},enabled=ready) { Text(if(fullOverview == null) "Scan full recording spectrum" else "Rescan full recording spectrum") }
             Text("A full scan reads the complete recording and can take a long time on large files. Keep EchoScript open; you can cancel. Your original is preserved.",style=MaterialTheme.typography.bodySmall)
             if (screen.job == "Scanning full recording spectrum") {
                 LinearProgressIndicator(Modifier.fillMaxWidth()); Text(screen.message,style=MaterialTheme.typography.bodySmall)
@@ -305,7 +312,7 @@ private val effectGroups = linkedMapOf(
         for(a in audioRevisions.takeLast(8)) FilterChip(comparisonId==a.getString("id"),{comparisonId=a.getString("id")},{Text("Revision ${a.getInt("revision")}")},enabled=ready)
         val comparisonRevision = audioRevisions.firstOrNull { it.getString("id") == comparisonId }
         val canCompare = comparisonRevision != null && comparisonRevision.getString("type") in setOf("DECODE","ENHANCED_AUDIO")
-        OutlinedButton(onClick={model.compareAudio(actor,comparisonId)},enabled=ready&&canCompare) { Text(previewLabel("Compare waveform and clipping", PremiumCapability.CLIPPING_COMPARISON)) }
+        OutlinedButton(onClick={model.compareAudio(actor,comparisonId)},enabled=ready&&canCompare) { Text("Compare waveform and clipping") }
         Text("Choose a decoded or enhanced reference to compare peak envelopes and near-full-scale sample counts. Counts include all channels, so different durations or channel counts affect them. The count is an indicator, not proof of clipping.",style=MaterialTheme.typography.bodySmall)
         if (screen.job == "Comparing audio revisions") {
             LinearProgressIndicator(Modifier.fillMaxWidth()); Text(screen.message,style=MaterialTheme.typography.bodySmall)
@@ -373,8 +380,6 @@ private val effectGroups = linkedMapOf(
                 }
             }
             val spec=currentEffect; val value=rack.values[spec.id]?:EffectValue()
-            if (!model.canPreview(PremiumCapability.ADVANCED_EFFECTS) && PlanPreviewPolicy.renderRequirement(listOf(RenderSettings(rack=rack))) == PremiumCapability.ADVANCED_EFFECTS)
-                Text("The current draft includes Premium effects in this Free preview. Existing audio and exports remain available.",style=MaterialTheme.typography.bodySmall)
             Row(Modifier.fillMaxWidth(),horizontalArrangement=Arrangement.SpaceBetween) {
                 Text(spec.title,modifier=Modifier.weight(1f)); Switch(value.enabled,{update(rack.copy(values=rack.values+(spec.id to value.copy(enabled=it))))},enabled=ready,modifier=Modifier.semantics{contentDescription="${spec.title} enabled"})
             }
@@ -431,7 +436,7 @@ private val effectGroups = linkedMapOf(
         OutlinedButton(onClick={
             try { val (a,b)=selection(); noiseError=""; noiseRequested=true; model.measureNoise(actor,a,b) }
             catch (_:Exception) { noiseError="Choose a valid interval to measure" }
-        },enabled=ready&&screen.analysis!=null) { Text(previewLabel("Measure selected noise floor", PremiumCapability.NOISE_MEASUREMENT)) }
+        },enabled=ready&&screen.analysis!=null) { Text("Measure selected noise floor") }
         if (noiseError.isNotBlank()) Text(noiseError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
         if (noiseRequested && (screen.job == "Measuring selected noise floor" || screen.failed)) {
             if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -445,8 +450,6 @@ private val effectGroups = linkedMapOf(
     }
     WorkCard("Ordered processing regions") {
         Text("Without regions, the rack applies to the current selection or entire file. With regions, only saved region settings are rendered in list order; overlaps accumulate. Update a region after changing its rack. Maximum 32 regions.")
-        if (!model.canPreview(PremiumCapability.MULTIPLE_REGIONS) && regions.length() > 1)
-            Text("Rendering multiple regions is Premium in this Free preview. Your existing revisions remain available.",style=MaterialTheme.typography.bodySmall)
         OutlinedButton(onClick={try{val(a,b)=selection();require(regions.length()<32);regions.put(JSONObject().put("startMs",a).put("endMs",b).put("rack",rack.json()));regionsJson=regions.toString();chosen=regions.length()-1}catch(_:Exception){model.notice("Choose a valid interval; maximum 32 regions")}},enabled=ready) { Text("Add selection with these effects") }
         for(i in 0 until regions.length()) {
             val r=regions.getJSONObject(i)
@@ -492,7 +495,7 @@ private val effectGroups = linkedMapOf(
                 model.inspectSpectrum(actor,DetailSpectrumSettings(a,b,detailFft,detailFft/detailOverlap,detailWindow,detailScale,detailFloor))
             } catch (failure:Exception) { detailError=failure.message ?: "Choose a valid interval" }
         }
-        Button(onClick={try{val(a,b)=selection();inspect(a,b)}catch(_:Exception){detailError="Choose a valid interval to inspect"}},enabled=ready) { Text(previewLabel("Inspect selected interval", PremiumCapability.DETAIL_SPECTRUM)) }
+        Button(onClick={try{val(a,b)=selection();inspect(a,b)}catch(_:Exception){detailError="Choose a valid interval to inspect"}},enabled=ready) { Text("Inspect selected interval") }
         if (detailError.isNotBlank()) Text(detailError,color=MaterialTheme.colorScheme.error,style=MaterialTheme.typography.bodySmall)
         if (detailRequested && (screen.job == "Inspecting selected spectrum" || screen.failed)) {
             if (screen.job != null) LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -525,6 +528,7 @@ private val effectGroups = linkedMapOf(
         }
         }
     }
+    WorkCard("Speech processing") { ProviderControls(model, ready) }
     Text("Review audio",style=MaterialTheme.typography.headlineSmall)
     Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Markers and speech candidates") {

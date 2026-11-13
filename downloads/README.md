@@ -4,7 +4,7 @@
 
 **[Download APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-Android-preview.zip)** · [Release](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android-preview-0.6.0-dev.20261113) · [Installation](android/INSTALL-CANDIDATE.txt) · [Release notes](android/RELEASE-NOTES-0.6.0.md) · [Validation record](android/VALIDATION-0.6.0.txt)
 
-Android 10 or later. Development preview for synthetic evaluation; **BETA GATE: NOT PASSED**. This package includes the latest compact workbench, local-file confirmation and retry, optional coarse full-recording spectrum, searchable examiner notes and reversible Free/Premium design previews. No prices or payments are active.
+Android 10 or later. Development preview for synthetic evaluation; **BETA GATE: NOT PASSED**. This package includes the latest compact workbench, local-file confirmation and retry, optional coarse full-recording spectrum, searchable examiner notes. All implemented tools are available.
 
 | File                     | SHA-256                                                            |
 | ------------------------ | ------------------------------------------------------------------ |

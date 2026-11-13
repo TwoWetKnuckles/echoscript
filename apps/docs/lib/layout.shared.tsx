@@ -19,7 +19,6 @@ export function baseOptions(): BaseLayoutProps {
     links: [
       { text: "Guide", url: "/docs", active: "nested-url" },
       { text: "Downloads", url: "/docs/downloads" },
-      { text: "Free & Premium", url: "/docs/plans" },
       { text: "Release status", url: "/docs/release-candidate" },
     ],
   };

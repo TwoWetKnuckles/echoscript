@@ -5,19 +5,19 @@
   },
   "android/offline.mdx": {
     "source": "docs/android/OFFLINE.md",
-    "sha256": "305b84c8de09baa49b205e41e6fe053f73d6ce6de5e00fd8c2c4d19c0d598256"
+    "sha256": "9c9daf005e5f3fca34873fee6ee961f200d7876f3c237d2d0a432591e70ec81f"
   },
   "android/owner-signing.mdx": {
     "source": "docs/android/OWNER-SIGNING.md",
-    "sha256": "b71fac2750dd62ec751b5ac40a20f9065170f61244f4f52abf736424e6004010"
+    "sha256": "b3a2f127624dd6e696522d0b3701134b8a4c6827c581d826d5e5afcc4f319ad3"
   },
   "android/workbench-design.mdx": {
     "source": "docs/android/WORKBENCH-DESIGN.md",
-    "sha256": "93402493830e9abcfc8a9869e0a71eccdc0686eef5a99e9eb5d751aea8916b21"
+    "sha256": "3ac44f2a2ce137af66c86567436cd9c283850fd7c81a2de94a73a9c3f32f8797"
   },
   "architecture.mdx": {
     "source": "docs/architecture.md",
-    "sha256": "4bff8dcb0a6069e0ea3921b7a573e429887aa3453add250d435efc7e2de6f885"
+    "sha256": "de1705a2ffdd6ad435d8b63830292bf45696e7da5c8a6c23ca493c13cb7f9d6c"
   },
   "evidence/protected-transfer.mdx": {
     "source": "docs/evidence/PROTECTED-TRANSFER.md",
@@ -25,19 +25,19 @@
   },
   "file-tree.mdx": {
     "source": "docs/FILE-TREE.md",
-    "sha256": "b25351ca153acb5637d706bd0997d74c062c53541f45d91f07793417a6ae194a"
+    "sha256": "a8c6a82cd39d1857ee7df13a84c60c753f36f5962eea0c427ca77d3ea3fddea6"
   },
   "implementation.mdx": {
     "source": "docs/IMPLEMENTATION.md",
-    "sha256": "417075ede68be0b5a2959e7dc93785456799f5fa194149b5beead25ead3a476c"
+    "sha256": "7614cec2c376675aa13b2654482142d3e464a9d927ffbf26cbd08a3139060dea"
   },
   "legal/licensing.mdx": {
     "source": "docs/legal/LICENSING.md",
     "sha256": "1a13aedbc8bc54c0815928724de47c25c51afe55c09ca423343ee78940370f8c"
   },
-  "plans.mdx": {
-    "source": "docs/PLANS.md",
-    "sha256": "0350967e7d8632fe01ce86a29747a2efd5e7fe0e412d3f184f43188274c9c6d7"
+  "providers/clearvoice.mdx": {
+    "source": "docs/providers/clearvoice.md",
+    "sha256": "b63dbbae52438c9f1414390884e1f1e03cff0dc71e2340e6a4a0ad088af4d5d5"
   },
   "providers/local-vosk.mdx": {
     "source": "docs/providers/local-vosk.md",
@@ -45,27 +45,31 @@
   },
   "providers/openai-whisper.mdx": {
     "source": "docs/providers/openai-whisper.md",
-    "sha256": "ada0314ee08fd94fc0bda7c968c1fe878b81f4ffd01235a725d82c7dde7adec6"
+    "sha256": "73849ebaf92b9649239ddc07d4d94f4d464c0271aba1a06edfd78062f7f2322c"
   },
   "qa/rc-acceptance.mdx": {
     "source": "docs/qa/RC-ACCEPTANCE.md",
     "sha256": "54815c359f20a8f4a2085649badb851030f95d7d196cdd893cfbaabc32384863"
   },
+  "qa/request-reconciliation.mdx": {
+    "source": "docs/qa/REQUEST-RECONCILIATION.md",
+    "sha256": "22bd2e6b2ddd8ee59c34f8cd6df29b50ed238c3ad0e69ab0646fec2cfb5edfd4"
+  },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "1495b2a1ebaf7e8c4198ceda3aa7a459d205019b1fff1e4410adcec1892404cb"
+    "sha256": "b31e123e722332ea49797ae4cab81cb3e525c219d3de02153cadcd162391822f"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
-    "sha256": "50cdd468ffafcec887f0093de21d98213424bdafe451b67024d81c583f2449ce"
+    "sha256": "b491a5cf64dab562b41109a32fb31bcfd13f3362af2f00f5f6ee72ff5107c20b"
   },
   "security/operations.mdx": {
     "source": "docs/security/OPERATIONS.md",
-    "sha256": "4ab25fb20943d03a2377f08cad61c77ee46c6c97a18faaa65bc87a47fc7c2de1"
+    "sha256": "2679c814769baf751f7a3f1a6f01a5e097b9458c11b95c65175b9e0681cde7b8"
   },
   "security/threat-model.mdx": {
     "source": "docs/security/THREAT_MODEL.md",
-    "sha256": "806edeafd2755b04f452c1058205bb1213a628915be6e5aa8e5d7682ce1e5b12"
+    "sha256": "2b6a8eec3a33022191914055e142ef5b75d1b393c2477f31a35b310c2038f886"
   },
   "working-scope.mdx": {
     "source": "docs/WORKING-SCOPE.md",
@@ -73,11 +77,11 @@
   },
   "downloads/index.mdx": {
     "source": "downloads/README.md",
-    "sha256": "cfcb24a5ccff88d9282b6985769acc81657028c10891ceee5891918a4e32a8ea"
+    "sha256": "73e33cae95b4c03b77b17637bdd8dffeba38b3ccbf7e4874bbee864b278ced53"
   },
   "releases/0.6-test.mdx": {
     "source": "downloads/android/RELEASE-NOTES-0.6.0.md",
-    "sha256": "e4675e5b6268a77cd94b76474e7e625a27f1823bc8b8b1ad8a75225ac41eb029"
+    "sha256": "76105a36d1ac0008bfd602f7c8b0290115f242cc6098fd5453d5e4fdaf1f82e6"
   },
   "legal/responsibilities.mdx": {
     "source": "DISCLAIMER.md",
@@ -85,7 +89,7 @@
   },
   "security/reporting.mdx": {
     "source": "SECURITY.md",
-    "sha256": "7b39a5c9c88c6ebcdb4383ab5dd35822d23d19b45d3de2fbf2830d9c9ef86ffa"
+    "sha256": "0456960f138ac36b4638b7fef2da0ceb278bf7a8300db42e10fbabd1ccb58f53"
   },
   "development/contributing.mdx": {
     "source": "CONTRIBUTING.md",

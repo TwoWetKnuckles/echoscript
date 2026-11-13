@@ -56,8 +56,6 @@ const descriptions = {
     "The current development preview, executed checks and outstanding release acceptance gates.",
   "docs/WORKING-SCOPE.md":
     "The owner-confirmed working release inventory, deferred features and pending acceptance.",
-  "docs/PLANS.md":
-    "Proposed Free, subscription and one-time Premium access; current previews do not accept payments.",
   "docs/evidence/PROTECTED-TRANSFER.md":
     "Encrypted case transfers, device checkpoints, independent verification and recovery/trust boundaries.",
   "docs/providers/openai-whisper.md":

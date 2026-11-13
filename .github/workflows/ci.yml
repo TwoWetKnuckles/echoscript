@@ -10,6 +10,37 @@ concurrency:
   group: quality-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  clearvoice-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/api/requirements-clearvoice-export.txt
+      - name: Reproduce the pinned offline ClearVoice graph
+        run: |
+          python -m venv .clearvoice-export
+          .clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+          .clearvoice-export/bin/python scripts/setup-clearvoice.py "$RUNNER_TEMP/clearvoice" --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
+          .clearvoice-export/bin/python scripts/export-clearvoice-onnx.py "$RUNNER_TEMP/clearvoice" assets/clearvoice/frcrn-16k-2s.onnx
+          python - <<'PYMODEL'
+          import json, hashlib
+          from pathlib import Path
+          p=Path('assets/clearvoice/frcrn-16k-2s.onnx')
+          manifest=json.loads(Path('assets/clearvoice/inventory.json').read_text())
+          with p.open('rb') as stream:
+              assert hashlib.file_digest(stream,'sha256').hexdigest() == manifest['sha256']
+          assert p.stat().st_size == manifest['bytes']
+          PYMODEL
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/frcrn-16k-2s.onnx
+          if-no-files-found: error
+          retention-days: 7
   case-security-interop:
     runs-on: ubuntu-24.04
     timeout-minutes: 15
@@ -95,10 +126,19 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo build --workspace --release --locked
   android:
+    needs: clearvoice-model
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           distribution: temurin
@@ -119,6 +159,7 @@ jobs:
             qa-output/signing/
           retention-days: 1
   android-device:
+    needs: clearvoice-model
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
@@ -127,6 +168,14 @@ jobs:
         api: [29, 36]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/
       - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           distribution: temurin
@@ -167,25 +216,25 @@ jobs:
           "$tools/apksigner" verify --verbose "$apk"
           "$tools/zipalign" -c -P 16 4 "$apk"
           badging=$("$tools/aapt" dump badging "$apk")
-          grep -Eq "^package: name='org[.]echoscript[.]app[.]preview06' " <<< "$badging"
-          grep -Eq "^application-label:'EchoScript 0[.]6 Test'$" <<< "$badging"
+          grep -Eq "^package: name='org[.]echoscript[.]app[.]candidate06' " <<< "$badging"
+          grep -Eq "^application-label:'EchoScript 0[.]6 Candidate'$" <<< "$badging"
           permissions=$("$tools/aapt" dump permissions "$apk")
-          if printf '%s\n' "$permissions" | grep -Eq 'android[.]permission[.](INTERNET|ACCESS_NETWORK_STATE)'; then
+          if ! printf '%s\n' "$permissions" | grep -q 'android.permission.INTERNET' || printf '%s\n' "$permissions" | grep -q 'android.permission.ACCESS_NETWORK_STATE'; then
             exit 1
           fi
           folder=qa-output/android-preview/EchoScript-Android
           mkdir -p "$folder"
-          cp "$apk" "$folder/EchoScript-offline-preview.apk"
+          cp "$apk" "$folder/EchoScript-Android10-Offline-Test-Candidate-0.6.apk"
           cp downloads/android/INSTALL-CANDIDATE.txt "$folder/INSTALL.txt"
           cp LICENSE "$folder/LICENSE.txt"
           cp NOTICE "$folder/NOTICE.txt"
           printf 'Source commit %s\nQuality checks %s/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$folder/BUILD.txt"
           cd "$folder"
-          sha256sum EchoScript-offline-preview.apk INSTALL.txt LICENSE.txt NOTICE.txt BUILD.txt > SHA256SUMS.txt
+          sha256sum EchoScript-Android10-Offline-Test-Candidate-0.6.apk INSTALL.txt LICENSE.txt NOTICE.txt BUILD.txt > SHA256SUMS.txt
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: matrix.api == 36 && github.event_name != 'pull_request'
         with:
-          name: EchoScript-offline-Android-preview
+          name: EchoScript-Android10-Offline-Test-Candidate-0.6
           path: qa-output/android-preview/
           if-no-files-found: error
           retention-days: 7

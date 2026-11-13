@@ -70,7 +70,7 @@ export function buildServer(options: ServerOptions) {
   app.get("/health", async () => ({
     status: "ok",
     provider: "vosk-local",
-    externalProvidersEnabled: false,
+    externalProvidersEnabled: options.openAiEnabled === true && !!options.openAiApiKey,
     retention: "No evidence files written; bounded in-memory local processing",
     diarization: false,
     wordTimestamps: true,
@@ -226,7 +226,7 @@ export function buildServer(options: ServerOptions) {
   });
   // External endpoint accepts only a separately approved canonical transmission.
   app.post<{ Body: Buffer }>("/v1/transcriptions/openai-whisper", async (req, reply) => {
-    if (!options.openAiEnabled || !options.openAiApiKey) return reply.code(403).send({ error: "EXTERNAL_PROVIDER_DISABLED" });
+    if (options.providerEnabled === false || !options.openAiEnabled || !options.openAiApiKey) return reply.code(403).send({ error: "EXTERNAL_PROVIDER_DISABLED" });
     const consentId = req.headers["x-consent-id"];
     const c = typeof consentId === "string" ? consents.get(consentId) : undefined;
     if (!c || c.provider !== "openai-whisper" || c.expires < Date.now()) return reply.code(403).send({ error: "CONSENT_REQUIRED_OR_EXPIRED" });
@@ -240,11 +240,13 @@ export function buildServer(options: ServerOptions) {
     const controller = new AbortController();
     const timer = setTimeout(() => controller.abort(), options.timeoutMs ?? 60000);
     req.raw.once("aborted", () => controller.abort());
+    reply.raw.once("close", () => { if (!reply.raw.writableEnded) controller.abort(); });
     try {
       const form = new FormData();
       form.append("file", new Blob([new Uint8Array(b).buffer], { type: "audio/wav" }), "transmission.wav");
       form.append("model", "whisper-1"); form.append("response_format", "verbose_json");
       form.append("timestamp_granularities[]", "word");
+      form.append("timestamp_granularities[]", "segment");
       const response = await (options.openAiFetch ?? fetch)("https://api.openai.com/v1/audio/transcriptions", {
         method: "POST", redirect: "error", signal: controller.signal,
         headers: { Authorization: `Bearer ${options.openAiApiKey}` }, body: form,

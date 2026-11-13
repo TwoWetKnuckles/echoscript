@@ -164,6 +164,17 @@ test("missing provider executable returns bounded failure without transcript lea
   }
 });
 
+test("global provider disable blocks Whisper even when a server key is configured", async () => {
+  let requests = 0;
+  const app = server({ providerEnabled: false, openAiEnabled: true, openAiApiKey: "synthetic",
+    openAiFetch: async () => { requests++; throw Error("Must not be called"); } });
+  try {
+    const response = await app.inject({ method: "POST", url: "/v1/transcriptions/openai-whisper",
+      headers: { ...headers, "content-type": "audio/wav" }, payload: Buffer.from(toneBytes()) });
+    assert.equal(response.statusCode, 403); assert.equal(requests, 0);
+  } finally { await app.close(); }
+});
+
 test("OpenAI transmission requires explicit model consent, exact hash, and one-use authorization", async () => {
   let requests = 0;
   const app = server({ openAiEnabled: true, openAiApiKey: "synthetic-secret", openAiFetch: async (url, options) => {
@@ -171,6 +182,7 @@ test("OpenAI transmission requires explicit model consent, exact hash, and one-u
     assert.equal(url, "https://api.openai.com/v1/audio/transcriptions");
     assert.equal(options.redirect, "error");
     assert.equal(options.body.get("model"), "whisper-1");
+    assert.deepEqual(options.body.getAll("timestamp_granularities[]"), ["word", "segment"]);
     return new Response(JSON.stringify({ text: "synthetic example", words: [] }), {status: 200});
   }});
   const payload=Buffer.from(toneBytes());

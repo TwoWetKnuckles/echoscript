@@ -72,6 +72,13 @@ def build(destination, cache):
             inventory.append({"name": name, "archiveSha256": expected, "files": files})
         (models / "inventory.json").write_text(json.dumps({"models": inventory}, separators=(",", ":")), encoding="utf-8")
         root = pathlib.Path(__file__).resolve().parents[1]
+        clearvoice = root / "assets/clearvoice"
+        manifest = json.loads((clearvoice / "inventory.json").read_text())
+        binary = clearvoice / "frcrn-16k-2s.onnx"
+        if binary.stat().st_size != manifest["bytes"] or digest(binary) != manifest["sha256"]:
+            raise ValueError("Bundled ClearVoice export hash mismatch")
+        shutil.copytree(clearvoice, stage / "clearvoice-model")
+        shutil.copyfile(root / "LICENSE", stage / "clearvoice-model/Apache-2.0.txt")
         shutil.copyfile(root / "LICENSE", models / "Apache-2.0.txt")
         shutil.copyfile(root / "specs/fixtures/synthetic-speech.wav", stage / "synthetic-speech.wav")
         (models / "NOTICE.txt").write_text(
@@ -84,7 +91,7 @@ def build(destination, cache):
         if destination.exists():
             shutil.rmtree(destination)
         stage.replace(destination)
-    print("Packaged two verified offline Vosk models")
+    print("Packaged verified offline Vosk and ClearVoice models")
 
 
 if __name__ == "__main__":

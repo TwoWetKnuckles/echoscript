@@ -1,6 +1,6 @@
 # EchoScript offline Android preview
 
-EchoScript's Android workbench runs on Android 10 and later. GitHub builds and tests the APK. After installation, acquisition, processing, English speech recognition, transcript review, verification and export run in the app. The installer includes the speech and speaker models. No Termux, web UI, account, server, first-run model download or speech subscription is needed.
+EchoScript's Android workbench runs on Android 10 and later. GitHub builds and tests the APK. After installation, acquisition, processing, English speech recognition, transcript review, verification and export run in the app. The installer includes the speech and speaker models. No Termux, web UI, account, server, first-run model download is needed.
 
 **Development preview. BETA GATE: NOT PASSED.** Evaluate the current build with synthetic, non-sensitive recordings. See [responsibility and limitations](../../DISCLAIMER.md) and [executed checks](../qa/STATUS.md).
 
@@ -26,7 +26,6 @@ Native JSON, TXT, CSV, HTML, PDF, DOCX and XLSX exports retain notes with an exa
 
 The native interface defaults to dark graphite with cyan and violet Material accents. Settings offers Dark, Light and System appearance and a persistent local examiner identifier. Four bottom destinations keep Cases, Analyze, Transcript and Export visible. Cases provides file intake, microphone acquisition, search and explicit package transfer. The shield opens audit history.
 
-A newer debug-only **Explore possible plans** section simulates proposed free, subscription and one-time access, with **All tools** as the evaluation default. This is a reversible product-design preview and accepts no payments. Existing cases and exports remain available. See [the plan draft](../PLANS.md); production pricing, billing and entitlements are not active.
 
 Reopening a case loads its hash-checked saved analysis and transcript. An interrupted task marker is reported on the next vault open so completed artifacts can be reviewed before retrying. Automatic continuation after process death remains a release gate. Preferences contain appearance, the user-supplied examiner identifier and the operational task name. Evidence stays in the encrypted vault.
 
@@ -57,3 +56,7 @@ See [owner-signing setup](OWNER-SIGNING.md) and [the exact-build acceptance reco
 ### File selection in 0.6 Test
 
 After choosing a file, the test build displays the selected filename above the scrolling page. Tap **Import selected audio** to preserve it; failed imports keep a **Retry import** action. Cancelling or receiving an empty picker result produces a visible message. If Android kills the app after selection, the URI is not persisted; the app asks the user to check existing cases and choose the file again. The owner reported that things appeared to work so far on the Galaxy S22+, but the exact build and individual device workflows were not documented for formal acceptance. The published 0.5.1 preview retains its previous automatic-import flow.
+
+## Optional speech processing
+
+Vosk stays on device. The workbench can optionally use bundled ClearVoice on device before or after effects, or send explicitly approved prepared chunks through the companion to Whisper. See [ClearVoice](../providers/clearvoice.md) and [Whisper](../providers/openai-whisper.md). All implemented tools are available; actual provider charges and device/storage limits apply.

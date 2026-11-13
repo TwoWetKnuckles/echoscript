@@ -89,21 +89,16 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     var exportPassphrase by mutableStateOf("")
     var exportPassphraseConfirmation by mutableStateOf("")
     var trustedCheckpointKey by mutableStateOf("")
-    // Product-design simulation only. Never stored or treated as a purchase.
-    var accessPreview by mutableStateOf(AccessPreview.EVALUATION); private set
+    var transcriptionProvider by mutableStateOf(TranscriptionProvider.VOSK)
+    var clearVoiceEnabled by mutableStateOf(false)
+    var clearVoicePlacement by mutableStateOf(ClearVoicePlacement.AFTER)
+    var companionAddress by mutableStateOf("http://127.0.0.1:8787")
+    // Session only; never preferences, saved-instance state, manifests or APK resources.
+    var companionToken by mutableStateOf("")
+    var remoteApproval by mutableStateOf<RemoteBatch?>(null); private set
+    private data class RemoteAction(val actor: String, val batch: RemoteBatch, val completed: (JSONObject) -> Unit)
+    private var remoteAction: RemoteAction? = null
     private var workbenchMemory: WorkbenchDraftMemory? = null
-
-    fun changeAccessPreview(preview: AccessPreview) {
-        if (!BuildConfig.DEBUG || mutable.value.job != null || mutable.value.importPending) return
-        accessPreview = preview
-        notice("Access preview changed. No purchase or payment is involved.")
-    }
-    fun canPreview(capability: PremiumCapability): Boolean = PlanPreviewPolicy.allows(accessPreview, capability)
-    fun requirePreviewCapability(capability: PremiumCapability): Boolean {
-        if (canPreview(capability)) return true
-        notice("${capability.title} is Premium in the Free preview. Switch previews in Settings; no payment is set up.")
-        return false
-    }
 
     fun recallWorkbenchDraft(caseId: String, revisionId: String): WorkbenchDraftMemory? =
         workbenchMemory?.takeIf { it.caseId == caseId && it.revisionId == revisionId }
@@ -391,7 +386,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         "Waveform, spectral overview and candidate speech regions are ready."
     }
     fun inspectSpectrum(actor: String, settings: DetailSpectrumSettings) {
-        if (!requirePreviewCapability(PremiumCapability.DETAIL_SPECTRUM)) return
         runJob("Inspecting selected spectrum") {
             val spectrum = workflow.inspectSpectrum(selected(), actor, settings, cancelled::get, reportProgress("frames read"))
             updateState { it.copy(detailedSpectrum = spectrum) }
@@ -399,7 +393,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     fun inspectFullSpectrum(actor: String) {
-        if (!requirePreviewCapability(PremiumCapability.FULL_SPECTRUM)) return
         runJob("Scanning full recording spectrum") {
             val result = workflow.inspectFullSpectrum(selected(), actor, cancelled::get, reportProgress("frames scanned"))
             updateState { it.copy(fullSpectrum = result) }
@@ -407,7 +400,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     fun measureNoise(actor: String, startMs: Long, endMs: Long) {
-        if (!requirePreviewCapability(PremiumCapability.NOISE_MEASUREMENT)) return
         runJob("Measuring selected noise floor") {
             val result = workflow.measureNoise(selected(), actor, startMs, endMs, cancelled::get, reportProgress("frames read"))
             updateState { it.copy(noiseFloorMeasurement = result) }
@@ -415,7 +407,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     fun compareAudio(actor: String, audioId: String) {
-        if (!requirePreviewCapability(PremiumCapability.CLIPPING_COMPARISON)) return
         runJob("Comparing audio revisions") {
             val result = workflow.compareAudio(selected(), actor, audioId, cancelled::get, reportProgress("frames analyzed"))
             updateState { it.copy(comparisonAnalysis = result, comparisonAudioId = audioId) }
@@ -423,8 +414,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, completed: () -> Unit = {}) {
-        val requirement = PlanPreviewPolicy.renderRequirement(regions)
-        if (requirement != null && !requirePreviewCapability(requirement)) return
         runJob("Rendering effect plan", completed) {
             require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
             val manifest = selected()
@@ -469,8 +458,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         if (p == null) play(actor) else if (p.isPlaying) p.pause() else p.play()
     }
     fun enhance(actor: String, settings: RenderSettings) {
-        val requirement = PlanPreviewPolicy.renderRequirement(listOf(settings))
-        if (requirement != null && !requirePreviewCapability(requirement)) return
         runJob("Rendering audio revision") {
             val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
             updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
@@ -485,17 +472,70 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         updateState { it.copy(analysis = overview, fullSpectrum = fullSpectrum, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
         "Active revision changed. Earlier versions remain in the case."
     }
-    fun transcribe(actor: String, completed: () -> Unit = {}) = runJob("Transcribing on this device", completed) {
+    fun transcribe(actor: String, completed: () -> Unit = {}) {
+        if (transcriptionProvider == TranscriptionProvider.WHISPER) {
+            prepareRemote(actor, "openai-whisper") { result ->
+                runJob("Opening Whisper draft", completed) {
+                    val case = selected(); openTranscript(case, result)
+                    "Whisper draft saved. Review words and timing against the linked audio."
+                }
+            }
+            return
+        }
+        runJob("Transcribing on this device", completed) {
         val case = selected()
         val artifact = workflow.transcribe(case, actor, cancelled::get, reportProgress("units processed"))
         openTranscript(case, artifact)
         val overview = workflow.savedAnalysis(case)
         updateState { it.copy(analysis = overview) }
         "Draft transcript saved. Review the words, timestamps and speaker groups."
+        }
+    }
+
+    fun enhanceClearVoice(actor: String, baseId: String? = null, completed: (String) -> Unit = {}) {
+        var renderedId: String? = null
+        val placement = clearVoicePlacement.name
+        runJob("Enhancing with ClearVoice on this device", completed = { completed(checkNotNull(renderedId)) }) {
+            val manifest = selected()
+            if (baseId != null && manifest.getString("activeArtifact") != baseId) vault.selectRevision(manifest, actor, baseId)
+            val result = ClearVoiceNative(getApplication(), vault, workflow).enhance(manifest, actor, placement, cancelled::get, reportProgress("frames enhanced"))
+            renderedId = result.getString("id")
+            val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
+            updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, comparisonAnalysis = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+            "ClearVoice audio revision saved on this device. Compare it with the preserved original."
+        }
+    }
+
+    private fun prepareRemote(actor: String, provider: String, baseId: String? = null, completed: (JSONObject) -> Unit) {
+        if (remoteApproval != null) return
+        val configuration = try { CompanionConfig(companionAddress, companionToken) }
+            catch (failure: IllegalArgumentException) { notice(failure.message ?: "Configure the companion in Settings"); return }
+        var prepared: RemoteBatch? = null
+        runJob("Preparing audio for approval", completed = {
+            val batch = checkNotNull(prepared)
+            remoteAction = RemoteAction(actor, batch, completed); remoteApproval = batch
+        }) {
+            val manifest = selected()
+            if (baseId != null && manifest.getString("activeArtifact") != baseId) vault.selectRevision(manifest, actor, baseId)
+            prepared = RemoteWorkflow(vault, workflow).prepare(manifest, actor, configuration, provider, cancelled::get, reportProgress("frames prepared"))
+            "Audio prepared and hashed. No audio has been sent; review the submission."
+        }
+    }
+    fun cancelRemoteApproval() {
+        remoteApproval = null; remoteAction = null
+        notice("Submission cancelled. No audio was sent; prepared artifacts remain in the encrypted case.")
+    }
+    fun approveRemoteSubmission() {
+        val action = remoteAction ?: return
+        remoteAction = null; remoteApproval = null
+        var result: JSONObject? = null
+        runJob("Transcribing with Whisper API", completed = { action.completed(checkNotNull(result)) }) {
+            val manifest = selected()
+            result = RemoteWorkflow(vault, workflow).execute(manifest, action.actor, action.batch, cancelled::get, reportProgress("chunks completed"))
+            "Whisper draft saved. Original and earlier revisions are preserved."
+        }
     }
     fun renderAndTranscribe(actor: String, settings: RenderSettings, completed: () -> Unit) {
-        val requirement = PlanPreviewPolicy.renderRequirement(listOf(settings))
-        if (requirement != null && !requirePreviewCapability(requirement)) return
         runJob("Rendering and transcribing", completed) {
             val manifest = selected()
             workflow.enhance(manifest, actor, settings, cancelled::get, reportProgress("units rendered"))

@@ -95,16 +95,7 @@ export default function HomePage() {
           Emulator results do not replace physical-device acceptance. Preserve
           verified case exports before changing installed previews.
         </p>
-        <p className="mt-2">
-          <Link
-            href="/docs/plans"
-            className="text-fd-primary underline underline-offset-4"
-          >
-            Free and Premium access
-          </Link>{" "}
-          currently uses reversible design previews. Prices and purchases are
-          not active.
-        </p>
+        <p className="mt-2">All implemented workbench tools are available. External provider charges and technical resource limits still apply.</p>
       </aside>
     </main>
   );

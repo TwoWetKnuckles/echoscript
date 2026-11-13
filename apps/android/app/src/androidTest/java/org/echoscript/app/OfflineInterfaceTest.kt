@@ -191,66 +191,6 @@ class OfflineInterfaceTest {
         } finally { source.delete() }
     }
 
-    @Test fun planPreviewsPreserveBasicWorkAndProtectedExport() {
-        val context = ApplicationProvider.getApplicationContext<Context>()
-        val vault = EvidenceVault(context)
-        val before = vault.listCases().cases.map { it.getString("caseId") }.toSet()
-        click("Load synthetic speech sample")
-        waitFor("Original preserved. Waveform and speech candidates are ready.")
-        val case = vault.listCases().cases.single { it.getString("caseId") !in before }
-        val id = case.getString("caseId")
-        val sourceHash = case.items("artifacts").first().getString("sha256")
-        val archive = File(context.cacheDir, "synthetic-free-preview.echocase.enc")
-        try {
-            ui.onNodeWithContentDescription("Settings").performClick()
-            click("Free preview")
-            click("Analyze", navigation = true)
-            click("Scan full recording spectrum · Premium")
-            waitFor("Full-recording spectrum is Premium in the Free preview. Switch previews in Settings; no payment is set up.")
-            var saved = vault.listCases().cases.single { it.getString("caseId") == id }
-            assertFalse(saved.items("artifacts").any { it.getJSONObject("operation").getString("algorithm") == "continuous-overview-stft" })
-            ui.onNodeWithText("Selection start ms").performScrollTo().performTextReplacement("0")
-            ui.onNodeWithText("Selection end ms").performScrollTo().performTextReplacement("1000")
-            closeSoftKeyboard()
-            click("Create clip from selection")
-            waitFor("Effect plan rendered. Earlier audio and settings remain in revision history.")
-            saved = vault.listCases().cases.single { it.getString("caseId") == id }
-            assertTrue(saved.items("artifacts").any { it.getString("type") == "ENHANCED_AUDIO" })
-            assertEquals(sourceHash, saved.items("artifacts").first().getString("sha256"))
-            val clippedRevision = saved.getString("activeArtifact")
-            val beforeBlockedRender = saved.getJSONArray("artifacts").length()
-            ui.runOnIdle {
-                val model = androidx.lifecycle.ViewModelProvider(ui.activity)[VaultModel::class.java]
-                model.renderPlan("EXAMINER", case.getString("activeArtifact"), listOf(RenderSettings(rack=EffectRack(mapOf("pitch" to EffectValue(true, 20))))))
-            }
-            waitFor("Advanced effects is Premium in the Free preview. Switch previews in Settings; no payment is set up.")
-            saved = vault.listCases().cases.single { it.getString("caseId") == id }
-            assertEquals(clippedRevision, saved.getString("activeArtifact"))
-            assertEquals(beforeBlockedRender, saved.getJSONArray("artifacts").length())
-            click("Export", navigation = true)
-            click("I understand and will protect exported files.")
-            ui.onNodeWithText("New transfer passphrase").performScrollTo().performTextReplacement("SYNTHETIC test password 42")
-            ui.onNodeWithText("Confirm transfer passphrase").performScrollTo().performTextReplacement("SYNTHETIC test password 42")
-            closeSoftKeyboard()
-            document(Intent.ACTION_CREATE_DOCUMENT, archive) {
-                click("Protected case package")
-                ui.waitUntil(timeoutMillis = 30000) { archive.exists() && archive.length() > 100 && ui.onAllNodesWithText("Export saved. SHA-256 ", substring = true).fetchSemanticsNodes().isNotEmpty() }
-            }
-            ui.onNodeWithContentDescription("Settings").performClick()
-            click("One-time preview")
-            click("Analyze", navigation = true)
-            click("Scan full recording spectrum")
-            waitFor("Full-recording spectral overview saved. Use detailed inspection for finer time and frequency resolution.")
-            saved = vault.listCases().cases.single { it.getString("caseId") == id }
-            assertTrue(saved.items("artifacts").any { it.getJSONObject("operation").getString("algorithm") == "continuous-overview-stft" })
-            assertEquals(sourceHash, saved.items("artifacts").first().getString("sha256"))
-            assertTrue(vault.verify(saved).contains("agree"))
-        } finally {
-            archive.delete()
-            assertTrue(File(context.filesDir,"EvidenceVault/cases/$id").deleteRecursively())
-        }
-    }
-
     @Test fun detailedSpectrumInspectsAndZoomsWithoutChangingOriginal() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val vault = EvidenceVault(context)

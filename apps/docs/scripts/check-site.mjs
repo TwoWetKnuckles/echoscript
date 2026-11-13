@@ -105,9 +105,9 @@ try {
     "Markdown negotiation returned HTML",
   );
   assert((await markdown.text()).includes("Import selected audio"));
-  const suffixed = await (await request("/docs/plans.md")).text();
+  const suffixed = await (await request("/docs/android/offline.md")).text();
   assert(
-    suffixed.includes("Free and premium access"),
+    suffixed.includes("Import selected audio"),
     "Markdown suffix route is missing",
   );
   const image = await request("/og/docs/image.png");

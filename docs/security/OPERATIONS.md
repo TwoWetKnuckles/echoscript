@@ -15,7 +15,7 @@ Record lawful acquisition context and the original hash; preserve original bytes
 
 Compare processed results with originals. Review speech candidates, restoration estimates, timestamps, neutral speaker labels, confidence semantics and uncertain words. Explicitly review each affected segment before marking a transcript human-verified. Preserve earlier revisions and disclose estimates/uncertainty; do not infer identity or legal authenticity from a provider result or hash.
 
-The current loopback speech API uses a development bearer token, not team OIDC/role controls. Do not bind or reverse-proxy it to an organization or Internet endpoint. The native offline preview uses bundled speech and speaker models and excludes Internet permission. Browser provider prohibition is an application control, not OS-enforced air-gap isolation. For genuinely isolated evaluation, provision dependencies/models in advance, run the companion locally and enforce network isolation outside the application.
+The current loopback speech API uses a development bearer token, not team OIDC/role controls. Do not bind or reverse-proxy it to an organization or Internet endpoint. The native preview uses bundled speech/speaker models by default; optional companion processing adds network permission and explicit payload approval. Browser provider prohibition is an application control, not OS-enforced air-gap isolation. For genuinely isolated evaluation, provision dependencies/models in advance, run the companion locally and enforce network isolation outside the application.
 
 ## Providers and information leaving the device
 

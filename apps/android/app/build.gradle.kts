@@ -10,7 +10,7 @@ check(ownerSigning.values.all { it == null } || ownerSigning.values.all { !it.is
 android {
     namespace = "org.echoscript.app"
     compileSdk = 36
-    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 8; versionName = "0.6.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"; manifestPlaceholders["appLabel"] = "EchoScript" }
+    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 9; versionName = "0.6.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"; manifestPlaceholders["appLabel"] = "EchoScript" }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("androidTest").assets.srcDir("../../../specs/fixtures")
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
@@ -24,11 +24,11 @@ android {
     }
     buildTypes {
         debug {
-            // Keep the 0.6 evaluation vault separate from the installed 0.5.x
-            // preview; ephemeral CI debug keys cannot safely update that app.
-            applicationIdSuffix = ".preview06"
-            versionNameSuffix = "-preview"
-            manifestPlaceholders["appLabel"] = "EchoScript 0.6 Test"
+            // A new candidate has a separate vault from prior test packages.
+            // Ephemeral development keys cannot establish upgrade continuity.
+            applicationIdSuffix = ".candidate06"
+            versionNameSuffix = "-candidate.1"
+            manifestPlaceholders["appLabel"] = "EchoScript 0.6 Candidate"
         }
         release {
             isMinifyEnabled = false
@@ -52,6 +52,7 @@ dependencies {
     implementation("androidx.media3:media3-exoplayer:1.8.1")
     implementation("androidx.media3:media3-ui:1.8.1")
     implementation("com.alphacephei:vosk-android:0.3.75")
+    implementation("com.microsoft.onnxruntime:onnxruntime-android:1.32.0")
     implementation("org.apache.commons:commons-compress:1.28.0")
     testImplementation("junit:junit:4.13.2")
     testImplementation("org.json:json:20260814")
@@ -67,6 +68,8 @@ abstract class PrepareOfflineModels : DefaultTask() {
     @get:InputFile abstract val script: RegularFileProperty
     @get:InputFile abstract val license: RegularFileProperty
     @get:InputFile abstract val syntheticSample: RegularFileProperty
+    @get:InputFile abstract val clearVoiceBinary: RegularFileProperty
+    @get:InputFile abstract val clearVoiceInventory: RegularFileProperty
     @get:Internal abstract val archiveCache: DirectoryProperty
     @get:OutputDirectory abstract val assetsDirectory: DirectoryProperty
     @get:Inject abstract val execOperations: ExecOperations
@@ -82,6 +85,8 @@ val prepareOfflineModels = tasks.register<PrepareOfflineModels>("prepareOfflineM
     script.set(rootProject.layout.projectDirectory.file("../../scripts/bundle-android-models.py"))
     license.set(rootProject.layout.projectDirectory.file("../../LICENSE"))
     syntheticSample.set(rootProject.layout.projectDirectory.file("../../specs/fixtures/synthetic-speech.wav"))
+    clearVoiceBinary.set(rootProject.layout.projectDirectory.file("../../assets/clearvoice/frcrn-16k-2s.onnx"))
+    clearVoiceInventory.set(rootProject.layout.projectDirectory.file("../../assets/clearvoice/inventory.json"))
     val cache = providers.environmentVariable("ECHOSCRIPT_MODEL_CACHE")
     archiveCache.set(layout.dir(cache.map { file(it) }).orElse(rootProject.layout.projectDirectory.dir(".gradle/echoscript-models")))
     assetsDirectory.set(layout.buildDirectory.dir("generated/offline-model-assets"))

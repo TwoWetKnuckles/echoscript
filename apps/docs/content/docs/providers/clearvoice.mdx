@@ -1,0 +1,16 @@
+---
+title: "ClearVoice speech enhancement"
+description: "EchoScript reference: ClearVoice speech enhancement."
+---
+
+The workbench draft adds an **Enable/disable ClearVoice** switch and **Before effects / After effects** placement. Rendering runs the selected stage in that order, creates a separate audio revision and keeps the original. Transcription uses the final active render. Direct transcription can also enhance the active audio first. The primary Android path runs offline with the bundled model and never submits audio for enhancement.
+
+The integration uses the Apache-2.0 ClearVoice package 0.1.2 from Alibaba's [ClearerVoice-Studio](https://github.com/modelscope/ClearerVoice-Studio) and its Apache-2.0 `FRCRN_SE_16K` checkpoint, pinned to [model commit 3766e6a64b0d8cb58f08d913d617bf129f11ed53](https://huggingface.co/alibabasglab/FRCRN_SE_16K/tree/3766e6a64b0d8cb58f08d913d617bf129f11ed53). The bundled static ONNX graph uses Microsoft ONNX Runtime 1.32.0 on Android. Its SHA-256 is `5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2`. Android verifies this hash before loading it. No model download is needed after installation.
+
+Android renders mono 16 kHz audio with a two-second neural input window, a one-second output hop and a half-second of past/future context. Boundary padding and clipping counts are recorded with the exact model hash, runtime, source, parent links, output hash and placement. Memory use is bounded by the model/session and working buffers, rather than the entire recording. Total recordings are processed in windows; device storage and technical safety limits still apply. Cancel is checked between neural windows. Partial renders are not committed as completed audio.
+
+`assets/clearvoice/inventory.json` records the checkpoint and export provenance. The Python environment in `services/api/requirements-clearvoice-export.txt`, `scripts/setup-clearvoice.py` and `scripts/export-clearvoice-onnx.py` reproduce and check the CPU graph. A seeded synthetic test window matched the Python model with maximum absolute sample error `2.2875611e-7`. This is numerical export validation, not a claim about intelligibility, speech detection or all-device equivalence.
+
+
+
+Enhancement can alter or suppress words and create boundary artifacts. It cannot recover uncaptured speech. Use original/processed comparisons and human transcript review. A real synthetic Python model run returned finite, length-preserving audio with zero output samples requiring clipping. This establishes execution, not faint-speech accuracy or physical-phone acceptance.

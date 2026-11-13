@@ -16,7 +16,7 @@ It uses `org.echoscript.app.preview06` and a separate, initially empty vault alo
 
 The optional full-recording scan is a coarse spectral overview; short-range inspection provides separate FFT/hop/window controls. It is not a high-resolution full-file spectrogram. Restoration, noise-floor gating and clipping counts retain their documented limits. [Workbench guide](docs/android/ENHANCEMENT-WORKBENCH.md) · [Design direction](docs/android/WORKBENCH-DESIGN.md).
 
-**Settings → Explore possible plans** compares All tools, Free, subscription and one-time Premium previews. All tools is the evaluation default. These are in-memory design simulations with no prices, purchases or production entitlements. Existing cases, history, verification and exports remain accessible. [Proposed access model](docs/PLANS.md).
+All implemented tools are available without artificial usage restrictions. External provider billing and technical resource limits still apply.
 
 The [owner-confirmed scope](docs/WORKING-SCOPE.md) includes items 1–20 and 23–28; browser parity and Termux are deferred. Formal exact-build Galaxy S22+ acceptance, outstanding feature work, owner signing/upgrades and the [complete release gates](docs/RELEASE-CANDIDATE.md) remain open. Protected case transfer and device checkpoints are available; [trust and recovery boundaries](docs/evidence/PROTECTED-TRANSFER.md) still apply.
 
@@ -103,7 +103,7 @@ adb install -r app/build/outputs/apk/debug/app-debug.apk
 
 The 0.6 debug draft uses `org.echoscript.app.preview06`, separate from the 0.5.1 preview and its vault. Side-by-side installation passed an Android 16 emulator check; physical-device validation remains open. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
-Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. The app has no Internet permission. See the offline guide for codec, editing, transfer and recovery limits.
+Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. Vosk remains on device by default. Optional companion processing requires explicit payload approval and network access. See the offline guide for codec, editing, transfer and recovery limits.
 
 Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Preview 0.5.1 offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
 

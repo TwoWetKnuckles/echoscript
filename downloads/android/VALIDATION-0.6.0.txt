@@ -31,7 +31,7 @@ Observed results
   skip (process-kill test executed separately).
 - Native suites include actual emulator DocumentsUI/content-URI intake and
   cancellation, selected-file rotation/retry, presets, horizontal controls,
-  recipes/history, spectral/noise tools, notes and plan-preview behavior.
+  recipes/history, spectral/noise tools and examiner notes.
 - Seven core and seven interface synthetic workflows per emulator: PASS.
   Controlled picker responses in repeated workflows are distinguished from
   the separate real emulator DocumentsUI test. They do not establish Samsung
@@ -78,6 +78,3 @@ providers/codecs and speaker/overlap validation, background/resumable work,
 team authorization and approved metadata sync, signer/key/time lifecycle,
 owner production signing and vault-preserving upgrades, deployment-specific
 governance and seven complete accepted workflows remain outstanding.
-
-The Free/subscription/one-time modes are debug-only design simulations.
-No prices, payment processing or verified production entitlements are active.

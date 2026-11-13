@@ -16,7 +16,6 @@ The standalone Fumadocs app is in `apps/docs/`: `app/` owns its Next.js routes, 
 | `apps/android/.../{AudioWorkbench,EffectRack,EffectRender}.kt`       | Timeline, effect controls, ordered region recipes and bounded native rendering                                     |
 | `apps/android/.../{FullSpectrum,DetailSpectrum,DetailedTimeline}.kt` | Coarse full-recording scan and configurable selected-range spectral inspection                                     |
 | `apps/android/.../{PlanPreview,TranscriptExport}.kt`                 | Reversible debug access previews and native transcript/history exports                                             |
-| `docs/PLANS.md`                                                      | Proposed free/premium split and production billing prerequisites                                                   |
 | `downloads/`                                                         | End-user release link and plain-text Android installation instructions, also included in the ZIP                   |
 | `apps/android/`                                                      | Kotlin/Compose vault; Keystore/Tink encryption; SAF intake/export; Media3 authenticated playback; native tests     |
 | `apps/web/src/index.html`, `main.mjs`, `workbench.css`               | Seven-workspace browser UI and local workflow                                                                      |
@@ -47,3 +46,5 @@ The standalone Fumadocs app is in `apps/docs/`: `app/` owns its Next.js routes, 
 | `docs/`                                                              | Boundaries, provider qualification, executed checks, failure repairs and outstanding release requirements          |
 
 The v0.1.1 intake-only companion and its tests remain in Git history. They are not tests of the new workbench. Run commands from the monorepo root unless Android instructions specify otherwise. The existing Sites deployment owns its separate hosting manifest; no Site credential belongs in this public tree.
+
+`assets/clearvoice/` contains the pinned offline ONNX graph, inventory and notices. `ClearVoiceNative.kt` renders it locally; `CompanionClient.kt`, `RemoteWorkflow.kt` and `ProviderControls.kt` implement optional Whisper transport and exact-payload approval. Model reproduction uses `scripts/setup-clearvoice.py`, `scripts/export-clearvoice-onnx.py` and the separate pinned export environment.

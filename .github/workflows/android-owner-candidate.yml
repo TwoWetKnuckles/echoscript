@@ -20,6 +20,15 @@ jobs:
         with:
           distribution: temurin
           java-version: "17"
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+      - name: Prepare the pinned model before introducing signing material
+        run: |
+          python -m venv .clearvoice-export
+          .clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+          .clearvoice-export/bin/python scripts/setup-clearvoice.py "$RUNNER_TEMP/clearvoice" --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
+          .clearvoice-export/bin/python scripts/export-clearvoice-onnx.py "$RUNNER_TEMP/clearvoice" assets/clearvoice/frcrn-16k-2s.onnx
       - name: Validate owner-provisioned signing inputs
         env:
           KEYSTORE_BASE64: ${{ secrets.ANDROID_SIGNING_KEYSTORE_BASE64 }}
