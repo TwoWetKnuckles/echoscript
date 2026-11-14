@@ -8,7 +8,7 @@ Choose effects, ClearVoice placement and transcription route before **Render & t
 
 A foreground-service notification shows generic processing status without case details. Use **Settings → Manage processing notifications** on Android 13+ to allow or manage notifications. Android permission/settings may hide them; progress remains available in the app. Android controls scheduling, battery restrictions, quotas and service lifetime, so immediate or indefinite execution is not guaranteed. Force-stopping an app prevents its jobs from continuing until the app is opened again. See [Android's long-running worker guidance](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/long-running).
 
-**Cancel current operation** and notification cancellation record a durable cancellation before stopping the worker. Originals and completed revisions remain. A failed/cancelled job offers **Retry saved job** or **Dismiss job notice**. Retry creates a new scheduling identity but retains the original request and completed-pass linkage. Failure does not silently restart a terminal job.
+**Cancel current operation** and notification cancellation record a durable cancellation before stopping the worker. Originals and completed revisions remain. A failed/cancelled job offers **Retry saved job** or **Dismiss job notice**. Retry creates a new scheduling identity but retains the original request and completed-pass linkage. Failure does not silently restart a terminal job. Retry retains the saved examiner identifier; if the current examiner differs, start a new job so actions are not attributed to another identifier.
 
 ## What resumes
 

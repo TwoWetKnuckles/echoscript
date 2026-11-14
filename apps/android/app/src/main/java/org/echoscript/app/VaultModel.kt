@@ -315,12 +315,12 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
 
-    fun retryProcessing() {
+    fun retryProcessing(actor: String) {
         val id = mutable.value.lastBackgroundJobId ?: return
         runJob("Retrying saved local processing") {
             val previous = ProcessingJournal(vault).read(id)
             require(previous.getString("state") in setOf(JobState.FAILED.name, JobState.CANCELLED.name))
-            val plan = ProcessingPlan.parse(previous.getJSONObject("plan")).retry()
+            val plan = ProcessingPlan.parse(previous.getJSONObject("plan")).retry(actor)
             ProcessingJournal(vault).acknowledge(id)
             ProcessingJobs.enqueue(getApplication(), vault, plan)
             updateState { it.copy(backgroundJobId = plan.id, lastBackgroundJobId = null, job = "Queued for on-device processing") }

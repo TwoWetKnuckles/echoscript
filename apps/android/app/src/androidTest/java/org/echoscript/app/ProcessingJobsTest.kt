@@ -102,7 +102,7 @@ class ProcessingJobsTest {
             }
             val first = completed().single()
             assertEquals("render.region.0", first.operationParameters().getJSONObject("processingJob").getString("step"))
-            val retry = request.retry()
+            val retry = request.retry(request.actor)
             pipeline.render(case, retry.actor, retry.baseId, retry.regions, null, { false }, {}, ProcessingContext(retry, vault, { false }, 2))
             assertEquals(2, completed().size)
             assertEquals(first.getString("id"), completed().first().getString("id"))

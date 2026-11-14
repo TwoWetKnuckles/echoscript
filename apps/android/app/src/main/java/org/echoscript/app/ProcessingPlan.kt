@@ -50,7 +50,10 @@ internal data class ProcessingPlan(
     val requestSha256 get() = EvidenceVault.sha(EvidenceVault.canonical(body()))
     fun json(): JSONObject = JSONObject().put("schema", "org.echoscript.local-job/1").put("id", id).put("rootId", rootId)
         .put("createdAtUtc", createdAtUtc).put("request", body()).put("requestSha256", requestSha256)
-    fun retry(): ProcessingPlan = copy(id = UUID.randomUUID().toString(), createdAtUtc = EvidenceVault.utc())
+    fun retry(requestedActor: String): ProcessingPlan {
+        require(requestedActor == actor) { "The saved job uses a different examiner identifier. Review its case and start a new job with your current identifier." }
+        return copy(id = UUID.randomUUID().toString(), createdAtUtc = EvidenceVault.utc())
+    }
     fun checkRuntime() {
         require(softwareVersion == BuildConfig.VERSION_NAME && modelHash == CLEARVOICE_ONNX_HASH) {
             "This unfinished job uses another software/model version. Review its saved case and start a new job with current settings."

@@ -252,7 +252,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                     if (!screen.audioSelected && screen.pickerNotice == null && (screen.job != null || screen.importPending || screen.message != "Choose a case or import a recording.")) {
                         if (tab == "Analyze" && !screen.failed && screen.job == null && !screen.importPending)
                             Text(screen.message, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-                        else StatusCard(screen, model)
+                        else StatusCard(screen, model, actor)
                     }
                     val activePlayer = model.player
                     if (activePlayer != null) {
@@ -338,13 +338,13 @@ private fun VaultApp(model: VaultModel = viewModel()) {
 
 @OptIn(ExperimentalLayoutApi::class)
 @Composable
-private fun StatusCard(screen: VaultScreen, model: VaultModel) {
+private fun StatusCard(screen: VaultScreen, model: VaultModel, actor: String) {
     Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectionContainer { Text(screen.message, style = MaterialTheme.typography.bodySmall) }
             if (screen.lastBackgroundJobId != null && screen.job == null) {
                 FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
-                    TextButton(onClick = model::retryProcessing) { Text("Retry saved job") }
+                    TextButton(onClick = { model.retryProcessing(actor) }) { Text("Retry saved job") }
                     TextButton(onClick = model::dismissProcessingFailure) { Text("Dismiss job notice") }
                 }
             }

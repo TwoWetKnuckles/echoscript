@@ -18,12 +18,13 @@ class ProcessingPlanTest {
         val original = plan()
         val decoded = ProcessingPlan.parse(original.json())
         assertEquals(original, decoded)
-        val retry = decoded.retry()
+        val retry = decoded.retry(decoded.actor)
         assertNotEquals(original.id, retry.id)
         assertEquals(original.rootId, retry.rootId)
         assertEquals(original.requestSha256, retry.requestSha256)
         assertEquals(original.regions, retry.regions)
         retry.checkRuntime()
+        assertThrows(IllegalArgumentException::class.java) { original.retry("ANOTHER_SYNTHETIC_EXAMINER") }
     }
 
     @Test fun alteredUnknownOrAmbiguousSettingsCannotBeReplayed() {
