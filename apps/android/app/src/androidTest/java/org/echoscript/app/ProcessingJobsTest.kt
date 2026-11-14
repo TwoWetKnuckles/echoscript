@@ -1,8 +1,12 @@
 package org.echoscript.app
 
 import android.content.Context
+import android.content.Intent
+import androidx.test.core.app.ActivityScenario
 import androidx.test.core.app.ApplicationProvider
 import androidx.test.platform.app.InstrumentationRegistry
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
 import org.json.JSONObject
 import org.junit.Assert.*
 import org.junit.Test
@@ -19,6 +23,42 @@ class ProcessingJobsTest {
     private fun remove(case: JSONObject, vararg ids: String) {
         File(context.filesDir, "EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively()
         for (id in ids) File(context.filesDir, "EvidenceVault/jobs/$id").deleteRecursively()
+    }
+
+    @Test fun notificationCancellationStopsAScheduledJobAndKeepsTheSavedRequest() {
+        val vault = EvidenceVault(context)
+        val case = context.assets.open("synthetic-speech.wav").use { vault.importSource(it, "SYNTHETIC.wav", "Synthetic scheduled cancellation", "SYNTHETIC_QA") }
+        val request = plan(case, List(32) { RenderSettings(gainDb = .1, limit = false) })
+        val journal = ProcessingJournal(vault)
+        val manager = WorkManager.getInstance(context)
+        val scenario = ActivityScenario.launch(MainActivity::class.java)
+        try {
+            ProcessingJobs.enqueue(context, vault, request)
+            val started = System.nanoTime() + 20_000_000_000L
+            while (manager.getWorkInfoById(UUID.fromString(request.id)).get()?.state != WorkInfo.State.RUNNING && System.nanoTime() < started) Thread.sleep(20)
+            assertEquals(WorkInfo.State.RUNNING, checkNotNull(manager.getWorkInfoById(UUID.fromString(request.id)).get()).state)
+            context.sendBroadcast(Intent(context, LocalJobCancelReceiver::class.java).setAction("org.echoscript.CANCEL_LOCAL_JOB").putExtra("id", request.id))
+            val stopped = System.nanoTime() + 20_000_000_000L
+            while (manager.getWorkInfoById(UUID.fromString(request.id)).get()?.state != WorkInfo.State.CANCELLED && System.nanoTime() < stopped) Thread.sleep(20)
+            assertEquals(WorkInfo.State.CANCELLED, checkNotNull(manager.getWorkInfoById(UUID.fromString(request.id)).get()).state)
+            assertTrue(ProcessingJobs.cancellationRecorded(context, request.id))
+            assertEquals(JobState.CANCELLED.name, journal.read(request.id).getString("state"))
+            assertEquals(request.requestSha256, ProcessingPlan.parse(journal.read(request.id).getJSONObject("plan")).requestSha256)
+            // Join the actual writer before checking that no cancellation can restart it.
+            ProcessingGate.lock.lock()
+            try {
+                ProcessingJobs.recover(context, vault)
+                val saved = vault.listCases().cases.single { it.getString("caseId") == request.caseId }
+                assertEquals(request.baseSha256, saved.artifact(request.baseId).getString("sha256"))
+                assertTrue(vault.verify(saved).contains("agree"))
+                assertEquals(WorkInfo.State.CANCELLED, checkNotNull(manager.getWorkInfoById(UUID.fromString(request.id)).get()).state)
+            } finally { ProcessingGate.lock.unlock() }
+        } finally {
+            runCatching { ProcessingJobs.cancel(context, request.id) }
+            scenario.close()
+            ProcessingGate.lock.lock()
+            try { remove(case, request.id) } finally { ProcessingGate.lock.unlock() }
+        }
     }
 
     @Test fun encryptedJournalRejectsDamagedLatestRecordAndCancellationSurvivesRecovery() {

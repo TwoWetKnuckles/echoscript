@@ -21,7 +21,7 @@
   },
   "architecture.mdx": {
     "source": "docs/architecture.md",
-    "sha256": "de1705a2ffdd6ad435d8b63830292bf45696e7da5c8a6c23ca493c13cb7f9d6c"
+    "sha256": "8b36547208efe578c5f15c6f48b30b9e06e97860b0b9faba3240b94b002e86bf"
   },
   "evidence/protected-transfer.mdx": {
     "source": "docs/evidence/PROTECTED-TRANSFER.md",
@@ -61,7 +61,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "cc6dbea2051f1cabfb759d8969cf140ca9b98116863758db604ccff5bfb813ee"
+    "sha256": "5be35d50bc5c6cd94d68ea384fe60334f27d5e13366b6be8162046d502835902"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
@@ -73,7 +73,7 @@
   },
   "security/threat-model.mdx": {
     "source": "docs/security/THREAT_MODEL.md",
-    "sha256": "2b6a8eec3a33022191914055e142ef5b75d1b393c2477f31a35b310c2038f886"
+    "sha256": "ad91d0eddffddd40a6bf4a794dcbc36836d76222b90b1ecd4c7fbbaa7bb7b38e"
   },
   "working-scope.mdx": {
     "source": "docs/WORKING-SCOPE.md",

@@ -63,7 +63,6 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.espresso:espresso-intents:3.6.1")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
-    androidTestImplementation("androidx.work:work-testing:2.12.0")
 }
 
 abstract class PrepareOfflineModels : DefaultTask() {

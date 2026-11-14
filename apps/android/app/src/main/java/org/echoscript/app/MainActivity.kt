@@ -336,13 +336,14 @@ private fun VaultApp(model: VaultModel = viewModel()) {
     }
 }
 
+@OptIn(ExperimentalLayoutApi::class)
 @Composable
 private fun StatusCard(screen: VaultScreen, model: VaultModel) {
     Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectionContainer { Text(screen.message, style = MaterialTheme.typography.bodySmall) }
             if (screen.lastBackgroundJobId != null && screen.job == null) {
-                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     TextButton(onClick = model::retryProcessing) { Text("Retry saved job") }
                     TextButton(onClick = model::dismissProcessingFailure) { Text("Dismiss job notice") }
                 }
@@ -350,7 +351,7 @@ private fun StatusCard(screen: VaultScreen, model: VaultModel) {
             if (screen.importPending) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (screen.job != null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
-                Row {
+                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
                     if (screen.job == "Recording microphone") TextButton(onClick = model::stopRecording) { Text("Stop and preserve recording") }
                     TextButton(onClick = model::cancel) { Text("Cancel current operation") }
                 }
