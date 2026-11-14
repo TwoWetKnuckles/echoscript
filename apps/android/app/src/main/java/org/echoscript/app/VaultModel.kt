@@ -23,6 +23,11 @@ import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import org.json.JSONArray
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.ConcurrentHashMap
+import java.util.UUID
+import androidx.work.WorkInfo
+import androidx.work.WorkManager
+import kotlin.concurrent.withLock
 
 internal data class ReviewDraft(val text: String, val label: String, val verified: Boolean = false, val note: String = "")
 // In-memory workbench controls survive activity recreation without persisting a
@@ -43,6 +48,8 @@ internal data class VaultScreen(
     val cases: List<JSONObject> = emptyList(),
     val selected: String? = null,
     val job: String? = null,
+    val backgroundJobId: String? = null,
+    val lastBackgroundJobId: String? = null,
     val message: String = "Opening the encrypted vault…",
     val recoveryWarnings: List<String> = emptyList(),
     val analysis: JSONObject? = null,
@@ -101,6 +108,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     private data class RemoteAction(val actor: String, val batch: RemoteBatch, val completed: (JSONObject) -> Unit)
     private var remoteAction: RemoteAction? = null
     private var workbenchMemory: WorkbenchDraftMemory? = null
+    private val processingCallbacks = ConcurrentHashMap<String, () -> Unit>()
 
     fun recallWorkbenchDraft(caseId: String, revisionId: String): WorkbenchDraftMemory? =
         workbenchMemory?.takeIf { it.caseId == caseId && it.revisionId == revisionId }
@@ -121,6 +129,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             try {
                 vault = EvidenceVault(application)
                 workflow = OfflineWorkflow(application, vault)
+                val processingWarnings = ProcessingJobs.recover(application, vault)
                 val listing = vault.listCases()
                 val interrupted = preferences.getString("pendingJob", null)
                 val interruptedSelection = preferences.getBoolean("pendingAudioSelection", false)
@@ -128,7 +137,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                     mutable.update { current -> current.copy(
                         ready = true,
                         cases = listing.cases,
-                        recoveryWarnings = listing.warnings + listOfNotNull(interrupted?.let {
+                        recoveryWarnings = listing.warnings + processingWarnings + listOfNotNull(interrupted?.let {
                             "Interrupted task · $it. Review the saved case before retrying."
                         }) + (if (interruptedSelection && !current.audioSelected && current.pickerNotice == null) listOf(INTERRUPTED_AUDIO_SELECTION) else emptyList()),
                         message = when {
@@ -139,6 +148,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                     ) }
                     vaultOpened.complete(true)
                 }
+                observeProcessing()
             } catch (_: Exception) {
                 withContext(Dispatchers.Main) {
                     mutable.update { it.copy(message = "The device vault could not open. Preserve the existing evidence and keys.", failed = true, importPending = false) }
@@ -157,7 +167,17 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             "Saved workspace opened."
         }
     }
-    fun cancel() { cancelled.set(true); updateState { it.copy(message = "Cancelling after the current block…") } }
+    fun cancel() {
+        val id = mutable.value.backgroundJobId
+        if (id == null) cancelled.set(true) else {
+            ProcessingGate.cancellation(id).set(true)
+            viewModelScope.launch(Dispatchers.IO) {
+                try { ProcessingJobs.cancel(getApplication(), id) }
+                catch (_: Exception) { notice("Cancellation could not be fully recorded. Preserve the vault and check the job before retrying.") }
+            }
+        }
+        updateState { it.copy(message = "Cancelling after the current block…") }
+    }
     fun notice(message: String) { updateState { it.copy(message = message) } }
     private fun selected(): JSONObject = mutable.value.cases.firstOrNull { it.getString("caseId") == mutable.value.selected }
         ?.let { JSONObject(it.toString()) } ?: error("Select a case first")
@@ -176,7 +196,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             var memoryExhausted = false
             val message = try {
                 check(preferences.edit().putString("pendingJob", name).commit()) { "Could not record task recovery state" }
-                action().also { succeeded = true }
+                ProcessingGate.lock.withLock { action() }.also { succeeded = true }
             }
             catch (_: InterruptedException) { "Cancelled. Completed originals and revisions are preserved." }
             catch (_: OutOfMemoryError) {
@@ -202,7 +222,7 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                     current.copy(
                         cases = listing?.cases ?: current.cases,
                         recoveryWarnings = listing?.warnings ?: current.recoveryWarnings,
-                        job = null,
+                        job = if (current.backgroundJobId == null) null else current.job,
                         failed = !succeeded || refreshFailed,
                         message = when {
                             refreshFailed && memoryExhausted -> "The device ran out of memory. Reopen the app and check Cases for preserved work."
@@ -215,6 +235,103 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
             }
         }
     }
+
+    private suspend fun observeProcessing() {
+        val manager = WorkManager.getInstance(getApplication())
+        val journal = ProcessingJournal(vault)
+        manager.getWorkInfosByTagFlow(ProcessingJobs.TAG).collect { infos ->
+            val active = infos.firstOrNull { it.state == WorkInfo.State.RUNNING }
+                ?: infos.firstOrNull { !it.state.isFinished }
+            if (active != null) {
+                val id = active.id.toString()
+                val record = journal.read(id)
+                val plan = ProcessingPlan.parse(record.getJSONObject("plan"))
+                val phase = active.progress.getString("stage") ?: "Queued for on-device processing"
+                val count = active.progress.getLong("units", 0)
+                val listing = if (mutable.value.backgroundJobId != id) vault.listCases() else null
+                withContext(Dispatchers.Main) {
+                    mutable.update { it.copy(backgroundJobId = id, lastBackgroundJobId = null, job = phase,
+                        selected = plan.caseId, cases = listing?.cases ?: it.cases,
+                        message = if (count > 0) "$phase · $count units processed" else "$phase. You can leave this screen; Android manages the local job.", failed = false) }
+                }
+            } else {
+                // Reconcile terminal WorkManager states before displaying a result.
+                for (info in infos.filter { it.state in setOf(WorkInfo.State.CANCELLED, WorkInfo.State.FAILED) }) {
+                    val id = info.id.toString()
+                    runCatching {
+                        val record = journal.read(id)
+                        if (!JobState.valueOf(record.getString("state")).terminal) journal.update(id,
+                            if (info.state == WorkInfo.State.CANCELLED) JobState.CANCELLED else JobState.FAILED,
+                            "Local processing stopped. Completed work remains preserved; review the saved case before retrying.")
+                    }
+                }
+                val result = journal.records().first.firstOrNull()?.takeIf {
+                    JobState.valueOf(it.getString("state")).terminal && !it.getBoolean("acknowledged")
+                }
+                if (result != null) {
+                    val plan = ProcessingPlan.parse(result.getJSONObject("plan"))
+                    val success = result.getString("state") == JobState.SUCCEEDED.name
+                    val listing = vault.listCases()
+                    val case = listing.cases.firstOrNull { it.getString("caseId") == plan.caseId }
+                    val analysis = case?.let { workflow.savedAnalysis(it) }
+                    val transcriptArtifact = if (result.isNull("transcriptId")) null else case?.artifact(result.getString("transcriptId"))
+                    val transcript = if (case != null && transcriptArtifact != null) workflow.readTranscript(case, transcriptArtifact) else null
+                    if (success) journal.acknowledge(plan.id)
+                    withContext(Dispatchers.Main) {
+                        if (plan.requestedProvider == "WHISPER") transcriptionProvider = TranscriptionProvider.WHISPER
+                        mutable.update { it.copy(backgroundJobId = null, lastBackgroundJobId = if (success) null else plan.id, job = null,
+                            cases = listing.cases, selected = case?.getString("caseId") ?: it.selected,
+                            analysis = analysis, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null,
+                            comparisonAnalysis = null, comparisonAudioId = null, transcript = transcript,
+                            transcriptRevision = transcriptArtifact?.getString("id"), failed = !success,
+                            message = result.getString("message") + if (success && plan.requestedProvider == "WHISPER") " Open Transcript to prepare and approve Whisper; its session credentials are never queued." else "") }
+                        if (success) processingCallbacks.remove(plan.id)?.invoke() else processingCallbacks.remove(plan.id)
+                    }
+                } else if (mutable.value.backgroundJobId != null) {
+                    updateState { it.copy(backgroundJobId = null, job = null) }
+                }
+            }
+        }
+    }
+
+    private fun queueProcessing(actor: String, kind: LocalJobKind, baseId: String? = null, regions: List<RenderSettings> = emptyList(),
+        clearVoice: ClearVoicePlacement? = null, requestedProvider: String = "NONE", completed: () -> Unit = {}) {
+        runJob("Queueing on-device processing") {
+            val manifest = selected()
+            val base = manifest.artifact(baseId ?: manifest.getString("activeArtifact"))
+            val id = UUID.randomUUID().toString()
+            val plan = ProcessingPlan(id, id, EvidenceVault.utc(), manifest.getString("caseId"), base.getString("id"), base.getString("sha256"), actor,
+                kind, regions, clearVoice, requestedProvider)
+            processingCallbacks[id] = completed
+            try { ProcessingJobs.enqueue(getApplication(), vault, plan) }
+            catch (failure: Exception) { processingCallbacks.remove(id); throw failure }
+            updateState { it.copy(backgroundJobId = id, job = "Queued for on-device processing", analysis = null,
+                fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
+            "Queued for on-device processing. Completed passes are retained if Android interrupts the job."
+        }
+    }
+
+    fun retryProcessing() {
+        val id = mutable.value.lastBackgroundJobId ?: return
+        runJob("Retrying saved local processing") {
+            val previous = ProcessingJournal(vault).read(id)
+            require(previous.getString("state") in setOf(JobState.FAILED.name, JobState.CANCELLED.name))
+            val plan = ProcessingPlan.parse(previous.getJSONObject("plan")).retry()
+            ProcessingJournal(vault).acknowledge(id)
+            ProcessingJobs.enqueue(getApplication(), vault, plan)
+            updateState { it.copy(backgroundJobId = plan.id, lastBackgroundJobId = null, job = "Queued for on-device processing") }
+            "Retry queued with the saved settings. Completed passes will be verified before reuse."
+        }
+    }
+    fun dismissProcessingFailure() {
+        val id = mutable.value.lastBackgroundJobId ?: return
+        runJob("Dismissing local job notice") {
+            ProcessingJournal(vault).acknowledge(id)
+            updateState { it.copy(lastBackgroundJobId = null) }
+            "Saved job settings and completed revisions remain preserved."
+        }
+    }
+
     private fun showCase(manifest: JSONObject) {
         updateState { it.copy(selected = manifest.getString("caseId"), analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, comparisonAnalysis = null, comparisonAudioId = null, transcript = null, transcriptRevision = null) }
     }
@@ -416,16 +533,17 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         }
     }
     fun renderPlan(actor: String, baseId: String, regions: List<RenderSettings>, clearVoice: ClearVoicePlacement? = null, completed: () -> Unit = {}) {
-        runJob("Rendering effect plan", completed) {
-            val manifest = selected()
-            // A failed render can select a new revision; clear stale review data.
-            updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
-            LocalRenderPipeline(getApplication(), vault, workflow).render(manifest, actor, baseId, regions, clearVoice, cancelled::get, reportProgress("frames rendered"))
-            val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
-            updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
-            "Effect plan rendered. Earlier audio and settings remain in revision history."
+        queueProcessing(actor, LocalJobKind.RENDER, baseId, regions, clearVoice, completed = completed)
+    }
+    fun renderPlanAndTranscribe(actor: String, baseId: String, regions: List<RenderSettings>, clearVoice: ClearVoicePlacement?, completed: () -> Unit) {
+        val whisper = transcriptionProvider == TranscriptionProvider.WHISPER
+        if (whisper && !companionConfigured()) return
+        queueProcessing(actor, if (whisper) LocalJobKind.RENDER else LocalJobKind.RENDER_TRANSCRIBE, baseId, regions, clearVoice,
+            if (whisper) "WHISPER" else "VOSK") {
+            if (whisper) transcribe(actor, completed) else completed()
         }
     }
+
     fun timelineNote(actor: String, startMs: Long, endMs: Long?, text: String) = runJob("Saving timeline annotation") {
         val manifest = selected()
         require(startMs >= 0 && (endMs == null || endMs > startMs) && text.isNotBlank() && text.length <= 4000)
@@ -454,12 +572,9 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
         if (p == null) play(actor) else if (p.isPlaying) p.pause() else p.play()
     }
     fun enhance(actor: String, settings: RenderSettings) {
-        runJob("Rendering audio revision") {
-            val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
-            updateState { it.copy(analysis = null, fullSpectrum = null, detailedSpectrum = null, noiseFloorMeasurement = null) }
-            "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
-        }
+        queueProcessing(actor, LocalJobKind.RENDER, regions = listOf(settings))
     }
+
     fun revision(actor: String, id: String) = runJob("Selecting audio revision") {
         val manifest = selected()
         vault.selectRevision(manifest, actor, id)
@@ -476,32 +591,27 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                     "Whisper draft saved. Review words and timing against the linked audio."
                 }
             }
-            return
-        }
-        runJob("Transcribing on this device", completed) {
-        val case = selected()
-        val artifact = workflow.transcribe(case, actor, cancelled::get, reportProgress("units processed"))
-        openTranscript(case, artifact)
-        val overview = workflow.savedAnalysis(case)
-        updateState { it.copy(analysis = overview) }
-        "Draft transcript saved. Review the words, timestamps and speaker groups."
+        } else queueProcessing(actor, LocalJobKind.TRANSCRIBE, requestedProvider = "VOSK", completed = completed)
+    }
+
+    fun transcribeSelected(actor: String, enhanceFirst: Boolean, completed: () -> Unit = {}) {
+        if (!enhanceFirst) { transcribe(actor, completed); return }
+        val whisper = transcriptionProvider == TranscriptionProvider.WHISPER
+        if (whisper && !companionConfigured()) return
+        queueProcessing(actor, if (whisper) LocalJobKind.CLEARVOICE else LocalJobKind.CLEARVOICE_TRANSCRIBE,
+            requestedProvider = if (whisper) "WHISPER" else "VOSK") {
+            if (whisper) transcribe(actor, completed) else completed()
         }
     }
 
     fun enhanceClearVoice(actor: String, completed: (String) -> Unit = {}) {
-        var renderedId: String? = null
-        runJob("Enhancing with ClearVoice on this device", completed = { completed(checkNotNull(renderedId)) }) {
-            val manifest = selected()
-            // Direct transcription enhances the selected audio. No rack is replayed.
-            val plan = JSONObject().put("baseId", manifest.getString("activeArtifact")).put("rack", EffectRack().json())
-                .put("regions", JSONArray()).put("limit", false)
-            val result = ClearVoiceNative(getApplication(), vault, workflow).enhance(manifest, actor, ClearVoicePlacement.AFTER.name, cancelled::get, reportProgress("frames enhanced"),
-                withClearVoiceRecipe(plan.toString(), ClearVoicePlacement.AFTER, true))
-            renderedId = result.getString("id")
-            val overview = workflow.analyze(manifest, actor, cancelled::get, reportProgress("frames analyzed"))
-            updateState { it.copy(analysis = overview, fullSpectrum = null, detailedSpectrum = null, comparisonAnalysis = null, noiseFloorMeasurement = null, transcript = null, transcriptRevision = null) }
-            "ClearVoice audio revision saved on this device. Compare it with the preserved original."
-        }
+        queueProcessing(actor, LocalJobKind.CLEARVOICE) { completed(selected().getString("activeArtifact")) }
+    }
+
+    private fun companionConfigured(): Boolean = try {
+        CompanionConfig(companionAddress, companionToken); true
+    } catch (failure: IllegalArgumentException) {
+        notice(failure.message ?: "Configure the companion in Settings"); false
     }
 
     private fun prepareRemote(actor: String, provider: String, baseId: String? = null, completed: (JSONObject) -> Unit) {

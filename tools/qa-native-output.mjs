@@ -13,7 +13,7 @@ async function find(directory) {
     if (entry.isDirectory()) matches.push(...(await find(path)));
     else if (
       entry.isFile() &&
-      /^synthetic-(native|detail-spectrum|clearvoice|whisper|offline-run-[1-7]|ui-run-[1-7]|(?:ui-)?protected-run-[1-7])\.echocase(?:\.enc)?$/.test(
+      /^synthetic-(native|detail-spectrum|clearvoice|whisper|processing|offline-run-[1-7]|ui-run-[1-7]|(?:ui-)?protected-run-[1-7])\.echocase(?:\.enc)?$/.test(
         entry.name,
       )
     )
@@ -30,8 +30,11 @@ assert.ok(
   files.some((path) => path.endsWith("/synthetic-detail-spectrum.echocase")),
   "Missing the synthetic detailed-spectrum export",
 );
-for (const name of ["clearvoice", "whisper"]) {
-  assert.ok(files.some((path) => path.endsWith(`/synthetic-${name}.echocase`)), `Missing ${name} integration case`);
+for (const name of ["clearvoice", "whisper", "processing"]) {
+  assert.ok(
+    files.some((path) => path.endsWith(`/synthetic-${name}.echocase`)),
+    `Missing ${name} integration case`,
+  );
 }
 for (let i = 1; i <= 7; i++) {
   assert.ok(

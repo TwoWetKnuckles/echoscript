@@ -203,6 +203,7 @@ jobs:
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
             python3 ../../scripts/qa-android-coexistence.py check ${{ matrix.api }}
             cd ../.. && python3 scripts/qa-android-crash.py
+            cd ../.. && python3 scripts/qa-android-processing.py
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
       - name: Verify and stage the Android 16 emulator build
         if: matrix.api == 36 && github.event_name != 'pull_request'
@@ -212,8 +213,8 @@ jobs:
           "$tools/apksigner" verify --verbose "$apk"
           "$tools/zipalign" -c -P 16 4 "$apk"
           badging=$("$tools/aapt" dump badging "$apk")
-          grep -Eq "^package: name='org[.]echoscript[.]app[.]candidate06' " <<< "$badging"
-          grep -Eq "^application-label:'EchoScript 0[.]6 Candidate'$" <<< "$badging"
+          grep -Eq "^package: name='org[.]echoscript[.]app[.]candidate06r2' " <<< "$badging"
+          grep -Eq "^application-label:'EchoScript 0[.]6 Candidate 2'$" <<< "$badging"
           permissions=$("$tools/aapt" dump permissions "$apk")
           if ! printf '%s\n' "$permissions" | grep -q 'android.permission.INTERNET' || printf '%s\n' "$permissions" | grep -q 'android.permission.ACCESS_NETWORK_STATE'; then
             exit 1
@@ -243,6 +244,7 @@ jobs:
             apps/android/app/build/outputs/androidTest-results/
             apps/android/app/build/outputs/connected_android_test_additional_output/
             qa-output/android-crash/
+            qa-output/android-processing/
           retention-days: 1
   desktop-streaming-stress:
     runs-on: ubuntu-24.04

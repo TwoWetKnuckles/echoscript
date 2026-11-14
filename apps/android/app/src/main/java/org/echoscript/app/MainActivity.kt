@@ -64,13 +64,7 @@ private fun Glyph(@DrawableRes resource: Int, description: String? = null) {
 
 @Composable
 private fun Section(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
-        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
-            Text(title, style = MaterialTheme.typography.titleMedium)
-            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
-            content()
-        }
-    }
+    WorkspaceCard(title, subtitle, content)
 }
 
 @Composable
@@ -305,7 +299,7 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                             Section("Examiner", "This identifier is supplied locally and recorded with your actions.") {
                                 var draft by rememberSaveable(actor) { mutableStateOf(actor) }
                                 OutlinedTextField(draft, { draft = it.take(128) }, label = { Text("Examiner identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                                Button(onClick = { actor = draft.trim(); preferences.edit().putString("examiner", actor).apply(); model.notice("Examiner identifier saved on this device.") }, enabled = draft.isNotBlank() && draft.none { it.code < 32 }) { Text("Save examiner") }
+                                Button(onClick = { actor = draft.trim(); preferences.edit().putString("examiner", actor).apply(); model.notice("Examiner identifier saved on this device.") }, enabled = ready && draft.isNotBlank() && draft.none { it.code < 32 }) { Text("Save examiner") }
                             }
                             Text("${BuildConfig.VERSION_NAME} · Android 10+", style = MaterialTheme.typography.bodySmall)
                             Text("The vault is encrypted on this device. Keep verified protected case exports before uninstalling or resetting the app. Individual WAV/document exports and legacy case ZIPs are plaintext. Device checkpoints require independently trusted signer fingerprints.", style = MaterialTheme.typography.bodySmall)
@@ -337,6 +331,12 @@ private fun StatusCard(screen: VaultScreen, model: VaultModel) {
     Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
         Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
             SelectionContainer { Text(screen.message, style = MaterialTheme.typography.bodySmall) }
+            if (screen.lastBackgroundJobId != null && screen.job == null) {
+                Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                    TextButton(onClick = model::retryProcessing) { Text("Retry saved job") }
+                    TextButton(onClick = model::dismissProcessingFailure) { Text("Dismiss job notice") }
+                }
+            }
             if (screen.importPending) LinearProgressIndicator(Modifier.fillMaxWidth())
             if (screen.job != null) {
                 LinearProgressIndicator(Modifier.fillMaxWidth())
@@ -402,8 +402,7 @@ private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: J
         Section("Transcribe active audio", "Choose the route before starting. Review draft words and timestamps against the audio.") {
             ProviderControls(model, ready, placementSelection = false)
             Button(onClick = {
-                if (model.clearVoiceEnabled) model.enhanceClearVoice(actor) { model.transcribe(actor) }
-                else model.transcribe(actor)
+                model.transcribeSelected(actor, model.clearVoiceEnabled)
             }, enabled = ready) { Text(if (model.transcriptionProvider == TranscriptionProvider.VOSK && !model.clearVoiceEnabled) "Transcribe active audio on device" else "Prepare transcription") }
         }
         return

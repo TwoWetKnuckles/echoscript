@@ -10,7 +10,7 @@ check(ownerSigning.values.all { it == null } || ownerSigning.values.all { !it.is
 android {
     namespace = "org.echoscript.app"
     compileSdk = 36
-    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 9; versionName = "0.6.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"; manifestPlaceholders["appLabel"] = "EchoScript" }
+    defaultConfig { applicationId = "org.echoscript.app"; minSdk = 29; targetSdk = 36; versionCode = 10; versionName = "0.6.0"; testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"; manifestPlaceholders["appLabel"] = "EchoScript" }
     buildFeatures { compose = true; buildConfig = true }
     sourceSets.getByName("androidTest").assets.srcDir("../../../specs/fixtures")
     compileOptions { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
@@ -26,9 +26,9 @@ android {
         debug {
             // A new candidate has a separate vault from prior test packages.
             // Ephemeral development keys cannot establish upgrade continuity.
-            applicationIdSuffix = ".candidate06"
-            versionNameSuffix = "-candidate.1"
-            manifestPlaceholders["appLabel"] = "EchoScript 0.6 Candidate"
+            applicationIdSuffix = ".candidate06r2"
+            versionNameSuffix = "-candidate.2"
+            manifestPlaceholders["appLabel"] = "EchoScript 0.6 Candidate 2"
         }
         release {
             isMinifyEnabled = false
@@ -47,6 +47,7 @@ dependencies {
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
     implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("androidx.work:work-runtime-ktx:2.12.0")
     implementation("com.google.crypto.tink:tink-android:1.24.0")
     implementation("io.github.erdtman:java-json-canonicalization:1.1")
     implementation("androidx.media3:media3-exoplayer:1.8.1")
@@ -62,6 +63,7 @@ dependencies {
     androidTestImplementation("androidx.test:runner:1.6.2")
     androidTestImplementation("androidx.test.espresso:espresso-intents:3.6.1")
     androidTestImplementation("androidx.test.uiautomator:uiautomator:2.3.0")
+    androidTestImplementation("androidx.work:work-testing:2.12.0")
 }
 
 abstract class PrepareOfflineModels : DefaultTask() {

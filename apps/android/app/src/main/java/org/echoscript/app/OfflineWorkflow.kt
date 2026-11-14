@@ -203,7 +203,7 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return JSONObject(payload.toString()).put("reference", NoiseFloorReference(artifact.getString("id"), artifact.getString("sha256")).json())
     }
 
-    fun enhance(manifest: JSONObject, actor: String, settings: RenderSettings, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+    fun enhance(manifest: JSONObject, actor: String, settings: RenderSettings, cancelled: () -> Boolean, progress: (Long) -> Unit, processing: ProcessingStep? = null): JSONObject {
         val parent = prepareAudio(manifest, actor, cancelled, progress)
         val reference = settings.rack?.noiseReference
         val measurement = reference?.let { ref ->
@@ -233,12 +233,13 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
                     .put("limiter", settings.limit).put("startMs", settings.startMs).put("endMs", settings.endMs ?: JSONObject.NULL)
                     .put("effectRack", settings.rack?.json() ?: JSONObject.NULL).put("trim", settings.trim).put("workbenchPlan", settings.workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL)
                     .put("selectedFrames", stats.selectedFrames).put("overloadSampleCount", stats.clippedSamples)
-                    .put("sampleRate", wave.format.sampleRate).put("channels", wave.format.channels).put("frames", wave.frames)
+                    .put("sampleRate", wave.format.sampleRate).put("channels", wave.format.channels).put("frames", wave.frames).forProcessing(processing)
             }
         }
     }
 
-    fun transcribe(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+    fun transcribe(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit, processing: ProcessingContext? = null): JSONObject {
+        processing?.step("recognition.complete")?.reuse(manifest, "NORMALIZED_TRANSCRIPT", "native-transcript-normalization")?.let { return it }
         val audio = prepareAudio(manifest, actor, cancelled, progress)
         val audioId = audio.getString("id")
         val caseId = manifest.getString("caseId")
@@ -246,11 +247,12 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         // speech events. Reuse only a compatible overview or examiner revision.
         val analysis = savedAnalysis(manifest) ?: analyze(manifest, actor, cancelled, progress)
         val candidates = analysis.items("events").map { it.getLong("startMs")..it.getLong("endMs") }
-        val input = withWave(manifest, audio) { wave ->
+        val inputStep = processing?.step("recognition.input")
+        val input = inputStep?.reuse(manifest, "TRANSCRIPTION_TRANSMISSION", "native-mono-resample-pcm16") ?: withWave(manifest, audio) { wave ->
             vault.addDerivative(manifest, actor, "TRANSCRIPTION_TRANSMISSION", listOf(audioId), "Local recognition input.wav", "native-mono-resample-pcm16", "1") { out ->
                 val frames = recognitionWave(wave, out, cancelled, progress)
                 JSONObject().put("sampleRate", 16000).put("channels", 1).put("frames", frames)
-                    .put("transport", "IN_PROCESS_ONLY").put("resampling", "linear with low-pass on downsampling")
+                    .put("transport", "IN_PROCESS_ONLY").put("resampling", "linear with low-pass on downsampling").forProcessing(inputStep)
             }
         }
         vault.recordEvent(manifest, actor, "LOCAL_TRANSCRIPTION", JSONObject().put("inputId", input.getString("id")).put("sha256", input.getString("sha256"))
@@ -261,13 +263,14 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
                 maxBytes = 64L * 1024 * 1024) { output ->
                 transcript = OfflineSpeech(context).transcribe(wave, input.getString("sha256"), output, candidates, cancelled, progress)
                 JSONObject().put("model", SPEECH_MODEL).put("speakerModel", SPEAKER_MODEL).put("windowSeconds", 45).put("requestedAlternatives", 3)
+                    .forProcessing(processing?.let { it.step("recognition.raw.${it.plan.id}") })
             }
         }
         val payload = checkNotNull(transcript).put("audioArtifactId", audioId).put("duration", input.operationParameters().getLong("frames") / 16000.0)
         if (cancelled()) throw InterruptedException("Transcription cancelled")
         val result = vault.addDerivative(manifest, actor, "NORMALIZED_TRANSCRIPT", listOf(raw.getString("id")), "Draft transcript.json", "native-transcript-normalization", "1",
             maxBytes = 16L * 1024 * 1024) { out ->
-            out.write(EvidenceVault.canonical(payload)); JSONObject().put("audioArtifactId", audioId).put("caseId", caseId).put("state", "AI_DRAFT")
+            out.write(EvidenceVault.canonical(payload)); JSONObject().put("audioArtifactId", audioId).put("caseId", caseId).put("state", "AI_DRAFT").forProcessing(processing?.step("recognition.complete"))
         }
         return result
     }

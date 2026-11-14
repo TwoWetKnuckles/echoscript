@@ -5,8 +5,8 @@ Use synthetic/licensed non-sensitive samples until your deployment is accepted.
 
 Compatibility and identity
 --------------------------
-Android 10/API 29 or later. App label: EchoScript 0.6 Candidate.
-Application ID: org.echoscript.app.candidate06.
+Android 10/API 29 or later. App label: EchoScript 0.6 Candidate 2.
+Application ID: org.echoscript.app.candidate06r2.
 This separate package preserves the installed older test apps and their vaults.
 Its vault starts empty. To move a case, explicitly export a protected package
 from the old app and import/verify it here using its passphrase and, when
