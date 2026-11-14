@@ -1,6 +1,6 @@
 # Protected transfers and device checkpoints
 
-Preview 0.5.1 includes opt-in protected native case export and device-key checkpoints. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
+Android includes opt-in protected native case export and device-key checkpoints. These controls do not establish examiner identity, legal admissibility or organizational compliance. See the release gates and executed QA record before selecting a build.
 
 ## Native workflow
 
@@ -45,7 +45,7 @@ Independent `--trusted-key-sha256` verification fails unless a mathematically va
 
 ## Recovery boundary
 
-Android cloud backup/device transfer remain excluded. Device reset, uninstall or lost vault keys can make the local vault unreadable. A completed protected export, its passphrase and independently retained hashes/fingerprints can recover the exported snapshot onto a clean installation; the independent desktop verifier can validate it without Android. Changes after that export are not recovered. In-place merge/replacement of an existing case is rejected. No raw vault-key escrow, automatic cloud backup or automatic resumable job is introduced.
+Android cloud backup/device transfer remain excluded. Device reset, uninstall or lost vault keys can make the local vault unreadable. A completed protected export, its passphrase and independently retained hashes/fingerprints can recover the exported snapshot onto a clean installation; the independent desktop verifier can validate it without Android. Changes after that export are not recovered. In-place merge/replacement of an existing case is rejected. Protected transfer provides no raw vault-key escrow or automatic cloud backup. Local render/Vosk resumption is a separate [processing workflow](../android/BACKGROUND-PROCESSING.md); package transfer itself retains its explicit foreground flow.
 
 Before real evidence use, approve and exercise the protected-export schedule, offline custody, access control, passphrase recovery responsibility, clean-device restore and destruction/legal-hold process. Repository documentation is not organizational approval or an executed agreement.
 

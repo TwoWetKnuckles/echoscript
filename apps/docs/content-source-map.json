@@ -1,35 +1,39 @@
 {
+  "android/background-processing.mdx": {
+    "source": "docs/android/BACKGROUND-PROCESSING.md",
+    "sha256": "5b3bc6f446d1d969e80edf8646ad5effb6292d6877a32abb7f75adbb3eddf354"
+  },
   "android/enhancement-workbench.mdx": {
     "source": "docs/android/ENHANCEMENT-WORKBENCH.md",
     "sha256": "5e1ab09a65978ddf4b014d83e4905df88429152fe484ffeed11f644a45ec5910"
   },
   "android/offline.mdx": {
     "source": "docs/android/OFFLINE.md",
-    "sha256": "ffd4a8160d047c741c9f7d639b5693e512caec806d22249b248971d0fd6e8def"
+    "sha256": "d9c82d8813e7b06cb253ee855cb9b61cb80cd108cd95a35fb8df6357d1bc841a"
   },
   "android/owner-signing.mdx": {
     "source": "docs/android/OWNER-SIGNING.md",
-    "sha256": "c968e1726dbeea42c37e3305f10d402b4b746b866fc86c388ac3788efcaacbf0"
+    "sha256": "9cf4e9646437a91fe5f3691248d25715f36e1de917bf4a9e08c4e89c04d731e4"
   },
   "android/workbench-design.mdx": {
     "source": "docs/android/WORKBENCH-DESIGN.md",
-    "sha256": "3ac44f2a2ce137af66c86567436cd9c283850fd7c81a2de94a73a9c3f32f8797"
+    "sha256": "4745559fab8def930805ceab19a89187ff484fcec3529c0d1b64afcf9b515e0e"
   },
   "architecture.mdx": {
     "source": "docs/architecture.md",
-    "sha256": "de1705a2ffdd6ad435d8b63830292bf45696e7da5c8a6c23ca493c13cb7f9d6c"
+    "sha256": "8b36547208efe578c5f15c6f48b30b9e06e97860b0b9faba3240b94b002e86bf"
   },
   "evidence/protected-transfer.mdx": {
     "source": "docs/evidence/PROTECTED-TRANSFER.md",
-    "sha256": "4f00d9aacf6eefe16c3d4fcf64084da33ab5ba4eee1d1ab5d148ef547b5df7d3"
+    "sha256": "34281c41ec0d364ed6d066bd4fba6cea98ea1138162cc476e21d2e38143281ef"
   },
   "file-tree.mdx": {
     "source": "docs/FILE-TREE.md",
-    "sha256": "8fafc43057521192a72fd6dd9819d6c3948b9853397049f4008d8fc9babe19c5"
+    "sha256": "8bd3687ccb1b390adf27d2396b7ab1e4f82c1db1ba1133bb19e85c796fef281a"
   },
   "implementation.mdx": {
     "source": "docs/IMPLEMENTATION.md",
-    "sha256": "c21c725786ba19374811b27bf4415a6e676eb20f6c0938185c7f61401e45c00a"
+    "sha256": "6a56cdd962b794af9724e832f8990429c9aee448389aa227999f8ef9461e8829"
   },
   "legal/licensing.mdx": {
     "source": "docs/legal/LICENSING.md",
@@ -37,7 +41,7 @@
   },
   "providers/clearvoice.mdx": {
     "source": "docs/providers/clearvoice.md",
-    "sha256": "b0deceec42fbe88ee3fffadb16901fba585763d41bbc1935c75e78539e3f5e8c"
+    "sha256": "b85dcc424bae4d33f1ca50c373117fef4428bbbe9f439dacefe0c6548b8ced9f"
   },
   "providers/local-vosk.mdx": {
     "source": "docs/providers/local-vosk.md",
@@ -49,31 +53,31 @@
   },
   "qa/rc-acceptance.mdx": {
     "source": "docs/qa/RC-ACCEPTANCE.md",
-    "sha256": "54815c359f20a8f4a2085649badb851030f95d7d196cdd893cfbaabc32384863"
+    "sha256": "ebe312c7830cbc203c0661fc1617b977433a20b7a7586d874cd81153b399f234"
   },
   "qa/request-reconciliation.mdx": {
     "source": "docs/qa/REQUEST-RECONCILIATION.md",
-    "sha256": "15ad8ee056b73483e950313f763c6d06749e0767e2fe3d04c42ed0587dbe01f9"
+    "sha256": "8064acc93f9c8cb235d67fa6f16347d67df0b5d52040dfc6aac70897dd6a2940"
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "2454c5e4c9c7370cd41f581e5273ad6efb1cf39c991857ee5d95d758dac74934"
+    "sha256": "5be35d50bc5c6cd94d68ea384fe60334f27d5e13366b6be8162046d502835902"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
-    "sha256": "fabe29e768a0e948ef20638c9caf22ca8c56dc3e04f51cda6f36db7b478bc7b5"
+    "sha256": "7a902a7c656c8fb5531566c3ebdc32e0ff54bd2331d09336b20a241fe2347873"
   },
   "security/operations.mdx": {
     "source": "docs/security/OPERATIONS.md",
-    "sha256": "2679c814769baf751f7a3f1a6f01a5e097b9458c11b95c65175b9e0681cde7b8"
+    "sha256": "55d588c2fc9f96aa4ad0020164bad27e221470cd1042cd52303dc8666419d484"
   },
   "security/threat-model.mdx": {
     "source": "docs/security/THREAT_MODEL.md",
-    "sha256": "2b6a8eec3a33022191914055e142ef5b75d1b393c2477f31a35b310c2038f886"
+    "sha256": "ad91d0eddffddd40a6bf4a794dcbc36836d76222b90b1ecd4c7fbbaa7bb7b38e"
   },
   "working-scope.mdx": {
     "source": "docs/WORKING-SCOPE.md",
-    "sha256": "6d01acca91becf6b79833a2e6bdd8b1c462366e1b815f931eeaf210b44cc013b"
+    "sha256": "f9c64c00d58571f69ea72a4f54addf2fe51110b1a219be8e2609030851d965dc"
   },
   "downloads/index.mdx": {
     "source": "downloads/README.md",
@@ -89,7 +93,7 @@
   },
   "security/reporting.mdx": {
     "source": "SECURITY.md",
-    "sha256": "0456960f138ac36b4638b7fef2da0ceb278bf7a8300db42e10fbabd1ccb58f53"
+    "sha256": "59eb92308264dcc59758332bdc98914ee9682e7cc5b5729f300a5d2cef651cac"
   },
   "development/contributing.mdx": {
     "source": "CONTRIBUTING.md",

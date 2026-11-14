@@ -5,7 +5,7 @@ import subprocess
 import time
 
 root = Path(__file__).resolve().parents[1]
-package = "org.echoscript.app.candidate06"
+package = "org.echoscript.app.candidate06r2"
 runner = package + ".test/androidx.test.runner.AndroidJUnitRunner"
 test_class = "org.echoscript.app.CrashRecoveryTest#checkpointAndInterrupt"
 device_report = "files/synthetic-crash-qa/process-kill-import.json"

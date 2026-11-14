@@ -3,9 +3,11 @@ title: "Source map"
 description: "EchoScript reference: Source map."
 ---
 
+The current implementation is summarized in [implementation](/docs/implementation); dated draft logs are retained under `docs/qa/archive/`.
+
 All paths are relative to the public monorepo. Generated output, downloaded models and QA artifacts are ignored.
 
-The standalone Fumadocs app is in `apps/docs/`: `app/` owns its Next.js routes, `content/docs/` owns the introduction and synchronized MDX guides, `lib/` owns source/navigation settings, and `scripts/` checks content and the served site. Its package lock and styles are separate. See [development and deployment instructions](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/apps/docs/README.md); `.github/workflows/docs-site.yml` checks this app independently.
+The standalone Fumadocs app is in `apps/docs/`: `app/` owns its Next.js routes, `content/docs/` owns the introduction and synchronized MDX guides, `lib/` owns source/navigation settings, and `scripts/` checks content and the served site. Its package lock and styles are separate. See [development and deployment instructions](https://github.com/TwoWetKnuckles/echoscript/blob/main/apps/docs/README.md); `.github/workflows/docs-site.yml` checks this app independently.
 
 | Path                                                                         | Purpose                                                                                                            |
 | ---------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -51,3 +53,5 @@ The standalone Fumadocs app is in `apps/docs/`: `app/` owns its Next.js routes, 
 The v0.1.1 intake-only companion and its tests remain in Git history. They are not tests of the new workbench. Run commands from the monorepo root unless Android instructions specify otherwise. The existing Sites deployment owns its separate hosting manifest; no Site credential belongs in this public tree.
 
 `assets/clearvoice/` contains the pinned offline ONNX graph, inventory and notices. `ClearVoiceNative.kt` renders it locally; `CompanionClient.kt`, `RemoteWorkflow.kt` and `ProviderControls.kt` implement optional Whisper transport and exact-payload approval. Model reproduction uses `scripts/setup-clearvoice.py`, `scripts/export-clearvoice-onnx.py` and the separate pinned export environment.
+
+Local job persistence lives in Android `ProcessingPlan.kt` / `ProcessingJobs.kt`; `WorkspaceCard.kt` supplies shared card styling. `scripts/qa-android-processing.py` drives actual process-kill render recovery, and `ProcessingJobsTest.kt` checks encrypted journals, cancellation, tampering and pass reuse. See [background processing](/docs/android/background-processing).

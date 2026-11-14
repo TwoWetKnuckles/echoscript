@@ -82,7 +82,7 @@ function route() {
         };
         $("audit-log").textContent = processingHistory(next.manifest);
         $("verification").textContent =
-          `Hash/provenance/audit consistency: PASS · ${next.verification.artifacts} artifacts · ${next.verification.auditEntries} audit entries · signatures not implemented`;
+          `Hash/provenance/audit consistency: PASS · ${next.verification.artifacts} artifacts · ${next.verification.auditEntries} audit entries · signatures not checked in this view`;
       })
       .catch((error) => message(error.message, true));
   }
@@ -173,7 +173,7 @@ async function refresh(next, replaceAudio = true) {
       "No speech-event candidates detected. This does not establish absence of speech.";
   $("audit-log").textContent = processingHistory(m);
   $("verification").textContent =
-    `Hash/provenance/audit consistency: PASS · ${state.verification.artifacts} artifacts · ${state.verification.auditEntries} audit entries · signatures not implemented`;
+    `Hash/provenance/audit consistency: PASS · ${state.verification.artifacts} artifacts · ${state.verification.auditEntries} audit entries · signatures not checked in this view`;
   renderTranscript();
   draw();
   if (replaceAudio) {

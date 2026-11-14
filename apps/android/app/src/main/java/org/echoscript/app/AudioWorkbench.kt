@@ -59,10 +59,7 @@ private val effectGroups = linkedMapOf(
 )
 
 @Composable private fun WorkCard(title: String, content: @Composable ColumnScope.() -> Unit) {
-    Card(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant),
-        colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) { Column(Modifier.padding(16.dp), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-        Text(title, style = MaterialTheme.typography.titleMedium); content()
-    } }
+    WorkspaceCard(title, content = content)
 }
 @Composable private fun Numeric(value: String, change: (String) -> Unit, label: String, enabled: Boolean, signed: Boolean = false, errorMessage: String? = null) {
     val support: (@Composable () -> Unit)? = if (errorMessage == null) null else { { Text(errorMessage) } }
@@ -205,7 +202,7 @@ private val effectGroups = linkedMapOf(
         require(a >= 0 && b > a && b <= duration) { "Choose a valid interval within the recording" }
         return a to b
     }
-    fun render(trim: Boolean = false, after: () -> Unit = {}) {
+    fun render(trim: Boolean = false, transcribe: Boolean = false, after: () -> Unit = {}) {
         try {
             val plan = JSONObject().put("baseId", baseId).put("rack", rack.json()).put("regions", regions).put("limit", limit)
             val settings = if (trim) {
@@ -221,7 +218,9 @@ private val effectGroups = linkedMapOf(
             }
             val selectedBase = if (trim) active else baseId
             val useClearVoice = model.clearVoiceEnabled && !trim
-            model.renderPlan(actor, selectedBase, settings, if (useClearVoice) model.clearVoicePlacement else null, after)
+            val placement = if (useClearVoice) model.clearVoicePlacement else null
+            if (transcribe) model.renderPlanAndTranscribe(actor, selectedBase, settings, placement, after)
+            else model.renderPlan(actor, selectedBase, settings, placement, after)
         } catch (e: Exception) { model.notice(e.message ?: "Check effects and region values") }
     }
     WorkCard("Recording timeline") {
@@ -331,6 +330,11 @@ private val effectGroups = linkedMapOf(
         },enabled=ready) { Text(if(comparisonMode) "A/B: hear active render" else "A/B: hear reference") }
         Text("A/B seeks the same millisecond position. Pitch/echo/time-shift processing can alter alignment.",style=MaterialTheme.typography.bodySmall)
         }
+    }
+    WorkCard("Speech processing") {
+        ProviderControls(model, ready)
+        Button(onClick={render(transcribe=true,after=transcript)},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
+        Text("The saved job keeps your audio revision and settings together. Review the draft transcript against the recording.",style=MaterialTheme.typography.bodySmall)
     }
     WorkCard("Quick enhancement presets") {
         val overviewPeaks=screen.analysis?.optJSONArray("peaks")
@@ -465,7 +469,7 @@ private val effectGroups = linkedMapOf(
         }
         TextButton(onClick={regionsJson="[]";chosen=-1},enabled=ready) { Text("Clear regions") }
         OutlinedButton(onClick={render()},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render enhanced revision") }
-        TextButton(onClick={model.transcribe(actor,transcript)},enabled=ready) { Text("Transcribe active audio on device") }
+        TextButton(onClick={model.transcribe(actor,transcript)},enabled=ready) { Text(if(model.transcriptionProvider == TranscriptionProvider.WHISPER) "Prepare Whisper transcription" else "Transcribe active audio on device") }
     }
     WorkCard("Inspect a time range") {
         TextButton(onClick={showDetail=!showDetail}) { Text(if(showDetail) "Hide detailed spectrum" else "Open detailed spectrum") }
@@ -528,9 +532,6 @@ private val effectGroups = linkedMapOf(
         }
         }
     }
-    WorkCard("Speech processing") { ProviderControls(model, ready) }
-    Text("Review audio",style=MaterialTheme.typography.headlineSmall)
-    Button(onClick={render(after={model.transcribe(actor,transcript)})},enabled=ready,modifier=Modifier.fillMaxWidth()) { Text("Render & transcribe") }
     WorkCard("Markers and speech candidates") {
         OutlinedTextField(note,{note=it.take(4000)},label={Text("Examiner note / candidate label")},enabled=ready,modifier=Modifier.fillMaxWidth())
         Row(horizontalArrangement=Arrangement.spacedBy(8.dp)) {

@@ -264,7 +264,7 @@ class OfflineInterfaceTest {
             val noise = saved.items("artifacts").last { it.getJSONObject("operation").getString("algorithm") == "broadband-noise-floor-estimate" }
             assertNotEquals(firstNoise.getString("id"), noise.getString("id"))
             click("Render enhanced revision")
-            waitFor("Effect plan rendered. Earlier audio and settings remain in revision history.")
+            waitFor("Audio revision saved. Earlier audio and settings remain in revision history.")
             saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
             val rendered = saved.items("artifacts").last { it.getString("type") == "ENHANCED_AUDIO" }
             val params = rendered.operationParameters(); val rack = params.getJSONObject("effectRack")
@@ -352,7 +352,7 @@ class OfflineInterfaceTest {
             click("Add selection with these effects")
             ui.onNodeWithText("1: 200–1000 ms").performScrollTo().assertIsDisplayed()
             click("Render enhanced revision")
-            waitFor("Effect plan rendered. Earlier audio and settings remain in revision history.")
+            waitFor("Audio revision saved. Earlier audio and settings remain in revision history.")
             val saved = vault.listCases().cases.single { it.getString("caseId") == case.getString("caseId") }
             val rendered = saved.items("artifacts").last { it.getString("type") == "ENHANCED_AUDIO" }
             assertEquals(200L, rendered.operationParameters().getLong("startMs"))

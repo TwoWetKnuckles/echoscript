@@ -44,16 +44,20 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
         return destination
     }
 
-    fun enhance(manifest: JSONObject, actor: String, placement: String, cancelled: () -> Boolean, progress: (Long) -> Unit, workbenchPlan: String? = null): JSONObject {
+    fun enhance(manifest: JSONObject, actor: String, placement: String, cancelled: () -> Boolean, progress: (Long) -> Unit, workbenchPlan: String? = null, processing: ProcessingStep? = null): JSONObject {
         if (cancelled()) throw InterruptedException("Enhancement cancelled")
+        processing?.reuse(manifest, "ENHANCED_AUDIO", "clearvoice-frcrn-onnx-context-render")?.let {
+            vault.selectRevision(manifest, actor, it.getString("id")); return it
+        }
         val model = modelFile(cancelled)
         val audio = workflow.prepareAudio(manifest, actor, cancelled, progress)
         val audioId = audio.getString("id"); val caseId = manifest.getString("caseId")
-        val canonical = vault.addDerivative(manifest, actor, "AUDIO_EXPORT", listOf(audioId), "Local ClearVoice input.wav", "clearvoice-local-mono-resample", "1") { out ->
+        val inputStep = processing?.child("input")
+        val canonical = inputStep?.reuse(manifest, "AUDIO_EXPORT", "clearvoice-local-mono-resample") ?: vault.addDerivative(manifest, actor, "AUDIO_EXPORT", listOf(audioId), "Local ClearVoice input.wav", "clearvoice-local-mono-resample", "1") { out ->
             vault.open(caseId, audioId).use { input -> WaveReader(input, audio.getLong("bytes")).use { wave ->
                 val frames = recognitionWave(wave, out, cancelled, progress)
                 JSONObject().put("frames", frames).put("sampleRate", 16000).put("channels", 1).put("transport", "IN_PROCESS_ONLY")
-                    .put("resampling", "linear with low-pass on downsampling")
+                    .put("resampling", "linear with low-pass on downsampling").forProcessing(inputStep)
             } }
         }
         check(android.system.Os.getenv("ORT_DISABLE_TELEMETRY") == "1") { "Inference telemetry must be disabled before initialization" }
@@ -61,6 +65,9 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
         OrtSession.SessionOptions().use { options ->
             options.setIntraOpNumThreads(1); options.setInterOpNumThreads(1)
             options.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
+            // The default arena retains large transient buffers across these fixed windows.
+            // Use direct allocations to reduce peak/retained memory on Android 10 devices.
+            options.setCPUArenaAllocator(false); options.setMemoryPatternOptimization(false)
             environment.createSession(model.absolutePath, options).use { session ->
                 return vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", listOf(audioId, canonical.getString("id")), "ClearVoice enhanced speech.wav",
                     "clearvoice-frcrn-onnx-context-render", "1", active = true,
@@ -104,7 +111,8 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
                         .put("placement", placement).put("transport", "IN_PROCESS_ONLY").put("runtimeTelemetry", "DISABLED_BEFORE_INITIALIZATION").put("sampleRate", 16000).put("channels", 1).put("frames", frames)
                         .put("windowFrames", CLEARVOICE_WINDOW).put("hopFrames", CLEARVOICE_CORE).put("contextFrames", CLEARVOICE_CONTEXT)
                         .put("windows", windows).put("clippedOutputSamples", clipped).put("intraOpThreads", 1)
-                        .put("workbenchPlan", workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL)
+                        .put("cpuArenaAllocator", false).put("memoryPatternOptimization", false)
+                        .put("workbenchPlan", workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL).forProcessing(processing)
                 }
             }
         }

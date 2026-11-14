@@ -1,0 +1,30 @@
+{
+  "result": "PASS",
+  "scope": "Linux CPU synthetic allocator comparison, not Android resource acceptance",
+  "network": "kernel-denied socket creation/connect/transmission before inference import",
+  "modelSha256": "5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2",
+  "inputShape": [1, 32000],
+  "sampleRate": 16000,
+  "exactOutputMatch": true,
+  "measurements": [
+    {
+      "policy": "default",
+      "runtime": "1.32.0",
+      "numpy": "2.3.5",
+      "maxRssKiB": 1450804,
+      "seconds": 80.36430759499945,
+      "repeats": 3,
+      "outputSha256": "5f74cad894bacdede06d0bdc41b739917153e505ec912d129adbdfdf7adcf32f"
+    },
+    {
+      "policy": "bounded",
+      "runtime": "1.32.0",
+      "numpy": "2.3.5",
+      "maxRssKiB": 819168,
+      "seconds": 82.09545239899944,
+      "repeats": 3,
+      "outputSha256": "5f74cad894bacdede06d0bdc41b739917153e505ec912d129adbdfdf7adcf32f"
+    }
+  ],
+  "recordedAtUtc": "2026-11-14T05:50:01.764460+00:00"
+}
