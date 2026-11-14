@@ -65,6 +65,9 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
         OrtSession.SessionOptions().use { options ->
             options.setIntraOpNumThreads(1); options.setInterOpNumThreads(1)
             options.setExecutionMode(OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
+            // The default arena retains large transient buffers across these fixed windows.
+            // Use direct allocations to reduce peak/retained memory on Android 10 devices.
+            options.setCPUArenaAllocator(false); options.setMemoryPatternOptimization(false)
             environment.createSession(model.absolutePath, options).use { session ->
                 return vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", listOf(audioId, canonical.getString("id")), "ClearVoice enhanced speech.wav",
                     "clearvoice-frcrn-onnx-context-render", "1", active = true,
@@ -108,6 +111,7 @@ internal class ClearVoiceNative(private val context: Context, private val vault:
                         .put("placement", placement).put("transport", "IN_PROCESS_ONLY").put("runtimeTelemetry", "DISABLED_BEFORE_INITIALIZATION").put("sampleRate", 16000).put("channels", 1).put("frames", frames)
                         .put("windowFrames", CLEARVOICE_WINDOW).put("hopFrames", CLEARVOICE_CORE).put("contextFrames", CLEARVOICE_CONTEXT)
                         .put("windows", windows).put("clippedOutputSamples", clipped).put("intraOpThreads", 1)
+                        .put("cpuArenaAllocator", false).put("memoryPatternOptimization", false)
                         .put("workbenchPlan", workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL).forProcessing(processing)
                 }
             }

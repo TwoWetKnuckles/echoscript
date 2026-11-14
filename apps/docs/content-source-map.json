@@ -25,7 +25,7 @@
   },
   "evidence/protected-transfer.mdx": {
     "source": "docs/evidence/PROTECTED-TRANSFER.md",
-    "sha256": "4f00d9aacf6eefe16c3d4fcf64084da33ab5ba4eee1d1ab5d148ef547b5df7d3"
+    "sha256": "34281c41ec0d364ed6d066bd4fba6cea98ea1138162cc476e21d2e38143281ef"
   },
   "file-tree.mdx": {
     "source": "docs/FILE-TREE.md",
@@ -41,7 +41,7 @@
   },
   "providers/clearvoice.mdx": {
     "source": "docs/providers/clearvoice.md",
-    "sha256": "b0deceec42fbe88ee3fffadb16901fba585763d41bbc1935c75e78539e3f5e8c"
+    "sha256": "b85dcc424bae4d33f1ca50c373117fef4428bbbe9f439dacefe0c6548b8ced9f"
   },
   "providers/local-vosk.mdx": {
     "source": "docs/providers/local-vosk.md",
@@ -53,7 +53,7 @@
   },
   "qa/rc-acceptance.mdx": {
     "source": "docs/qa/RC-ACCEPTANCE.md",
-    "sha256": "54815c359f20a8f4a2085649badb851030f95d7d196cdd893cfbaabc32384863"
+    "sha256": "ebe312c7830cbc203c0661fc1617b977433a20b7a7586d874cd81153b399f234"
   },
   "qa/request-reconciliation.mdx": {
     "source": "docs/qa/REQUEST-RECONCILIATION.md",
@@ -61,7 +61,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "3962f458ed193bc7cae4a8769114a23f0abaaebc3b2be72279f22b88bb8fd947"
+    "sha256": "cc6dbea2051f1cabfb759d8969cf140ca9b98116863758db604ccff5bfb813ee"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
@@ -69,7 +69,7 @@
   },
   "security/operations.mdx": {
     "source": "docs/security/OPERATIONS.md",
-    "sha256": "2679c814769baf751f7a3f1a6f01a5e097b9458c11b95c65175b9e0681cde7b8"
+    "sha256": "55d588c2fc9f96aa4ad0020164bad27e221470cd1042cd52303dc8666419d484"
   },
   "security/threat-model.mdx": {
     "source": "docs/security/THREAT_MODEL.md",

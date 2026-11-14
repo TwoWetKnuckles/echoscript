@@ -29,7 +29,12 @@ choose Before effects or After effects, adjust the rack, then Render enhanced
 revision or Render & transcribe. It creates a separate mono 16 kHz revision.
 The model is included; no first-run model download or enhancement upload is
 needed. Compare original and processed audio. AI can alter/suppress speech.
-Cancel is checked between neural windows; keep the app open for long work.
+Cancel is checked between neural windows. Local render/Vosk work can continue
+after leaving the screen, subject to Android scheduling and service limits.
+Interrupted jobs verify completed passes before reuse. Retry saved job keeps
+the original settings; cancellation never silently starts another attempt.
+Whisper still needs preparation/approval with current session credentials
+after a process restart. Package transfers keep their explicit foreground flow.
 
 Choose Whisper API before starting if you want the alternative transcription
 route. In Settings, enter the HTTPS companion origin and its separate session
