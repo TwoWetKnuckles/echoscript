@@ -19,13 +19,13 @@ class AudioIntakeTest {
     @Test fun developmentCandidateUsesSeparatePackageAndVisibleTestLabel() {
         val app = ApplicationProvider.getApplicationContext<Application>()
         assertEquals("org.echoscript.app.candidate06", app.packageName)
-        assertNotEquals("org.echoscript.app.preview", app.packageName)
+        assertNotEquals("org.echoscript.app.preview06", app.packageName)
         assertEquals("EchoScript 0.6 Candidate", app.applicationInfo.loadLabel(app.packageManager).toString())
         if (InstrumentationRegistry.getArguments().getString("verifyCoexistence") == "true") {
             val device = UiDevice.getInstance(InstrumentationRegistry.getInstrumentation())
-            assertTrue(device.executeShellCommand("pm path org.echoscript.app.preview").trim().startsWith("package:"))
+            assertTrue(device.executeShellCommand("pm path org.echoscript.app.preview06").trim().startsWith("package:"))
             assertTrue(device.executeShellCommand("pm path org.echoscript.app.candidate06").trim().startsWith("package:"))
-            assertEquals("SYNTHETIC_OLD_PREVIEW_DATA", device.executeShellCommand("run-as org.echoscript.app.preview cat files/synthetic-preview-isolation.txt").trim())
+            assertEquals("SYNTHETIC_OLD_PREVIEW_DATA", device.executeShellCommand("run-as org.echoscript.app.preview06 cat files/synthetic-preview-isolation.txt").trim())
         }
     }
 

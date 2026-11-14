@@ -53,11 +53,11 @@
   },
   "qa/request-reconciliation.mdx": {
     "source": "docs/qa/REQUEST-RECONCILIATION.md",
-    "sha256": "e31fdc0c97be98f827181ef04f983712bb079dfa24186cfc8b6a16d728414127"
+    "sha256": "15ad8ee056b73483e950313f763c6d06749e0767e2fe3d04c42ed0587dbe01f9"
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "cb9bb4bc363fdf23ef5ad2d5ed5235084acbff223d4c706df379ed6b10047f68"
+    "sha256": "2454c5e4c9c7370cd41f581e5273ad6efb1cf39c991857ee5d95d758dac74934"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
@@ -77,7 +77,7 @@
   },
   "downloads/index.mdx": {
     "source": "downloads/README.md",
-    "sha256": "4a407c942d97c5c7ac3abb6d091c1b86393a2c2dd89b396b4350869c8d0f8431"
+    "sha256": "e215fb275e970e09d787418d08d187e1cdedc109a05c8ef4e97eb86870081905"
   },
   "releases/0.6-test.mdx": {
     "source": "downloads/android/RELEASE-NOTES-0.6.0.md",

@@ -5,9 +5,10 @@ from pathlib import Path
 import subprocess
 import sys
 
-OLD_ID = "org.echoscript.app.preview"
-URL = "https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.5.1/EchoScript-offline-preview.apk"
-SHA256 = "a043c0e6b1279131577141fa393329f4996ad60d32cfcf7acdae9ecd91491310"
+# Exercise the one published rollback retained after historical release archival.
+OLD_ID = "org.echoscript.app.preview06"
+URL = "https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk"
+SHA256 = "0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3"
 MARKER = "files/synthetic-preview-isolation.txt"
 VALUE = b"SYNTHETIC_OLD_PREVIEW_DATA"
 
