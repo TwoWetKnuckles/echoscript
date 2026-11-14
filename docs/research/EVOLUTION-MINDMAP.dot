@@ -1,0 +1,17 @@
+digraph EchoScript {
+ graph [rankdir=LR,bgcolor="#0B1219",pad="0.5",nodesep="0.45",ranksep="0.65",splines=polyline,label="EchoScript evolution | Research proposals | 14 November 2026\nOwner AOK required before stack or theme changes",labelloc=t,fontname="DejaVu Sans",fontcolor="#E0E8EF",fontsize=20];
+ node [shape=box,style="rounded,filled",fontname="DejaVu Sans",fontsize=14,margin="0.2,0.15",color="#344757",fillcolor="#182431",fontcolor="#E0E8EF"];
+ edge [color="#65D8E6",penwidth=1.5,arrowhead=none];
+ root [label="ECHOSCRIPT\nLocal evidence workbench\nPreserve > Inspect > Review",fillcolor="#223141",color="#65D8E6",penwidth=2];
+ w [label="WORKFLOW"];
+ a [label="AUDIO + ANALYSIS"];
+ s [label="SPEECH + REVIEW"];
+ e [label="EVIDENCE + TRUST"];
+ r [label="RELEASE + DESIGN"];
+ wc [label="E03  ClearVoice enable + pre/post order\nE12  Findable actions and visible presets\nE16  Safe synthetic tutorial\nInspiration: CARDINAL, Acoustica, RX",align=left];
+ ac [label="E04  Aligned, level-matched A/B\nE07  Saved time/frequency/channel selections\nE08  Measured noise profiles\nE11  Similar-event search (later)\nInspiration: Audition, SpectraLayers, DCForensics",align=left];
+ sc [label="E05  Audio-linked uncertainty queue\nE15  Local model study (later)\nExplicit Vosk / Whisper API route\nInspiration: Acoustica caption workflow",align=left];
+ ec [label="E01  Durable cancellation and recovery\nE02  Qualified model-build dependencies\nE06  Reconstructable processing report\nInspiration: CEDAR, CARDINAL, Acoustica",align=left];
+ rc [label="E09  Shared graphite/cyan visual tokens\nE10  Browser and offline asset qualification\nE13  Signed, verified release/downloads\nE14  Exact-build acceptance on real devices\nDirection: owner request + existing release gates",align=left];
+ root -> {w a s e r}; w -> wc; a -> ac; s -> sc; e -> ec; r -> rc;
+}
