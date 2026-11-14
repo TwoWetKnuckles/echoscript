@@ -5,6 +5,8 @@ const app = buildServer({
   modelPath: process.env.VOSK_MODEL_PATH || "",
   allowedOrigin: process.env.ALLOWED_ORIGIN,
   providerEnabled: process.env.LOCAL_PROVIDER_ENABLED !== "false",
+  openAiEnabled: process.env.OPENAI_PROVIDER_ENABLED === "true",
+  openAiApiKey: process.env.OPENAI_API_KEY,
 });
 await app.listen({ host: "127.0.0.1", port: Number(process.env.PORT || 8787) });
 process.stdout.write(

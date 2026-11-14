@@ -1,0 +1,12 @@
+---
+title: "Whisper transcription route"
+description: "Selectable Vosk/Whisper routing, exact-payload consent and server-side API credentials."
+---
+
+Android defaults to bundled **Vosk · on device**. Choose **Whisper API** in the workbench before starting transcription. The Android candidate prepares mono PCM16 16 kHz audio in 30-second chunks, commits their hashes and a submission manifest in the encrypted case, and asks for approval before any upload. The companion retains the configured OpenAI key; the phone uses a separate session token held only in memory. Cancelling approval sends nothing. Failed requests never fall back to another provider. Completed raw chunks can be reused on an approved retry.
+
+Configure the companion's HTTPS origin and session token in Settings. Remote cleartext HTTP is refused; `http://127.0.0.1:8787` is supported through a local tunnel such as `adb reverse tcp:8787 tcp:8787`. The service binds to loopback and requires `API_TOKEN`, `OPENAI_PROVIDER_ENABLED=true` and server-side `OPENAI_API_KEY`. Start it with an explicitly selected ignored env file, for example `node --env-file=/absolute/approved/services/api/.env.local build/services/api/src/index.js`. Never put a provider key into an APK or a public endpoint. This remains a single-operator development companion, not team authentication or an approved hosted deployment.
+
+Whisper uses `whisper-1`, verbose JSON and returned word/segment timestamps. Normalization preserves raw responses and timing anomalies without inventing confidence, alternatives or speakers. API charges and the configured project's data policy apply; project-specific retention/qualification has not been verified. The official documentation currently lists model retirement on February 26, 2027; future model migration needs separate compatibility testing.
+
+A real request using the existing configured key succeeded on the licensed synthetic 5.525-second fixture and returned 16 word timestamps. No real case audio was submitted. Android 10/16 contract-server UI, approval/cancel and independent case-export checks passed on the recorded APK. The real configured-key API request is a separate synthetic check, rather than an Android-to-production deployment acceptance test. [Official speech API](https://developers.openai.com/api/docs/guides/speech-to-text).

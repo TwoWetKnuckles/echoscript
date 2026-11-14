@@ -1,0 +1,47 @@
+EchoScript independent JVM case-protect distribution
+
+Original EchoScript code: Apache License 2.0. See LICENSE and NOTICE.
+This inventory covers the standalone JVM tool, not the complete Android,
+browser, model, codec or service license audit. Upstream rights/terms remain
+applicable. No endorsement or legal/compliance certification is implied.
+
+Runtime components verified against their exact Maven Central POMs:
+
+com.google.crypto.tink:tink:1.24.0
+Tink Cryptography API, Google LLC. Apache License 2.0 (LICENSE).
+https://repo.maven.apache.org/maven2/com/google/crypto/tink/tink/1.24.0/tink-1.24.0.pom
+
+io.github.erdtman:java-json-canonicalization:1.1
+JSON Canonicalization Scheme implementation. Apache License 2.0 (LICENSE).
+https://repo.maven.apache.org/maven2/io/github/erdtman/java-json-canonicalization/1.1/java-json-canonicalization-1.1.pom
+
+org.json:json:20260814
+JSON-java. The exact published POM states Public Domain.
+Upstream LICENSE: "Public Domain."
+https://repo.maven.apache.org/maven2/org/json/json/20260814/json-20260814.pom
+https://github.com/stleary/JSON-java/blob/master/LICENSE
+
+com.google.protobuf:protobuf-java:4.33.6
+Protocol Buffers Java runtime, Google Inc. BSD 3-Clause.
+The complete upstream notice is included in licenses/PROTOBUF-BSD-3-Clause.txt.
+https://repo.maven.apache.org/maven2/com/google/protobuf/protobuf-parent/4.33.6/protobuf-parent-4.33.6.pom
+https://github.com/protocolbuffers/protobuf/blob/v33.6/LICENSE
+
+com.google.code.gson:gson:2.13.2
+Gson, Google. Apache License 2.0 (LICENSE).
+https://repo.maven.apache.org/maven2/com/google/code/gson/gson/2.13.2/gson-2.13.2.pom
+
+com.google.code.findbugs:jsr305:3.0.2
+JSR-305 annotations. Apache License 2.0 (LICENSE).
+https://repo.maven.apache.org/maven2/com/google/code/findbugs/jsr305/3.0.2/jsr305-3.0.2.pom
+
+com.google.errorprone:error_prone_annotations:2.41.0
+Error Prone annotations. Apache License 2.0 (LICENSE).
+https://repo.maven.apache.org/maven2/com/google/errorprone/error_prone_annotations/2.41.0/error_prone_annotations-2.41.0.pom
+
+The distribution also contains EchoScript's own case-security and
+case-protect JARs under Apache License 2.0. runtime-components.tsv records
+the distributed runtime JAR file names and SHA-256 values.
+The JVM itself is not bundled; its distributor's runtime terms apply.
+JUnit/Hamcrest test dependencies are not runtime distribution components.
+Dependency changes require a new notice/inventory review before distribution.

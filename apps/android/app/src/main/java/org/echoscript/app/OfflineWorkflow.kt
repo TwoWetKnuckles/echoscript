@@ -16,6 +16,21 @@ internal fun JSONObject.activeAudio(): JSONObject = artifact(getString("activeAr
 internal fun JSONObject.latestTranscript(): JSONObject? = items("artifacts").lastOrNull { it.getString("type") in setOf("NORMALIZED_TRANSCRIPT", "HUMAN_TRANSCRIPT") }
 internal fun JSONObject.operationParameters(): JSONObject = getJSONObject("operation").getJSONObject("parameters")
 
+// Keep the prior analysis immutable; adjustment records retain the event identity.
+internal fun reviseSpeechCandidate(analysis: JSONObject, startMs: Long, endMs: Long, label: String, eventId: String?, newId: String): JSONObject {
+    require(startMs >= 0 && endMs > startMs && endMs <= analysis.getLong("durationMs") && label.length <= 160)
+    val result = JSONObject(analysis.toString())
+    val events = result.getJSONArray("events")
+    val index = if (eventId == null) -1 else (0 until events.length()).firstOrNull { events.getJSONObject(it).getString("eventId") == eventId }
+        ?: error("Speech candidate is no longer present; reopen analysis")
+    if (eventId == null) require(events.length() < 256) { "At most 256 candidates per analysis revision" }
+    val event = JSONObject().put("eventId", eventId ?: newId).put("startMs", startMs).put("endMs", endMs)
+        .put("sourceAlgorithm", if (eventId == null) "examiner-marked/1" else "examiner-adjusted/1")
+        .put("label", label).put("warning", "Examiner-marked candidate; no speech probability inferred")
+    if (index < 0) events.put(event) else events.put(index, event)
+    return result
+}
+
 internal class OfflineWorkflow(private val context: Context, private val vault: EvidenceVault) {
     private inline fun <T> withWave(manifest: JSONObject, audio: JSONObject, block: (WaveReader) -> T): T =
         vault.open(manifest.getString("caseId"), audio.getString("id")).use { stream ->
@@ -53,8 +68,49 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return checkNotNull(artifact)
     }
 
+    fun savedAnalysisArtifact(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? {
+        return manifest.items("artifacts").lastOrNull {
+            it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
+                it.getJSONObject("operation").getString("algorithm") in setOf("bounded-envelope-spectrum-and-speech-candidates", "examiner-speech-region-edit") &&
+                it.getJSONObject("operation").getString("version") == "1"
+        }
+    }
+    fun savedAnalysis(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? =
+        savedAnalysisArtifact(manifest, audio)?.let { readJson(manifest, it, 1024 * 1024) }
+
+    fun savedFullSpectrum(manifest: JSONObject, audio: String = manifest.getString("activeArtifact")): JSONObject? {
+        val source = manifest.artifact(audio)
+        val artifact = manifest.items("artifacts").lastOrNull {
+            it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audio &&
+                it.getJSONObject("operation").getString("algorithm") == "continuous-overview-stft" &&
+                it.getJSONObject("operation").getString("version") == "1"
+        } ?: return null
+        val result = readJson(manifest, artifact, 1024 * 1024)
+        require(result.getString("audioArtifactId") == audio && result.getString("sourceSha256") == source.getString("sha256")) {
+            "Saved spectrum does not match this audio revision"
+        }
+        val columns = result.getJSONArray("columns")
+        require(columns.length() == 128 && (0 until columns.length()).all { x ->
+            val bands = columns.getJSONArray(x)
+            bands.length() == 32 && (0 until bands.length()).all { y ->
+                val value = bands.getDouble(y); value.isFinite() && value in -100.0..0.0
+            }
+        }) { "Saved spectrum has an invalid display shape" }
+        return result
+    }
+
     fun analyze(manifest: JSONObject, actor: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val audio = prepareAudio(manifest, actor, cancelled, progress)
+        return analyzePreparedAudio(manifest, actor, audio, cancelled, progress)
+    }
+
+    fun compareAudio(manifest: JSONObject, actor: String, audioId: String, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.artifact(audioId)
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Choose a decoded or enhanced audio revision to compare" }
+        return savedAnalysis(manifest, audioId) ?: analyzePreparedAudio(manifest, actor, audio, cancelled, progress)
+    }
+
+    private fun analyzePreparedAudio(manifest: JSONObject, actor: String, audio: JSONObject, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val (analysis, format) = withWave(manifest, audio) { overview(it, cancelled, progress) to it.format }
         val payload = JSONObject().put("durationMs", analysis.durationMs).put("peaks", JSONArray(analysis.peaks))
             .put("spectrum", JSONArray(analysis.spectrum.map { JSONArray(it) }))
@@ -71,18 +127,111 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return payload
     }
 
+    fun inspectSpectrum(manifest: JSONObject, actor: String, settings: DetailSpectrumSettings,
+        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.activeAudio()
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Analyze this audio before inspecting a time range" }
+        val detail = withWave(manifest, audio) { detailSpectrum(it, settings, cancelled, progress) }
+        val parameters = JSONObject().put("startMs", settings.startMs).put("endMs", settings.endMs)
+            .put("fftSize", settings.fftSize).put("hopSize", settings.hopSize).put("window", settings.window)
+            .put("scale", settings.scale).put("floorDb", settings.floorDb).put("sampleRate", detail.sampleRate)
+            .put("channels", detail.channels).put("displayBands", 128).put("channelCombination", "strongest-channel-per-bin")
+            .put("windowDefinition", "symmetric-n-minus-one").put("aggregation", "peak-magnitude-per-display-band")
+            .put("normalization", "window-coherent-gain-onesided-amplitude").put("displayQuantizationDb", 0.1)
+            .put("lastPartialHop", "not-padded")
+        val payload = JSONObject().put("audioArtifactId", audio.getString("id"))
+            .put("settings", parameters).put("startFrame", detail.startFrame).put("endFrame", detail.endFrame)
+            .put("analyzedThroughFrame", detail.analyzedThroughFrame).put("firstCenterFrame", detail.firstCenterFrame)
+            .put("lowHz", detail.lowHz).put("highHz", detail.highHz)
+            .put("peaks", JSONArray(detail.peaks)).put("columns", JSONArray(detail.columns.map { JSONArray(it) }))
+        vault.addDerivative(manifest, actor, "ANALYSIS", listOf(audio.getString("id")), "Detailed spectrum.json",
+            "windowed-stft-inspection", "1", warnings = listOf(
+                "Display bands show peak bins from the strongest channel; they are not power spectral density or evidence of speech.",
+                "Windowing limits time/frequency resolution; the final incomplete hop is not padded."
+            ), maxBytes = 4L * 1024 * 1024) { out ->
+            if (cancelled()) throw InterruptedException("Spectral inspection cancelled")
+            out.write(EvidenceVault.canonical(payload)); parameters
+        }
+        return payload
+    }
+
+    fun inspectFullSpectrum(manifest: JSONObject, actor: String,
+        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.activeAudio()
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Analyze this audio before scanning its full spectrum" }
+        val result = withWave(manifest, audio) { fullSpectrum(it, cancelled, progress) }
+        val parameters = JSONObject().put("fftSize", 256).put("hopSize", 128).put("window", "Hann")
+            .put("windowDefinition", "symmetric-n-minus-one").put("sampleRate", result.sampleRate).put("channels", result.channels)
+            .put("frames", result.frames).put("windowCount", result.windows).put("timeColumns", 128).put("frequencyBands", 32)
+            .put("scale", "linear").put("floorDb", -100).put("edgePadding", "half-window-start-and-first-hop-center-at-or-after-end-zero")
+            .put("channelCombination", "strongest-channel-per-bin")
+            .put("aggregation", "peak-magnitude-per-band-over-overlapping-window-support")
+            .put("normalization", "window-coherent-gain-onesided-amplitude").put("displayQuantizationDb", 0.1)
+        val payload = JSONObject().put("audioArtifactId", audio.getString("id")).put("sourceSha256", audio.getString("sha256"))
+            .put("settings", parameters).put("columns", JSONArray(result.columns.map { JSONArray(it) }))
+        vault.addDerivative(manifest, actor, "ANALYSIS", listOf(audio.getString("id")), "Full spectral overview.json",
+            "continuous-overview-stft", "1", warnings = listOf(
+                "Coarse peak-magnitude time/frequency bins can smear short events; inspect and listen to the selected range.",
+                "Strongest-channel peaks are not power spectral density or evidence of speech."
+            ), maxBytes = 1024 * 1024) { out ->
+            if (cancelled()) throw InterruptedException("Full spectral overview cancelled")
+            out.write(EvidenceVault.canonical(payload)); parameters
+        }
+        return payload
+    }
+
+    fun measureNoise(manifest: JSONObject, actor: String, startMs: Long, endMs: Long,
+        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        val audio = manifest.activeAudio()
+        require(audio.getString("type") in setOf("DECODE", "ENHANCED_AUDIO")) { "Analyze this audio before measuring noise" }
+        val result = withWave(manifest, audio) { measureNoiseFloor(it, startMs, endMs, cancelled, progress) }
+        val parameters = JSONObject().put("startMs", startMs).put("endMs", endMs).put("startFrame", result.startFrame)
+            .put("endFrame", result.endFrame).put("sampleRate", result.sampleRate)
+            .put("method", "per-channel-rms-strongest-channel").put("gateThresholdDb", result.gateThresholdDb)
+        val payload = JSONObject().put("sourceArtifactId", audio.getString("id")).put("sourceSha256", audio.getString("sha256"))
+            .put("settings", parameters).put("channelRmsDb", JSONArray(result.channelRmsDb))
+            .put("strongestChannel", result.strongestChannel).put("nearFullScaleSamples", result.nearFullScaleSamples)
+            .put("gateThresholdDb", result.gateThresholdDb)
+        val artifact = vault.addDerivative(manifest, actor, "ANALYSIS", listOf(audio.getString("id")), "Noise floor measurement.json",
+            "broadband-noise-floor-estimate", "1", warnings = listOf(
+                "The examiner chose the interval. Speech or other important sounds in it can be attenuated.",
+                "Broadband RMS is only a gate threshold estimate, not a spectral profile or source separation."
+            ), maxBytes = 65536) { out ->
+            if (cancelled()) throw InterruptedException("Noise-floor measurement cancelled")
+            out.write(EvidenceVault.canonical(payload)); parameters
+        }
+        return JSONObject(payload.toString()).put("reference", NoiseFloorReference(artifact.getString("id"), artifact.getString("sha256")).json())
+    }
+
     fun enhance(manifest: JSONObject, actor: String, settings: RenderSettings, cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
         val parent = prepareAudio(manifest, actor, cancelled, progress)
+        val reference = settings.rack?.noiseReference
+        val measurement = reference?.let { ref ->
+            val artifact = manifest.artifact(ref.artifactId)
+            require(artifact.getString("type") == "ANALYSIS" && artifact.getString("sha256") == ref.sha256 &&
+                artifact.getJSONObject("operation").getString("algorithm") == "broadband-noise-floor-estimate" &&
+                artifact.getJSONObject("operation").getString("version") == "1") { "Noise-floor measurement is missing or does not match" }
+            val payload = readJson(manifest, artifact, 65536)
+            val measuredSource = artifact.getJSONArray("parents").getString(0)
+            require(payload.getString("sourceArtifactId") == measuredSource && payload.getString("sourceSha256") == manifest.artifact(measuredSource).getString("sha256")) { "Noise-floor source linkage does not match" }
+            require(kotlin.math.abs(payload.getDouble("gateThresholdDb") - checkNotNull(settings.rack).noiseThresholdDb) < 1e-9) { "Noise-floor threshold differs from its recorded measurement" }
+            artifact
+        }
+        val parents = listOf(parent.getString("id")) + listOfNotNull(measurement?.getString("id"))
         return withWave(manifest, parent) { wave ->
             require(context.filesDir.usableSpace > wave.dataBytes + 16 * 1024 * 1024) { "Insufficient private storage for another audio revision" }
-            vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", listOf(parent.getString("id")), "Enhanced PCM16.wav", "native-pcm16-iir-enhancement", "1",
-                warnings = listOf("Enhancement changes a derivative. Retain the original and examine artifacts independently."), active = true) { out ->
+            val warnings = listOf("Enhancement changes a derivative. Retain the original and examine artifacts independently.") +
+                (if (settings.rack != null) listOf("Approximate restoration and granular pitch can introduce artifacts/latency. Declip does not recover lost peaks; envelope gating is not source isolation. Time shifts use silence padding.") else emptyList()) +
+                (if (measurement != null && measurement.getJSONArray("parents").getString(0) != parent.getString("id")) listOf("The measured noise floor came from a different audio revision; review its suitability.") else emptyList())
+            vault.addDerivative(manifest, actor, "ENHANCED_AUDIO", parents, "Enhanced PCM16.wav", if (settings.rack == null) "native-pcm16-iir-enhancement" else "bounded-native-effect-rack", if (settings.rack == null) "1" else "3",
+                warnings = warnings, active = true) { out ->
                 val stats = renderWave(wave, out, settings, cancelled, progress)
                 JSONObject().put("gainDb", settings.gainDb).put("lowDb", settings.lowDb).put("midDb", settings.midDb).put("highDb", settings.highDb)
                     .put("highPassHz", settings.highPassHz).put("lowPassHz", settings.lowPassHz).put("humHz", settings.humHz)
                     .put("humHarmonics", if (settings.humHz == 0.0) 0 else 4).put("notchHz", settings.notchHz).put("notchQ", settings.notchQ)
                     .put("noiseFloorDb", settings.noiseFloorDb ?: JSONObject.NULL).put("noiseReductionDb", settings.noiseReductionDb)
                     .put("limiter", settings.limit).put("startMs", settings.startMs).put("endMs", settings.endMs ?: JSONObject.NULL)
+                    .put("effectRack", settings.rack?.json() ?: JSONObject.NULL).put("trim", settings.trim).put("workbenchPlan", settings.workbenchPlan?.let { JSONObject(it) } ?: JSONObject.NULL)
                     .put("selectedFrames", stats.selectedFrames).put("overloadSampleCount", stats.clippedSamples)
                     .put("sampleRate", wave.format.sampleRate).put("channels", wave.format.channels).put("frames", wave.frames)
             }
@@ -93,8 +242,9 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         val audio = prepareAudio(manifest, actor, cancelled, progress)
         val audioId = audio.getString("id")
         val caseId = manifest.getString("caseId")
-        val analysis = manifest.items("artifacts").lastOrNull { it.getString("type") == "ANALYSIS" && it.getJSONArray("parents").optString(0) == audioId }
-            ?.let { readJson(manifest, it, 1024 * 1024) } ?: analyze(manifest, actor, cancelled, progress)
+        // Spectral inspections and other analysis artifacts do not contain
+        // speech events. Reuse only a compatible overview or examiner revision.
+        val analysis = savedAnalysis(manifest) ?: analyze(manifest, actor, cancelled, progress)
         val candidates = analysis.items("events").map { it.getLong("startMs")..it.getLong("endMs") }
         val input = withWave(manifest, audio) { wave ->
             vault.addDerivative(manifest, actor, "TRANSCRIPTION_TRANSMISSION", listOf(audioId), "Local recognition input.wav", "native-mono-resample-pcm16", "1") { out ->
@@ -122,22 +272,29 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         return result
     }
 
-    fun review(manifest: JSONObject, actor: String, parent: JSONObject, segmentId: String, text: String, label: String, verified: Boolean): JSONObject {
+    fun review(manifest: JSONObject, actor: String, parent: JSONObject, segmentId: String, text: String, label: String, verified: Boolean, note: String? = null): JSONObject {
         require(text.length <= 10000 && text.none { it.code < 32 && it !in "\n\r\t" } && label.length <= 80 && label.none { it.code < 32 }) { "Review text or speaker label is invalid" }
+        require(note == null || (note.length <= 4000 && note.none { it.code < 32 && it !in "\n\r\t" })) { "Examiner note is invalid" }
         val transcript = readTranscript(manifest, parent)
         val segments = transcript.items("segments")
         val segment = segments.singleOrNull { it.getString("id") == segmentId } ?: error("Transcript segment is missing")
+        val noteChanged = note != null && note != segment.optString("examinerNote", "")
+        val reviewUnchanged = text == segment.getString("text") && label.trim() == segment.optString("speakerLabel", "") && !verified
+        if (noteChanged && note != null) {
+            if (note.isEmpty()) segment.remove("examinerNote") else segment.put("examinerNote", note)
+        }
         if (segment.getString("text") != text) {
             segment.put("text", text).put("words", JSONArray()).put("confidence", JSONObject.NULL)
             val flags = segment.getJSONArray("flags")
             if ((0 until flags.length()).none { flags.getString(it) == "HUMAN_TEXT_CHANGED" }) flags.put("HUMAN_TEXT_CHANGED")
         }
-        segment.put("speakerLabel", label.trim()).put("speakerLabelSource", "HUMAN_EXAMINER")
+        if (!reviewUnchanged) segment.put("speakerLabel", label.trim()).put("speakerLabelSource", "HUMAN_EXAMINER")
             .put("verification", if (verified) "HUMAN_VERIFIED" else "HUMAN_EDITED")
-        val state = if (segments.isNotEmpty() && segments.all { it.getString("verification") == "HUMAN_VERIFIED" }) "HUMAN_VERIFIED" else "HUMAN_EDITED"
+        val state = if (reviewUnchanged) transcript.getString("state") else if (segments.isNotEmpty() && segments.all { it.getString("verification") == "HUMAN_VERIFIED" }) "HUMAN_VERIFIED" else "HUMAN_EDITED"
         transcript.put("state", state)
-        vault.addDerivative(manifest, actor, "HUMAN_TRANSCRIPT", listOf(parent.getString("id")), "Reviewed transcript.json", "examiner-segment-revision", "1", maxBytes = 16L * 1024 * 1024) { out ->
-            out.write(EvidenceVault.canonical(transcript)); JSONObject().put("segmentId", segmentId).put("verified", verified).put("state", state)
+        vault.addDerivative(manifest, actor, "HUMAN_TRANSCRIPT", listOf(parent.getString("id")), "Reviewed transcript.json", "examiner-segment-revision", "2", maxBytes = 16L * 1024 * 1024) { out ->
+            out.write(EvidenceVault.canonical(transcript)); JSONObject().put("segmentId", segmentId).put("verified", verified)
+                .put("noteChanged", noteChanged).put("reviewUnchanged", reviewUnchanged).put("segmentVerification", segment.getString("verification")).put("state", state)
         }
         return transcript
     }
@@ -162,6 +319,7 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
         for (segment in value.items("segments")) {
             val id = segment.getString("id")
             require(id.length in 1..128 && ids.add(id) && validText(segment.getString("text"), 10000) && validText(segment.optString("speakerLabel"), 80))
+            if (segment.has("examinerNote")) require(segment.opt("examinerNote") is String && validText(segment.getString("examinerNote"), 4000)) { "Invalid examiner note" }
             require(validTime(segment.getDouble("start")) && validTime(segment.getDouble("end")))
             require(segment.isNull("speaker") || segment.getString("speaker").matches(Regex("SPEAKER_[1-9][0-9]*")))
             require(segment.getString("verification") in setOf("UNVERIFIED", "HUMAN_EDITED", "HUMAN_VERIFIED"))

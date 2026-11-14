@@ -1,274 +1,151 @@
 package org.echoscript.app
 
-import android.app.Application
 import android.content.Intent
-import android.net.Uri
 import android.os.Bundle
-import android.provider.OpenableColumns
 import android.view.WindowManager
 import androidx.activity.ComponentActivity
+import androidx.activity.compose.LocalActivity
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.compose.setContent
+import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.annotation.DrawableRes
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.selection.toggleable
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.foundation.text.selection.SelectionContainer
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.runtime.saveable.rememberSaveable
+import androidx.compose.runtime.saveable.rememberSaveableStateHolder
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
-import androidx.activity.compose.LocalActivity
+import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.lerp
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.platform.LocalView
+import androidx.compose.ui.platform.testTag
+import androidx.compose.ui.res.painterResource
+import androidx.compose.ui.semantics.Role
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.text.input.KeyboardType
+import androidx.compose.ui.text.input.PasswordVisualTransformation
+import androidx.compose.ui.text.input.VisualTransformation
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.viewinterop.AndroidView
-import androidx.lifecycle.AndroidViewModel
+import androidx.core.view.WindowCompat
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.lifecycle.viewmodel.compose.viewModel
-import androidx.lifecycle.viewModelScope
-import androidx.media3.common.MediaItem
-import androidx.media3.common.PlaybackException
-import androidx.media3.common.Player
-import androidx.media3.exoplayer.ExoPlayer
-import androidx.media3.exoplayer.source.ProgressiveMediaSource
 import androidx.media3.ui.PlayerView
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.asStateFlow
-import kotlinx.coroutines.flow.update
-import kotlinx.coroutines.launch
-import kotlinx.coroutines.withContext
 import org.json.JSONObject
 import java.util.Locale
-import java.util.concurrent.atomic.AtomicBoolean
-
-internal data class VaultScreen(
-    val ready: Boolean = false,
-    val cases: List<JSONObject> = emptyList(),
-    val selected: String? = null,
-    val job: String? = null,
-    val message: String = "Opening the encrypted vault…",
-    val recoveryWarnings: List<String> = emptyList(),
-    val analysis: JSONObject? = null,
-    val transcript: JSONObject? = null,
-    val transcriptRevision: String? = null,
-)
-
-@androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
-internal class VaultModel(application: Application) : AndroidViewModel(application) {
-    private val mutable = MutableStateFlow(VaultScreen())
-    val state = mutable.asStateFlow()
-    private val cancelled = AtomicBoolean(false)
-    private val recordingStop = AtomicBoolean(false)
-    private lateinit var vault: EvidenceVault
-    private lateinit var workflow: OfflineWorkflow
-    var player by mutableStateOf<ExoPlayer?>(null); private set
-
-    init {
-        viewModelScope.launch(Dispatchers.IO) {
-            try {
-                vault = EvidenceVault(application)
-                workflow = OfflineWorkflow(application, vault)
-                val listing = vault.listCases()
-                mutable.value = VaultScreen(ready = true, cases = listing.cases, recoveryWarnings = listing.warnings, message = "Choose a case or import a recording.")
-            } catch (_: Exception) {
-                mutable.value = VaultScreen(message = "The device vault could not open. Preserve the existing evidence and keys.")
-            }
-        }
-    }
-
-    fun select(id: String) {
-        if (mutable.value.job != null) return
-        stop()
-        mutable.update { it.copy(selected = id, analysis = null, transcript = null, transcriptRevision = null, message = "Case selected.") }
-    }
-    fun cancel() { cancelled.set(true); mutable.update { it.copy(message = "Cancelling after the current block…") } }
-    fun notice(message: String) { mutable.update { it.copy(message = message) } }
-    private fun selected(): JSONObject = mutable.value.cases.firstOrNull { it.getString("caseId") == mutable.value.selected }
-        ?.let { JSONObject(it.toString()) } ?: error("Select a case first")
-
-    private fun runJob(name: String, completed: () -> Unit = {}, action: () -> String) {
-        if (!mutable.value.ready || mutable.value.job != null) return
-        stop(); cancelled.set(false)
-        mutable.update { it.copy(job = name, message = name) }
-        viewModelScope.launch(Dispatchers.IO) {
-            var succeeded = false
-            val message = try { action().also { succeeded = true } }
-            catch (_: InterruptedException) { "Cancelled. Completed originals and revisions are preserved." }
-            catch (_: LinkageError) { "The bundled speech library could not load on this Android device." }
-            catch (failure: Exception) { failure.message?.take(350) ?: "Operation could not complete. Review the case before retrying." }
-            try {
-                val listing = vault.listCases()
-                mutable.update { it.copy(cases = listing.cases, recoveryWarnings = listing.warnings, message = message, job = null) }
-            } catch (_: Exception) { succeeded = false; mutable.update { it.copy(job = null, message = "Vault refresh failed. Reopen the app to check the saved case.") } }
-            if (succeeded) withContext(Dispatchers.Main) { completed() }
-        }
-    }
-    private fun showCase(manifest: JSONObject) {
-        mutable.update { it.copy(selected = manifest.getString("caseId"), analysis = null, transcript = null, transcriptRevision = null) }
-    }
-    private fun reportProgress(unit: String): (Long) -> Unit {
-        var last = 0L
-        return { count ->
-            val now = System.nanoTime()
-            if (now - last >= 500_000_000 && !cancelled.get()) {
-                last = now
-                mutable.update { it.copy(message = "${it.job} · $count $unit") }
-            }
-        }
-    }
-    fun importAudio(uri: Uri, title: String, actor: String) = runJob("Preserving source") {
-        val resolver = getApplication<Application>().contentResolver
-        val filename = resolver.query(uri, arrayOf(OpenableColumns.DISPLAY_NAME), null, null, null)?.use { if (it.moveToFirst()) it.getString(0) else null } ?: "source-audio"
-        val name = filename.filter { it.code >= 32 }.take(256).ifBlank { "source-audio" }
-        val manifest = checkNotNull(resolver.openInputStream(uri)) { "The selected recording could not be opened" }.use {
-            vault.importSource(it, name, title, actor, cancelled::get, reportProgress("bytes preserved"))
-        }
-        showCase(manifest)
-        "Original preserved and verified by SHA-256 ${manifest.activeAudio().getString("sha256")}. Open Analyze to process it."
-    }
-    fun stopRecording() { recordingStop.set(true) }
-    fun record(title: String, actor: String) {
-        if (mutable.value.job != null) return
-        recordingStop.set(false)
-        runJob("Recording microphone") {
-            val manifest = captureMicrophone(getApplication(), vault, title, actor, recordingStop::get, cancelled::get, reportProgress("bytes captured"))
-            showCase(manifest)
-            "Microphone acquisition preserved and hashed. Open Analyze to process the recording."
-        }
-    }
-    fun sample(actor: String) = runJob("Loading synthetic speech") {
-        val manifest = getApplication<Application>().assets.open("synthetic-speech.wav").use {
-            vault.importSource(it, "SYNTHETIC TEST DATA - NOT EVIDENCE.wav", "Synthetic speech evaluation", actor, cancelled::get)
-        }
-        showCase(manifest); "Synthetic speech is ready in Analyze."
-    }
-    fun importCase(uri: Uri, actor: String, expected: String) = runJob("Verifying and importing case") {
-        val manifest = checkNotNull(getApplication<Application>().contentResolver.openInputStream(uri)).use {
-            vault.importPackage(it, actor, expected.trim().lowercase().ifBlank { null }, cancelled::get, reportProgress("bytes checked"))
-        }
-        showCase(manifest)
-        "Case transferred into the encrypted vault. ${if (expected.isBlank()) "Internal consistency checked." else "The independent package hash matched."}"
-    }
-    fun analyze(actor: String) = runJob("Analyzing audio") {
-        val overview = workflow.analyze(selected(), actor, cancelled::get, reportProgress("units processed"))
-        mutable.update { it.copy(analysis = overview) }
-        "Waveform, spectral overview and candidate speech regions are ready."
-    }
-    fun enhance(actor: String, settings: RenderSettings) = runJob("Rendering audio revision") {
-        val artifact = workflow.enhance(selected(), actor, settings, cancelled::get, reportProgress("units processed"))
-        mutable.update { it.copy(analysis = null) }
-        "New WAV revision saved. SHA-256 ${artifact.getString("sha256")}."
-    }
-    fun revision(actor: String, id: String) = runJob("Selecting audio revision") {
-        vault.selectRevision(selected(), actor, id)
-        mutable.update { it.copy(analysis = null) }
-        "Active revision changed. Earlier versions remain in the case."
-    }
-    fun transcribe(actor: String) = runJob("Transcribing on this device") {
-        val case = selected()
-        val artifact = workflow.transcribe(case, actor, cancelled::get, reportProgress("units processed"))
-        openTranscript(case, artifact)
-        "Draft transcript saved. Review the words, timestamps and speaker groups."
-    }
-    private fun openTranscript(case: JSONObject, artifact: JSONObject) {
-        val transcript = workflow.readTranscript(case, artifact)
-        mutable.update { it.copy(transcript = transcript, transcriptRevision = artifact.getString("id")) }
-    }
-    fun openTranscript() = runJob("Opening transcript") {
-        val case = selected(); openTranscript(case, case.latestTranscript() ?: error("This case has no transcript yet"))
-        "Saved transcript opened."
-    }
-    fun review(actor: String, segment: String, text: String, label: String, verified: Boolean) = runJob("Saving examiner revision") {
-        val case = selected()
-        val parent = case.artifact(mutable.value.transcriptRevision ?: error("Open a transcript first"))
-        val transcript = workflow.review(case, actor, parent, segment, text, label, verified)
-        mutable.update { it.copy(transcript = transcript, transcriptRevision = case.latestTranscript()?.getString("id")) }
-        if (verified) "This segment is marked as reviewed by the examiner." else "Edits saved as a separate revision."
-    }
-    fun workload(actor: String, status: String) = runJob("Saving workload state") {
-        require(status in setOf("NEW", "IN_REVIEW", "COMPLETE"))
-        vault.recordEvent(selected(), actor, "WORKLOAD_UPDATE", JSONObject().put("status", status))
-        "Workload status saved locally. It travels with an explicit case transfer."
-    }
-    fun verify(actor: String) = runJob("Verifying evidence and audit") {
-        val case = selected(); val result = vault.verify(case, cancelled::get)
-        vault.recordEvent(case, actor, "VERIFICATION", JSONObject().put("result", "PASS")); result
-    }
-    fun export(uri: Uri, actor: String, format: ExportFormat) = runJob("Exporting ${format.label}") {
-        val case = selected()
-        val resolver = getApplication<Application>().contentResolver
-        val hash = checkNotNull(resolver.openOutputStream(uri, "w")) { "Could not open the export destination" }.use { output ->
-            when (format) {
-                ExportFormat.CASE -> vault.exportPackage(case, output, actor, cancelled::get)
-                ExportFormat.WAV -> workflow.exportArtifact(case, actor, workflow.prepareAudio(case, actor, cancelled::get, {}), output, cancelled::get)
-                else -> exportDocument(workflow, vault, case, actor, format, output, cancelled::get)
-            }
-        }
-        "Export saved. SHA-256 $hash"
-    }
-    fun play(actor: String, id: String? = null, startSeconds: Double = 0.0) = runJob("Preparing authenticated playback", { startPlayback(id, startSeconds) }) {
-        val case = selected()
-        val artifact = id?.let(case::artifact) ?: case.activeAudio()
-        require(artifact.getString("type") in setOf("SOURCE", "DECODE", "ENHANCED_AUDIO"))
-        vault.recordEvent(case, actor, "PLAYBACK_REQUEST", JSONObject().put("artifactId", artifact.getString("id")).put("startSeconds", startSeconds))
-        "Playback requested for ${artifact.getString("name")}."
-    }
-    private fun startPlayback(id: String?, startSeconds: Double) {
-        if (mutable.value.job != null || !mutable.value.ready) return
-        try {
-            val case = selected(); val artifact = id?.let(case::artifact) ?: case.activeAudio()
-            require(artifact.getString("type") in setOf("SOURCE", "DECODE", "ENHANCED_AUDIO"))
-            stop()
-            player = ExoPlayer.Builder(getApplication()).build().also { p ->
-                p.addListener(object : Player.Listener {
-                    override fun onPlayerError(error: PlaybackException) { notice("Playback could not decode or authenticate the selected audio revision.") }
-                })
-                val data = ProgressiveMediaSource.Factory { VaultDataSource(vault, case.getString("caseId"), artifact.getString("id")) }
-                p.setMediaSource(data.createMediaSource(MediaItem.fromUri("echoscript://selected-audio")))
-                p.prepare()
-                if (startSeconds.isFinite() && startSeconds > 0) p.seekTo((startSeconds * 1000).toLong())
-                p.play()
-            }
-        } catch (_: Exception) { notice("Choose a playable audio revision.") }
-    }
-    fun stop() { player?.release(); player = null }
-    override fun onCleared() { cancelled.set(true); stop(); super.onCleared() }
-}
 
 class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
-        setContent { MaterialTheme { VaultApp() } }
+        enableEdgeToEdge()
+        setContent { VaultApp() }
+    }
+}
+
+@Composable
+private fun Glyph(@DrawableRes resource: Int, description: String? = null) {
+    Icon(painterResource(resource), description, modifier = Modifier.size(24.dp))
+}
+
+@Composable
+private fun Section(title: String, subtitle: String? = null, content: @Composable ColumnScope.() -> Unit) {
+    Card(Modifier.fillMaxWidth(), border = androidx.compose.foundation.BorderStroke(1.dp, MaterialTheme.colorScheme.outlineVariant), colors = CardDefaults.cardColors(containerColor = MaterialTheme.colorScheme.surfaceContainerLow)) {
+        Column(Modifier.padding(18.dp), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+            Text(title, style = MaterialTheme.typography.titleMedium)
+            if (subtitle != null) Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+            content()
+        }
+    }
+}
+
+@Composable
+private fun Acknowledgement(text: String, checked: Boolean, enabled: Boolean = true, change: (Boolean) -> Unit) {
+    Row(
+        Modifier.fillMaxWidth().heightIn(min = 48.dp).toggleable(checked, enabled = enabled, role = Role.Checkbox, onValueChange = change),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        Checkbox(checked, onCheckedChange = null, enabled = enabled)
+        Text(text, style = MaterialTheme.typography.bodyMedium, modifier = Modifier.padding(start = 10.dp).weight(1f))
     }
 }
 
 @Composable
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
+@OptIn(ExperimentalLayoutApi::class)
 private fun VaultApp(model: VaultModel = viewModel()) {
+    val context = LocalContext.current
+    val preferences = remember { context.getSharedPreferences("echoscript_preferences", 0) }
+    var appearance by rememberSaveable { mutableStateOf(preferences.getString("appearance", "Dark") ?: "Dark") }
+    var actor by rememberSaveable { mutableStateOf(preferences.getString("examiner", "EXAMINER") ?: "EXAMINER") }
     val screen by model.state.collectAsStateWithLifecycle()
     val activity = LocalActivity.current as? ComponentActivity
-    val busy = screen.job != null
+    val view = LocalView.current
+    val busy = screen.job != null || screen.importPending || model.remoteApproval != null
     val selected = screen.cases.firstOrNull { it.getString("caseId") == screen.selected }
     var tab by rememberSaveable { mutableStateOf("Cases") }
-    var title by rememberSaveable { mutableStateOf("") }
-    var actor by rememberSaveable { mutableStateOf("EXAMINER") }
-    var expectedHash by remember { mutableStateOf("") }
+    val title = model.acquisitionTitle
+    var expectedHash by rememberSaveable { mutableStateOf("") }
+    var transfer by rememberSaveable { mutableStateOf(false) }
     var exportType by rememberSaveable { mutableStateOf(ExportFormat.CASE.name) }
-    var acknowledge by remember(screen.selected) { mutableStateOf(false) }
+    // Retain workspace state for this case across navigation/rotation. A new
+    // case gets a fresh registry so restored fields cannot cross case boundaries.
+    val stateHolder = key(screen.selected) { rememberSaveableStateHolder() }
     val microphone = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
-        if (granted) model.record(title, actor) else model.notice("Microphone permission was declined. File import is available.")
+        if (granted) model.record(title.ifBlank { "Microphone ${EvidenceVault.utc()}" }, actor) { tab = "Analyze" }
+        else model.notice("Microphone permission was declined. Choose audio file to import a recording.")
     }
-    val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { model.importAudio(it, title, actor); tab = "Analyze" }
+    val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
+        if (result.resultCode != android.app.Activity.RESULT_OK) {
+            model.pickerNotice("No recording was selected. Choose a file or try the other file picker.")
+        } else try {
+            val uri = selectedAudioUri(result.data)
+            if (uri == null) model.pickerNotice("The file picker returned no recording. Try Choose with another file picker.")
+            else model.selectAudio(uri, if (tab == "Acquire") title else "")
+        } catch (failure: IllegalArgumentException) {
+            model.pickerNotice(failure.message ?: "Choose one recording at a time.")
+        } catch (_: RuntimeException) {
+            model.pickerNotice("The picker returned an unreadable selection. Choose the file again or try the other picker.")
+        }
+    }
+    // Providers sometimes omit or mislabel audio MIME types. Select any openable
+    // file; actual decoding validates the bytes after original preservation.
+    val chooseAudio = {
+        model.markAudioPickerOpen()
+        try { importAudio.launch(audioPickerIntent(Intent.ACTION_OPEN_DOCUMENT)) }
+        catch (_: android.content.ActivityNotFoundException) { model.pickerNotice("No document picker is available. Try Choose with another file picker.") }
+        catch (_: SecurityException) { model.pickerNotice("Android denied access to this document picker. Try the other picker or check your device settings.") }
+        catch (_: IllegalStateException) { model.pickerNotice("The document picker could not open yet. Wait a moment and try again.") }
+    }
+    val chooseOtherAudio = {
+        model.markAudioPickerOpen()
+        try { importAudio.launch(audioPickerIntent(Intent.ACTION_GET_CONTENT)) }
+        catch (_: android.content.ActivityNotFoundException) { model.pickerNotice("No compatible file picker is installed or permitted on this device.") }
+        catch (_: SecurityException) { model.pickerNotice("Android denied access to this picker. Try the other picker or check your device settings.") }
+        catch (_: IllegalStateException) { model.pickerNotice("The file picker could not open yet. Wait a moment and try again.") }
     }
     val importCase = rememberLauncherForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { model.importCase(it, actor, expectedHash); tab = "Cases" }
+        if (uri != null) model.importCase(uri, actor, expectedHash) { transfer = false; tab = "Cases" }
+        else model.transferPassphrase = ""
     }
     val export = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
-        if (result.resultCode == android.app.Activity.RESULT_OK) result.data?.data?.let { model.export(it, actor, ExportFormat.valueOf(exportType)) }
+        val destination = result.data?.data
+        if (result.resultCode == android.app.Activity.RESULT_OK && destination != null) model.export(destination, actor, ExportFormat.valueOf(exportType))
+        else model.clearExportSecret()
     }
     DisposableEffect(busy) {
         if (busy) activity?.window?.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -281,209 +158,400 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         activity?.lifecycle?.addObserver(observer)
         onDispose { activity?.lifecycle?.removeObserver(observer); model.stopRecording(); model.stop() }
     }
-    Surface(Modifier.fillMaxSize()) {
-        Column(Modifier.fillMaxSize().statusBarsPadding().navigationBarsPadding().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            Text("EchoScript", style = MaterialTheme.typography.headlineMedium)
-            Text("On-device workbench · development preview", color = MaterialTheme.colorScheme.primary)
-            Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(4.dp)) {
-                for (page in listOf("Cases", "Acquire", "Analyze", "Transcript", "Audit", "Export")) {
-                    FilterChip(selected = tab == page, onClick = { tab = page }, label = { Text(page) })
+    LaunchedEffect(screen.importedCaseId) {
+        screen.importedCaseId?.let { id -> tab = "Analyze"; model.acknowledgeImportedCase(id) }
+    }
+    LaunchedEffect(tab, screen.selected, screen.ready) {
+        if (tab == "Transcript" && screen.ready && !busy && screen.transcript == null && selected?.latestTranscript() != null) model.openTranscript()
+    }
+    EchoTheme(appearance) {
+        SubmissionApproval(model)
+        val dark = MaterialTheme.colorScheme.background == Color(0xFF0B1219)
+        SideEffect {
+            activity?.window?.let { window ->
+                WindowCompat.getInsetsController(window, view).apply {
+                    isAppearanceLightStatusBars = !dark
+                    isAppearanceLightNavigationBars = !dark
                 }
             }
-            Text(screen.message, style = MaterialTheme.typography.bodySmall)
-            if (busy) {
-                LinearProgressIndicator(Modifier.fillMaxWidth())
-                if (screen.job == "Recording microphone") Button(onClick = model::stopRecording) { Text("Stop and preserve recording") }
-                OutlinedButton(onClick = model::cancel) { Text("Cancel current operation") }
-            }
-            val activePlayer = model.player
-            if (activePlayer != null) {
-                AndroidView(factory = { context -> PlayerView(context).apply { this.player = activePlayer } }, update = { it.player = activePlayer }, modifier = Modifier.fillMaxWidth().height(90.dp))
-                TextButton(onClick = model::stop) { Text("Close player") }
-            }
-            Column(Modifier.weight(1f).verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(10.dp)) {
-                for (warning in screen.recoveryWarnings.take(10)) Text(warning, color = MaterialTheme.colorScheme.error)
-                val ready = screen.ready && !busy && actor.isNotBlank()
-                when (tab) {
-                    "Acquire" -> {
-                        OutlinedTextField(title, { title = it.take(256) }, label = { Text("Case title") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        OutlinedTextField(actor, { actor = it.take(128) }, label = { Text("Examiner identifier") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
-                        Button(onClick = { importAudio.launch(arrayOf("audio/*", "video/mp4", "video/webm", "application/octet-stream")) }, enabled = ready && title.isNotBlank()) { Text("Choose audio file") }
-                        Text("The vault preserves original files up to 4 GiB. Processing accepts sources up to 750 MB, subject to codec support and space for decoded audio.")
-                        OutlinedButton(onClick = { microphone.launch(android.Manifest.permission.RECORD_AUDIO) }, enabled = ready && title.isNotBlank()) { Text("Record from microphone") }
-                        OutlinedButton(onClick = { model.sample(actor); tab = "Analyze" }, enabled = ready) { Text("Load synthetic speech sample") }
+        }
+        Scaffold(
+            topBar = {
+                Surface(color = MaterialTheme.colorScheme.background) {
+                    Row(Modifier.fillMaxWidth().statusBarsPadding().padding(start = 20.dp, end = 8.dp, top = 12.dp, bottom = 12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Box(Modifier.size(42.dp).background(MaterialTheme.colorScheme.primaryContainer, MaterialTheme.shapes.medium), contentAlignment = Alignment.Center) {
+                            CompositionLocalProvider(LocalContentColor provides MaterialTheme.colorScheme.primary) { Glyph(R.drawable.ic_wave) }
+                        }
+                        Column(Modifier.weight(1f).padding(start = 12.dp)) {
+                            Text("EchoScript", style = MaterialTheme.typography.titleLarge)
+                            Text(selected?.getString("title") ?: "Your audio workspace", style = MaterialTheme.typography.labelMedium, maxLines = 1, overflow = TextOverflow.Ellipsis, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        IconButton(onClick = { tab = "Audit" }, enabled = !busy && selected != null) { Glyph(R.drawable.ic_audit, "Audit") }
+                        IconButton(onClick = { tab = "Settings" }, enabled = !busy) { Glyph(R.drawable.ic_settings, "Settings") }
                     }
-                    "Cases" -> {
-                        Text("Cases on this device", style = MaterialTheme.typography.titleLarge)
-                        if (screen.cases.isEmpty()) Text("Choose Acquire to add an audio file.")
-                        for (case in screen.cases.take(200)) {
-                            val id = case.getString("caseId")
-                            val workload = case.items("audit").lastOrNull { it.getString("action") == "WORKLOAD_UPDATE" }?.getJSONObject("details")?.optString("status") ?: "NEW"
-                            OutlinedCard(onClick = { model.select(id) }, enabled = !busy, modifier = Modifier.fillMaxWidth()) {
-                                Column(Modifier.padding(12.dp)) {
-                                    Text(case.getString("title"), style = MaterialTheme.typography.titleMedium)
-                                    Text("${if (id == screen.selected) "Selected · " else ""}${workload.replace('_', ' ')} · ${case.getJSONArray("artifacts").length()} artifacts")
+                }
+            },
+            bottomBar = {
+                NavigationBar(containerColor = MaterialTheme.colorScheme.surfaceContainer, tonalElevation = 0.dp) {
+                    for ((page, icon) in listOf("Cases" to R.drawable.ic_cases, "Analyze" to R.drawable.ic_wave, "Transcript" to R.drawable.ic_words, "Export" to R.drawable.ic_export)) {
+                        NavigationBarItem(selected = tab == page, onClick = { tab = page }, icon = { Glyph(icon) }, label = { Text(page) })
+                    }
+                }
+            },
+        ) { padding ->
+            Column(Modifier.fillMaxSize().padding(padding).imePadding()) {
+            val ready = screen.ready && !busy && actor.isNotBlank()
+            if (screen.audioSelected) {
+                Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.padding(12.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                        Text("Selected recording", style = MaterialTheme.typography.titleSmall)
+                        SelectionContainer { Text(screen.importName ?: "Selected audio file", maxLines = 2, overflow = TextOverflow.Ellipsis) }
+                        if (busy) {
+                            LinearProgressIndicator(Modifier.fillMaxWidth())
+                            Text(screen.message, style = MaterialTheme.typography.bodySmall)
+                            if (screen.job != null) TextButton(onClick = model::cancel) { Text("Cancel current operation") }
+                        } else {
+                            Text(screen.message, style = MaterialTheme.typography.bodySmall)
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                Button(onClick = { model.importSelectedAudio(actor) }, enabled = ready) { Text(if (screen.failed) "Retry import" else "Import selected audio") }
+                                TextButton(onClick = model::clearSelectedAudio, enabled = ready) { Text("Clear") }
+                            }
+                        }
+                    }
+                }
+            } else if (screen.pickerNotice != null) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), shape = MaterialTheme.shapes.medium) {
+                    Row(Modifier.padding(12.dp), verticalAlignment = Alignment.CenterVertically) {
+                        Text(screen.pickerNotice ?: "Choose an audio file again.", modifier = Modifier.weight(1f), style = MaterialTheme.typography.bodySmall)
+                        TextButton(onClick = model::dismissPickerNotice) { Text("Dismiss") }
+                    }
+                }
+            } else if (INTERRUPTED_AUDIO_SELECTION in screen.recoveryWarnings) {
+                Surface(color = MaterialTheme.colorScheme.errorContainer,
+                    modifier = Modifier.fillMaxWidth().padding(horizontal = 18.dp, vertical = 6.dp), shape = MaterialTheme.shapes.medium) {
+                    Column(Modifier.padding(12.dp)) {
+                        Text(INTERRUPTED_AUDIO_SELECTION, style = MaterialTheme.typography.bodySmall)
+                        Row {
+                            TextButton(onClick = chooseAudio, enabled = ready) { Text("Choose file again") }
+                            TextButton(onClick = model::dismissInterruptedSelection) { Text("Dismiss") }
+                        }
+                    }
+                }
+            }
+            stateHolder.SaveableStateProvider(tab) {
+                Column(
+                    Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()).padding(horizontal = 18.dp, vertical = 12.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp),
+                ) {
+                    for (warning in screen.recoveryWarnings.filterNot { it == INTERRUPTED_AUDIO_SELECTION }) Text(warning, color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+                    screen.importName?.let { name ->
+                        if (!screen.audioSelected && tab == "Analyze") Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                            Text("Imported recording", style = MaterialTheme.typography.labelSmall)
+                            SelectionContainer { Text(name, style = MaterialTheme.typography.labelSmall, maxLines = 1, overflow = TextOverflow.Ellipsis) }
+                        } else if (!screen.audioSelected && tab in listOf("Cases", "Acquire")) Section("Imported recording") { SelectionContainer { Text(name) } }
+                    }
+                    if (!screen.audioSelected && screen.pickerNotice == null && (screen.job != null || screen.importPending || screen.message != "Choose a case or import a recording.")) {
+                        if (tab == "Analyze" && !screen.failed && screen.job == null && !screen.importPending)
+                            Text(screen.message, style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        else StatusCard(screen, model)
+                    }
+                    val activePlayer = model.player
+                    if (activePlayer != null) {
+                        AndroidView(factory = { c -> PlayerView(c).apply { player = activePlayer } }, update = { it.player = activePlayer }, modifier = Modifier.fillMaxWidth().height(90.dp))
+                        TextButton(onClick = model::stop) { Text("Close player") }
+                    }
+                    when (tab) {
+                        "Cases" -> {
+                            Text("Your case workspace", style = MaterialTheme.typography.headlineSmall)
+                            Text("Import. Examine. Review.", color = MaterialTheme.colorScheme.onSurfaceVariant)
+                            Button(onClick = chooseAudio, enabled = ready, modifier = Modifier.fillMaxWidth().heightIn(min = 54.dp)) {
+                                Glyph(R.drawable.ic_add); Spacer(Modifier.width(10.dp)); Text("Choose audio file")
+                            }
+                            TextButton(onClick = chooseOtherAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose with another file picker") }
+                            Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+                                TextButton(onClick = { tab = "Acquire" }, enabled = ready) { Text("Record audio") }
+                                TextButton(onClick = { transfer = !transfer; if (!transfer) model.transferPassphrase = "" }, enabled = ready) { Text("Transfer case") }
+                            }
+                            if (transfer) Section("Open a case package", "Choose protected storage and retain a separate package hash.") {
+                                OutlinedTextField(expectedHash, { expectedHash = it.take(64) }, label = { Text("Independently received SHA-256 (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                SecretField(model.transferPassphrase, { model.transferPassphrase = it }, "Transfer passphrase (protected packages)", ready)
+                                Button(onClick = { importCase.launch(arrayOf("application/zip", "application/octet-stream")) }, enabled = ready) { Text("Choose .echocase package") }
+                            }
+                            CasesList(model, screen, ready) { model.select(it); tab = "Analyze" }
+                            OutlinedButton(onClick = { model.sample(actor) { tab = "Analyze" } }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Load synthetic speech sample") }
+                            Text("On device · English speech model included", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                        }
+                        "Acquire" -> Section("Acquire a recording", "Your examiner identifier is saved in Settings. File names supply the case title when left blank.") {
+                            OutlinedTextField(title, { model.acquisitionTitle = it.take(256) }, label = { Text("Case title (optional)") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+                            Button(onClick = chooseAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose audio file") }
+                            TextButton(onClick = chooseOtherAudio, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Choose with another file picker") }
+                            OutlinedButton(onClick = { microphone.launch(android.Manifest.permission.RECORD_AUDIO) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Record from microphone") }
+                            Text("Source preservation up to 4 GiB. Processing up to 750 MB, subject to codec and private storage limits.", style = MaterialTheme.typography.bodySmall)
+                        }
+                        "Settings" -> {
+                            Text("Make it yours", style = MaterialTheme.typography.headlineSmall)
+                            Section("Appearance") {
+                                FlowRow(horizontalArrangement = Arrangement.spacedBy(8.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                                    for (mode in listOf("Dark", "Light", "System")) FilterChip(appearance == mode, {
+                                        appearance = mode; preferences.edit().putString("appearance", mode).apply()
+                                    }, { Text(mode) }, modifier = Modifier.heightIn(min = 48.dp))
                                 }
                             }
+                            Section("Companion processing", "Optional Whisper connection") {
+                                CompanionSettings(model, ready)
+                            }
+                            Section("Examiner", "This identifier is supplied locally and recorded with your actions.") {
+                                var draft by rememberSaveable(actor) { mutableStateOf(actor) }
+                                OutlinedTextField(draft, { draft = it.take(128) }, label = { Text("Examiner identifier") }, singleLine = true, modifier = Modifier.fillMaxWidth())
+                                Button(onClick = { actor = draft.trim(); preferences.edit().putString("examiner", actor).apply(); model.notice("Examiner identifier saved on this device.") }, enabled = draft.isNotBlank() && draft.none { it.code < 32 }) { Text("Save examiner") }
+                            }
+                            Text("${BuildConfig.VERSION_NAME} · Android 10+", style = MaterialTheme.typography.bodySmall)
+                            Text("The vault is encrypted on this device. Keep verified protected case exports before uninstalling or resetting the app. Individual WAV/document exports and legacy case ZIPs are plaintext. Device checkpoints require independently trusted signer fingerprints.", style = MaterialTheme.typography.bodySmall)
                         }
-                        if (selected != null) {
-                            Text("Set local workload status")
-                            Row(Modifier.horizontalScroll(rememberScrollState())) {
-                                for (status in listOf("NEW", "IN_REVIEW", "COMPLETE")) TextButton(onClick = { model.workload(actor, status) }, enabled = ready) { Text(status.replace('_', ' ')) }
+                        else -> if (selected == null) Section("Start with a recording", "Import an audio file or try the included sample from Cases.") {
+                            Button(onClick = chooseAudio, enabled = ready) { Text("Choose audio file") }
+                        } else when (tab) {
+                            "Analyze" -> AnalysisScreen(model, screen, selected, actor, ready) { tab = "Transcript" }
+                            "Transcript" -> TranscriptScreen(model, screen, selected, actor, ready) { tab = "Export" }
+                            "Audit" -> AuditScreen(model, selected, actor, ready)
+                            "Export" -> ExportScreen(model, selected, actor, ready) { format ->
+                                exportType = format.name
+                                val basename = selected.getString("caseId").take(8)
+                                export.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(format.mime).putExtra(Intent.EXTRA_TITLE, "echoscript-$basename.${format.extension}"))
                             }
                         }
-                        HorizontalDivider()
-                        Text("Transfer a case to this device", style = MaterialTheme.typography.titleMedium)
-                        OutlinedTextField(expectedHash, { expectedHash = it.take(64) }, label = { Text("Independently received SHA-256 (optional)") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-                        Button(onClick = { importCase.launch(arrayOf("application/zip", "application/octet-stream")) }, enabled = ready) { Text("Choose .echocase package") }
-                        Text("Transfer is explicit. Existing case histories are protected from replacement.")
                     }
-                    "Analyze" -> if (selected == null) Text("Select or import a case first.") else AnalysisScreen(model, screen, selected, actor, ready)
-                    "Transcript" -> if (selected == null) Text("Select or import a case first.") else TranscriptScreen(model, screen, actor, ready)
-                    "Audit" -> {
-                        Button(onClick = { model.verify(actor) }, enabled = ready && selected != null) { Text("Verify all hashes and custody records") }
-                        selected?.let { case ->
-                            Text("Original SHA-256\n${case.items("artifacts").first { it.getString("type") == "SOURCE" }.getString("sha256")}")
-                            for (entry in case.items("audit").takeLast(40).asReversed()) Text("${entry.getInt("seq")} · ${entry.getString("action")}\n${entry.getString("timestampUtc")} · ${entry.getString("actor")}", style = MaterialTheme.typography.bodySmall)
-                        }
-                    }
-                    "Export" -> {
-                        Text("Files are written to a destination you choose. The case ZIP includes the original, derivatives and custody history. Exported files are plaintext. Keep them in approved storage and retain their hashes independently.")
-                        Row { Checkbox(acknowledge, { acknowledge = it }); Text("I understand and will protect exported files.", Modifier.padding(top = 12.dp)) }
-                        for (format in ExportFormat.entries) {
-                            OutlinedButton(onClick = {
-                                exportType = format.name
-                                export.launch(Intent(Intent.ACTION_CREATE_DOCUMENT).addCategory(Intent.CATEGORY_OPENABLE).setType(format.mime).putExtra(Intent.EXTRA_TITLE, "echoscript.${format.extension}"))
-                            }, enabled = ready && selected != null && acknowledge && (!format.transcript || selected.latestTranscript() != null)) { Text(format.label) }
-                        }
-                    }
+                    Text("Development preview · synthetic evaluation · beta gate pending", style = MaterialTheme.typography.labelSmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                    if (!screen.ready && screen.job == null) Text(screen.message, color = MaterialTheme.colorScheme.onSurfaceVariant)
                 }
-                HorizontalDivider()
-                Text("Synthetic evaluation only. Human review and case-specific custody remain essential. Beta gate not passed.", style = MaterialTheme.typography.bodySmall)
+            }
             }
         }
     }
 }
 
 @Composable
-private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSONObject, actor: String, ready: Boolean) {
-    var gain by remember(screen.selected) { mutableStateOf("6") }
-    var highPass by remember(screen.selected) { mutableStateOf("80") }
-    var lowPass by remember(screen.selected) { mutableStateOf("") }
-    var low by remember(screen.selected) { mutableStateOf("0") }
-    var mid by remember(screen.selected) { mutableStateOf("0") }
-    var high by remember(screen.selected) { mutableStateOf("0") }
-    var hum by remember(screen.selected) { mutableStateOf(0.0) }
-    var notch by remember(screen.selected) { mutableStateOf("") }
-    var q by remember(screen.selected) { mutableStateOf("25") }
-    var floor by remember(screen.selected) { mutableStateOf("") }
-    var start by remember(screen.selected) { mutableStateOf("") }
-    var end by remember(screen.selected) { mutableStateOf("") }
-    var limiter by remember(screen.selected) { mutableStateOf(true) }
-    var advanced by remember { mutableStateOf(false) }
-    Text(selected.getString("title"), style = MaterialTheme.typography.titleLarge)
-    Text("Active revision · ${selected.activeAudio().getString("name")}")
-    Row(Modifier.horizontalScroll(rememberScrollState())) {
-        Button(onClick = { model.analyze(actor) }, enabled = ready) { Text("Analyze audio") }
-        TextButton(onClick = { model.play(actor) }, enabled = ready) { Text("Play active audio") }
-    }
-    screen.analysis?.let { analysis ->
-        val peaks = analysis.getJSONArray("peaks")
-        val spectrum = analysis.getJSONArray("spectrum")
-        val color = MaterialTheme.colorScheme.primary
-        Text("${clock(analysis.getLong("durationMs"))} · Peak ${"%.1f".format(Locale.ROOT, analysis.getDouble("peakDb"))} dBFS · ${analysis.getLong("clippedSamples")} near-full-scale samples")
-        Canvas(Modifier.fillMaxWidth().height(62.dp)) {
-            for (i in 0 until peaks.length()) {
-                val x = size.width * i / peaks.length()
-                val y = size.height * peaks.getDouble(i).toFloat() / 2
-                drawLine(color, Offset(x, size.height / 2 - y), Offset(x, size.height / 2 + y), 1.5f)
-            }
-        }
-        Text("Spectral overview · time left to right, frequency bottom to top", style = MaterialTheme.typography.labelSmall)
-        Canvas(Modifier.fillMaxWidth().height(82.dp)) {
-            for (x in 0 until spectrum.length()) {
-                val tile = spectrum.getJSONArray(x)
-                val width = size.width / spectrum.length()
-                val height = size.height / tile.length()
-                for (y in 0 until tile.length()) {
-                    val opacity = ((tile.getDouble(y) + 85) / 85).toFloat().coerceIn(0.04f, 1f)
-                    drawRect(color.copy(alpha = opacity), Offset(width * x, size.height - height * (y + 1)), Size(width + 0.2f, height + 0.2f))
+private fun StatusCard(screen: VaultScreen, model: VaultModel) {
+    Surface(color = if (screen.failed) MaterialTheme.colorScheme.errorContainer else MaterialTheme.colorScheme.primaryContainer, shape = MaterialTheme.shapes.medium) {
+        Column(Modifier.fillMaxWidth().padding(14.dp), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            SelectionContainer { Text(screen.message, style = MaterialTheme.typography.bodySmall) }
+            if (screen.importPending) LinearProgressIndicator(Modifier.fillMaxWidth())
+            if (screen.job != null) {
+                LinearProgressIndicator(Modifier.fillMaxWidth())
+                Row {
+                    if (screen.job == "Recording microphone") TextButton(onClick = model::stopRecording) { Text("Stop and preserve recording") }
+                    TextButton(onClick = model::cancel) { Text("Cancel current operation") }
                 }
             }
         }
-        for (event in analysis.items("events").take(12)) {
-            val first = event.getLong("startMs"); val last = event.getLong("endMs")
-            TextButton(onClick = { start = first.toString(); end = last.toString() }, enabled = ready) { Text("Select speech candidate ${clock(first)} – ${clock(last)}") }
+    }
+}
+
+@Composable
+private fun CasesList(model: VaultModel, screen: VaultScreen, ready: Boolean, select: (String) -> Unit) {
+    val query = model.caseQuery
+    var visible by rememberSaveable(query) { mutableIntStateOf(25) }
+    if (screen.cases.isEmpty()) {
+        Section("Start with a recording", "Waveform and speech candidates appear automatically after import.") {
+            Text("Originals are preserved in your encrypted device vault.", style = MaterialTheme.typography.bodyMedium)
+        }
+        return
+    }
+    OutlinedTextField(query, { model.caseQuery = it.take(256) }, placeholder = { Text("Search cases") }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    val cases = remember(screen.cases, query) { screen.cases.filter { it.getString("title").contains(query, ignoreCase = true) } }
+    Text("${cases.size} cases on this device", style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.onSurfaceVariant)
+    for (case in cases.take(visible)) {
+        val id = case.getString("caseId")
+        val workload = remember(case) {
+            val audit = case.getJSONArray("audit")
+            (audit.length() - 1 downTo 0).asSequence().map(audit::getJSONObject)
+                .firstOrNull { it.getString("action") == "WORKLOAD_UPDATE" }?.getJSONObject("details")?.optString("status", "NEW") ?: "NEW"
+        }
+        Card(onClick = { select(id) }, enabled = ready, modifier = Modifier.fillMaxWidth().testTag("case-$id")) {
+            Row(Modifier.padding(16.dp), verticalAlignment = Alignment.CenterVertically) {
+                Glyph(R.drawable.ic_wave)
+                Column(Modifier.weight(1f).padding(horizontal = 12.dp)) {
+                    Text(case.getString("title"), style = MaterialTheme.typography.titleSmall, maxLines = 2, overflow = TextOverflow.Ellipsis)
+                    Text("${workload.replace('_', ' ')} · ${case.getString("createdAtUtc").take(10)}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                }
+                Glyph(R.drawable.ic_next)
+            }
         }
     }
-    NumberField(gain, { gain = it }, "Gain (dB)")
-    NumberField(highPass, { highPass = it }, "High-pass (Hz, blank to bypass)")
-    NumberField(start, { start = it }, "Selection start (ms, optional)")
-    NumberField(end, { end = it }, "Selection end (ms, optional)")
-    Row { Switch(limiter, { limiter = it }); Text("Limit peaks", Modifier.padding(10.dp)) }
-    TextButton(onClick = { advanced = !advanced }) { Text(if (advanced) "Hide additional filters" else "Additional filters and EQ") }
-    if (advanced) {
-        for ((value, set, label) in listOf(Triple(low, { v: String -> low = v }, "Low EQ dB"), Triple(mid, { v: String -> mid = v }, "Mid EQ dB"), Triple(high, { v: String -> high = v }, "High EQ dB"), Triple(lowPass, { v: String -> lowPass = v }, "Low-pass Hz"), Triple(notch, { v: String -> notch = v }, "Tonal notch Hz"), Triple(q, { v: String -> q = v }, "Notch Q"), Triple(floor, { v: String -> floor = v }, "Quiet-region attenuation threshold dBFS"))) NumberField(value, set, label)
-        Row(Modifier.horizontalScroll(rememberScrollState()), horizontalArrangement = Arrangement.spacedBy(6.dp)) {
-            for (hz in listOf(0.0, 50.0, 60.0)) FilterChip(hum == hz, { hum = hz }, { Text(if (hz == 0.0) "Hum off" else "${hz.toInt()} Hz hum") })
-        }
-    }
-    Button(onClick = {
-        try {
-            fun number(value: String) = if (value.isBlank()) 0.0 else value.toDouble()
-            model.enhance(actor, RenderSettings(number(gain), number(low), number(mid), number(high), number(highPass), number(lowPass), hum,
-                number(notch), q.toDouble(), floor.ifBlank { null }?.toDouble(), if (floor.isBlank()) 0.0 else 12.0, limiter,
-                start.ifBlank { "0" }.toLong(), end.ifBlank { null }?.toLong()))
-        } catch (_: Exception) { model.notice("Check the filter values and the selected interval.") }
-    }, enabled = ready) { Text("Render enhanced revision") }
-    Text("Audio revisions", style = MaterialTheme.typography.titleMedium)
-    selected.items("artifacts").filter { it.getString("type") in setOf("SOURCE", "DECODE", "ENHANCED_AUDIO") }.takeLast(25).asReversed().forEach { artifact ->
-        TextButton(onClick = { model.revision(actor, artifact.getString("id")) }, enabled = ready && artifact.getString("id") != selected.getString("activeArtifact")) { Text("Revision ${artifact.getInt("revision")} · ${artifact.getString("name")}") }
-    }
+    if (cases.size > visible) TextButton(onClick = { visible += 25 }) { Text("Show more cases") }
+    if (cases.isEmpty()) Text("No case titles match your search.")
+}
+
+@Composable
+private fun AnalysisScreen(model: VaultModel, screen: VaultScreen, selected: JSONObject, actor: String, ready: Boolean, transcript: () -> Unit) {
+    AudioWorkbench(model, screen, selected, actor, ready, transcript)
 }
 
 @Composable
 private fun NumberField(value: String, change: (String) -> Unit, label: String) {
-    OutlinedTextField(value, { change(it.take(18)) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true)
+    OutlinedTextField(value, { change(it.take(18)) }, label = { Text(label) }, modifier = Modifier.fillMaxWidth(), singleLine = true, keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Decimal))
 }
 
 @Composable
-private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, actor: String, ready: Boolean) {
-    Text("Offline English transcription", style = MaterialTheme.typography.titleLarge)
-    Text("Uses the bundled model on this device. Review draft words, timings and speaker groups before relying on them.")
-    Button(onClick = { model.transcribe(actor) }, enabled = ready) { Text("Transcribe active audio on device") }
-    TextButton(onClick = model::openTranscript, enabled = ready) { Text("Open saved transcript") }
-    val transcript = screen.transcript ?: return
+private fun TranscriptScreen(model: VaultModel, screen: VaultScreen, selected: JSONObject, actor: String, ready: Boolean, export: () -> Unit) {
+    Text("Transcript review", style = MaterialTheme.typography.headlineSmall)
+    val transcript = screen.transcript
+    if (transcript == null) {
+        Section("Transcribe active audio", "Choose the route before starting. Review draft words and timestamps against the audio.") {
+            ProviderControls(model, ready, placementSelection = false)
+            Button(onClick = {
+                if (model.clearVoiceEnabled) model.enhanceClearVoice(actor) { model.transcribe(actor) }
+                else model.transcribe(actor)
+            }, enabled = ready) { Text(if (model.transcriptionProvider == TranscriptionProvider.VOSK && !model.clearVoiceEnabled) "Transcribe active audio on device" else "Prepare transcription") }
+        }
+        return
+    }
+    if (transcript.optString("audioArtifactId") != selected.getString("activeArtifact")) {
+        Text("This transcript refers to a different audio revision. Its playback uses the linked revision.", color = MaterialTheme.colorScheme.error)
+    }
     val segments = transcript.items("segments")
     if (segments.isEmpty()) { Text("The decoder returned no words. Listen to the audio and assess it independently."); return }
-    var index by remember(screen.selected) { mutableIntStateOf(0) }
+    var search by remember(screen.selected) { mutableStateOf("") }
+    var flaggedOnly by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    var lowScores by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    var index by rememberSaveable(screen.selected) { mutableIntStateOf(0) }
+    OutlinedTextField(search,{search=it.take(256)},label={Text("Find transcript text or notes")},modifier=Modifier.fillMaxWidth(),singleLine=true)
+    Row { FilterChip(flaggedOnly,{flaggedOnly=!flaggedOnly},{Text("Flagged only")}); Spacer(Modifier.width(8.dp)); FilterChip(lowScores,{lowScores=!lowScores},{Text("Low returned scores")}) }
+    val matches=segments.indices.filter { i ->
+        val item=segments[i]; val score=item.optJSONObject("confidence")?.optDouble("value",Double.NaN)?:Double.NaN
+        (item.getString("text").contains(search,ignoreCase=true) || item.optString("examinerNote", "").contains(search,ignoreCase=true)) && (!flaggedOnly || item.optJSONArray("flags")?.length()?.let{it>0}==true) && (!lowScores || (score.isFinite()&&score<.7))
+    }
+    Text("${matches.size} matching segments; returned scores are not calibrated probabilities.",style=MaterialTheme.typography.bodySmall)
+    for(i in matches.take(30)) TextButton(onClick={if(model.reviewDrafts.isEmpty()) index=i else model.notice("Save or reset the current review draft before jumping")},enabled=ready) {
+        val item=segments[i]; val text=item.getString("text"); val note=item.optString("examinerNote", "")
+        Text("${i+1}: ${if(search.isNotBlank() && !text.contains(search,ignoreCase=true) && note.contains(search,ignoreCase=true)) "Note: ${note.take(80)}" else text.take(80)}")
+    }
     val current = index.coerceIn(0, segments.lastIndex)
     val segment = segments[current]
-    val start = segment.getDouble("start")
-    val end = segment.getDouble("end")
-    val id = segment.getString("id")
-    var text by remember(screen.transcriptRevision, id) { mutableStateOf(segment.getString("text")) }
-    var label by remember(screen.transcriptRevision, id) { mutableStateOf(segment.optString("speakerLabel", "")) }
-    var verified by remember(screen.transcriptRevision, id) { mutableStateOf(false) }
-    HorizontalDivider()
-    Text("${transcript.getString("state")} · segment ${current + 1} of ${segments.size}")
-    Row {
-        TextButton(onClick = { index = current - 1 }, enabled = current > 0) { Text("Previous") }
-        TextButton(onClick = { index = current + 1 }, enabled = current < segments.lastIndex) { Text("Next") }
-        val audio = transcript.optString("audioArtifactId", "")
-        TextButton(onClick = { model.play(actor, audio, start) }, enabled = ready && audio.isNotBlank() && start >= 0) { Text("Play from timestamp") }
+    val start = segment.getDouble("start"); val end = segment.getDouble("end"); val id = segment.getString("id")
+    val draftKey = "${screen.selected}/${screen.transcriptRevision}/$id"
+    val draft = model.reviewDrafts[draftKey] ?: ReviewDraft(segment.getString("text"), segment.optString("speakerLabel", ""), note=segment.optString("examinerNote", ""))
+    val text = draft.text
+    val label = draft.label
+    val note = draft.note
+    val verified = draft.verified
+    val edit = model.reviewEditorKey == draftKey
+    var details by rememberSaveable(screen.selected) { mutableStateOf(false) }
+    val dirty = text != segment.getString("text") || label != segment.optString("speakerLabel", "") || note != segment.optString("examinerNote", "") || verified
+    Section("Segment ${current + 1} of ${segments.size}", "${clock((start * 1000).toLong())} – ${clock((end * 1000).toLong())}") {
+        val speaker = segment.optString("speakerLabel").ifBlank { if (segment.isNull("speaker")) "Unassigned speaker" else segment.getString("speaker") }
+        Text(speaker, style = MaterialTheme.typography.labelLarge, color = MaterialTheme.colorScheme.primary)
+        TextButton(onClick = { model.reviewEditorKey = if (edit) null else draftKey }) { Text(if (edit) "Hide editor" else "Edit and verify segment") }
+        SelectionContainer { Text(segment.getString("text"), style = MaterialTheme.typography.bodyLarge) }
+        segment.optString("examinerNote", "").takeIf { it.isNotEmpty() }?.let { savedNote ->
+            SelectionContainer { Text("Examiner note: $savedNote", style = MaterialTheme.typography.bodySmall) }
+        }
+        Text(segment.getString("verification").replace('_', ' '), style = MaterialTheme.typography.labelSmall)
+        Button(onClick = { model.play(actor, transcript.optString("audioArtifactId"), start) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Glyph(R.drawable.ic_play); Spacer(Modifier.width(8.dp)); Text("Play from timestamp") }
+        if (segments.size > 1) Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+            TextButton(onClick = { index = current - 1 }, enabled = ready && current > 0 && !dirty) { Text("Previous") }
+            TextButton(onClick = { index = current + 1 }, enabled = ready && current < segments.lastIndex && !dirty) { Text("Next") }
+        }
+        if (edit) {
+            OutlinedTextField(text, { model.updateReviewDraft(draftKey, draft.copy(text = it.take(10000))) }, label = { Text("Examiner transcript text") }, enabled = ready, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(label, { model.updateReviewDraft(draftKey, draft.copy(label = it.take(80))) }, label = { Text("Examiner speaker label") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
+            OutlinedTextField(note, { model.updateReviewDraft(draftKey, draft.copy(note = it.take(4000))) }, label = { Text("Examiner note (not spoken words)") }, enabled = ready, modifier = Modifier.fillMaxWidth())
+            Row(horizontalArrangement=Arrangement.spacedBy(6.dp)) {
+                for(token in listOf("[inaudible]","[unintelligible]","[crosstalk]","[pause]","[background noise]")) TextButton(onClick={model.updateReviewDraft(draftKey,draft.copy(text=(text+" "+token).trim().take(10000)))},enabled=ready) { Text(token) }
+            }
+            Acknowledgement("I listened to and verified this segment.", verified, ready) { model.updateReviewDraft(draftKey, draft.copy(verified = it)) }
+            Button(onClick = { model.review(actor, id, text, label, verified, note) }, enabled = ready && dirty) { Text("Save examiner revision") }
+            Text("Notes are separate from spoken words. Saving only a note does not verify the segment.", style = MaterialTheme.typography.bodySmall)
+            Text("Save a revision to retain edits through an app or process restart.", style = MaterialTheme.typography.bodySmall)
+            if (dirty) TextButton(onClick = { model.resetReviewDraft(draftKey) }, enabled = ready) { Text("Reset unsaved edits") }
+        }
+        if (dirty) Text("Save or reset edits before changing segments.", style = MaterialTheme.typography.bodySmall)
+        TextButton(onClick = { details = !details }) { Text(if (details) "Hide acoustic details" else "Acoustic details") }
+        if (details) {
+            segment.optJSONObject("confidence")?.let { Text("${it.getString("semantics")} ${it.getDouble("value")} · uncalibrated") }
+            for (flag in (0 until segment.getJSONArray("flags").length()).map { segment.getJSONArray("flags").getString(it) }) Text(flag.replace('_', ' '), color = MaterialTheme.colorScheme.error, style = MaterialTheme.typography.bodySmall)
+            val alternatives = segment.items("alternatives")
+            if (alternatives.isEmpty()) Text("No provider-supported alternative hypothesis available.")
+            for (alternative in alternatives) Text("${alternative.getString("text")}${if (alternative.isNull("score")) "" else " · decoder score ${alternative.getDouble("score")}"}")
+        }
     }
-    Text("${clock((start * 1000).toLong())} – ${clock((end * 1000).toLong())} · ${if (segment.isNull("speaker")) "Unassigned speaker" else segment.getString("speaker")}")
-    segment.optJSONObject("confidence")?.let { Text("${it.getString("semantics")} ${it.getDouble("value")} · uncalibrated") }
-    val flags = segment.getJSONArray("flags")
-    if (flags.length() > 0) Text((0 until flags.length()).joinToString(" · ") { flags.getString(it) }, color = MaterialTheme.colorScheme.error)
-    val alternatives = segment.items("alternatives")
-    if (alternatives.isEmpty()) Text("No provider-supported alternative hypothesis available.")
-    else for (alternative in alternatives) Text("Alternative · ${alternative.getString("text")}${if (alternative.isNull("score")) "" else " · decoder score ${alternative.getDouble("score")}"}")
-    OutlinedTextField(text, { text = it.take(10000) }, label = { Text("Examiner transcript text") }, modifier = Modifier.fillMaxWidth())
-    OutlinedTextField(label, { label = it.take(80) }, label = { Text("Examiner speaker label") }, singleLine = true, modifier = Modifier.fillMaxWidth())
-    Row { Checkbox(verified, { verified = it }); Text("I listened to and verified this segment.", Modifier.padding(top = 12.dp)) }
-    Button(onClick = { model.review(actor, id, text, label, verified) }, enabled = ready) { Text("Save examiner revision") }
+    OutlinedButton(onClick = export, enabled = ready && !dirty, modifier = Modifier.fillMaxWidth()) { Text("Continue to export") }
+}
+
+@Composable
+private fun AuditScreen(model: VaultModel, selected: JSONObject, actor: String, ready: Boolean) {
+    Text("Evidence and custody", style = MaterialTheme.typography.headlineSmall)
+    Button(onClick = { model.verify(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Verify all hashes and custody records") }
+    OutlinedTextField(model.trustedCheckpointKey, { model.trustedCheckpointKey = it.take(64) },
+        label = { Text("Independently trusted signer SHA-256 (optional)") }, enabled = ready, singleLine = true, modifier = Modifier.fillMaxWidth())
+    OutlinedButton(onClick = { model.checkpoint(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Create device-signed checkpoint") }
+    selected.items("artifacts").lastOrNull { it.getJSONObject("operation").getString("algorithm") == org.echoscript.security.SignedCheckpoint.ALGORITHM }?.let { artifact ->
+        Section("Device signer SHA-256", "A device key signs the saved snapshot. This does not authenticate the examiner or later audit events. Retain this fingerprint independently.") {
+            SelectionContainer { Text(artifact.operationParameters().getString("keySha256"), style = MaterialTheme.typography.bodySmall) }
+        }
+    }
+    Section("Original SHA-256", "Retain an independent trusted checkpoint.") {
+        SelectionContainer { Text(selected.items("artifacts").first { it.getString("type") == "SOURCE" }.getString("sha256"), style = MaterialTheme.typography.bodySmall) }
+    }
+    Section("Local workload") {
+        Row(Modifier.horizontalScroll(rememberScrollState())) {
+            for (status in listOf("NEW", "IN_REVIEW", "COMPLETE")) TextButton(onClick = { model.workload(actor, status) }, enabled = ready) { Text(status.replace('_', ' ')) }
+        }
+    }
+    Section("Custody history", "${selected.getJSONArray("audit").length()} append-only events") {
+        for (entry in selected.items("audit").takeLast(50).asReversed()) {
+            Text("${entry.getInt("seq")} · ${entry.getString("action").replace('_', ' ')}", style = MaterialTheme.typography.labelLarge)
+            Text("${entry.getString("timestampUtc")} · ${entry.getString("actor")}", style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+        }
+    }
+}
+
+@Composable
+private fun ExportScreen(model: VaultModel, selected: JSONObject, actor: String, ready: Boolean, export: (ExportFormat) -> Unit) {
+    var acknowledge by rememberSaveable(selected.getString("caseId")) { mutableStateOf(false) }
+    var expanded by remember { mutableStateOf(false) }
+    Text("Save your work", style = MaterialTheme.typography.headlineSmall)
+    Section("Protect a case transfer", "Passphrase-protected streaming encryption. Save the passphrase and package hash through separate trusted channels. Losing the passphrase makes this export unavailable.") {
+        OutlinedButton(onClick = { model.checkpoint(actor) }, enabled = ready, modifier = Modifier.fillMaxWidth()) { Text("Create device-signed checkpoint") }
+        Text("Optional: sign the saved revisions before transfer. Retain the signer fingerprint independently; a device signature does not identify the examiner.", style = MaterialTheme.typography.bodySmall)
+        Acknowledgement("I understand and will protect exported files.", acknowledge, ready) { acknowledge = it }
+        SecretField(model.exportPassphrase, { model.exportPassphrase = it }, "New transfer passphrase", ready)
+        SecretField(model.exportPassphraseConfirmation, { model.exportPassphraseConfirmation = it }, "Confirm transfer passphrase", ready)
+        val valid = model.exportPassphrase.length in 16..1024 && model.exportPassphrase.isNotBlank() && model.exportPassphrase == model.exportPassphraseConfirmation
+        Button(onClick = { export(ExportFormat.PROTECTED_CASE) }, enabled = ready && acknowledge && valid, modifier = Modifier.fillMaxWidth()) { Text("Protected case package") }
+        Text("Use 16 or more unpredictable characters. Passphrases stay in app memory and are cleared after a transfer operation. Only saved case revisions are exported.", style = MaterialTheme.typography.bodySmall)
+    }
+    Section("Individual and legacy plaintext exports", "Choose an approved protected destination. These exports do not have container encryption. Signed checkpoints, when present, cover their stated historical snapshots.") {
+        OutlinedButton(onClick = { export(ExportFormat.CASE) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Case package") }
+        OutlinedButton(onClick = { export(ExportFormat.WAV) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Active audio WAV") }
+        OutlinedButton(onClick = { export(ExportFormat.CHANGELOG) }, enabled = ready && acknowledge, modifier = Modifier.fillMaxWidth()) { Text("Processing history JSON") }
+        Text("Processing history is a point-in-time snapshot. Export a new one after additional changes; individual exports are not encrypted.", style = MaterialTheme.typography.bodySmall)
+        Box {
+            OutlinedButton(onClick = { expanded = true }, enabled = ready && acknowledge && selected.latestTranscript() != null, modifier = Modifier.fillMaxWidth()) { Text("Transcript and report formats") }
+            DropdownMenu(expanded, onDismissRequest = { expanded = false }) {
+                for (format in ExportFormat.entries.filter { it.transcript }) DropdownMenuItem(text = { Text(format.label) }, onClick = { expanded = false; export(format) })
+            }
+        }
+        Text("A case package includes original audio, derivatives, transcript revisions and custody history.", style = MaterialTheme.typography.bodySmall)
+    }
+}
+
+@Composable
+private fun SecretField(value: String, change: (String) -> Unit, label: String, enabled: Boolean) {
+    // Visibility is deliberately not saved: rotation or navigation hides it again.
+    var visible by remember { mutableStateOf(false) }
+    OutlinedTextField(value, { change(it.take(1024)) }, label = { Text(label) }, enabled = enabled,
+        singleLine = true, visualTransformation = if (visible) VisualTransformation.None else PasswordVisualTransformation(),
+        trailingIcon = {
+            TextButton(onClick = { visible = !visible }, enabled = enabled,
+                modifier = Modifier.semantics { contentDescription = "${if (visible) "Hide" else "Show"} $label" }) {
+                Text(if (visible) "Hide" else "Show")
+            }
+        },
+        keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Password, autoCorrectEnabled = false),
+        modifier = Modifier.fillMaxWidth())
 }
 
 internal fun clock(millis: Long, separator: String = "."): String {

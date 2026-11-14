@@ -44,9 +44,14 @@ export async function createStaticServer(directory = "dist") {
           name.split("/").some((p) => p.startsWith("."))
         )
           throw Error("BAD_PATH");
-        const file = await realpath(
-          resolve(root, "." + (name === "/" ? "/index.html" : name)),
+        const candidate = resolve(
+          root,
+          "." + (name === "/" ? "/index.html" : name),
         );
+        // Check the normalized path before any filesystem lookup, then check
+        // again after resolving symlinks. Both boundaries include the separator.
+        if (!candidate.startsWith(root + sep)) throw Error("BAD_PATH");
+        const file = await realpath(candidate);
         if (!file.startsWith(root + sep) || !types.has(extname(file)))
           throw Error("BAD_PATH");
         const info = await stat(file);

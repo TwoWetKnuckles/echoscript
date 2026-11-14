@@ -7,6 +7,7 @@ import org.junit.Test
 import org.junit.Assert.*
 import org.junit.runner.RunWith
 import java.io.ByteArrayOutputStream
+import java.io.File
 import java.util.zip.ZipInputStream
 @RunWith(AndroidJUnit4::class)
 @androidx.annotation.OptIn(androidx.media3.common.util.UnstableApi::class)
@@ -85,9 +86,32 @@ class VaultRoundTripTest {
     @Test fun cancelledAcquisitionNeverCreatesACompleteCaseOrPendingPlaintext() {
         val context = ApplicationProvider.getApplicationContext<Context>(); val vault = EvidenceVault(context)
         val before = vault.listCases().cases.map { it.getString("caseId") }.toSet(); var count = 0L; var failed = false
+        val folders = java.io.File(context.filesDir, "EvidenceVault/cases").listFiles()?.map { it.name }?.toSet() ?: emptySet()
         try { vault.importSource(ByteArray(256 * 1024) { 83 }.inputStream(), "synthetic.bin", "Synthetic cancellation", "TEST", { count >= 65536 }, { count = it }) } catch (_: InterruptedException) { failed = true }
         assertTrue(failed); assertEquals(before, vault.listCases().cases.map { it.getString("caseId") }.toSet())
+        assertEquals(folders, java.io.File(context.filesDir, "EvidenceVault/cases").listFiles()?.map { it.name }?.toSet() ?: emptySet<String>())
         assertFalse(java.io.File(context.filesDir, "EvidenceVault").walkTopDown().any { it.name.endsWith(".pending") })
+    }
+    @Test fun handledMemoryFailureDoesNotCommitOrLeaveAPendingArtifact() {
+        val context = ApplicationProvider.getApplicationContext<Context>(); val vault = EvidenceVault(context)
+        val root = File(context.filesDir, "EvidenceVault/cases")
+        val existing = root.listFiles()?.map { it.name }?.toSet() ?: emptySet()
+        val source = object : java.io.InputStream() {
+            var calls = 0
+            override fun read(): Int = error("Block reads required")
+            override fun read(buffer: ByteArray, offset: Int, length: Int): Int {
+                if (calls++ > 0) throw OutOfMemoryError("synthetic test")
+                val size = minOf(length, 65536); java.util.Arrays.fill(buffer, offset, offset + size, 83.toByte()); return size
+            }
+        }
+        try {
+            assertThrows(OutOfMemoryError::class.java) { vault.importSource(source, "synthetic.bin", "Synthetic memory interruption", "TEST") }
+            val newFolders = root.listFiles().orEmpty().filter { it.name !in existing }
+            assertTrue(newFolders.none { folder -> folder.walkTopDown().any { it.name.endsWith(".pending") } })
+            assertTrue(vault.listCases().cases.none { it.getString("title") == "Synthetic memory interruption" })
+        } finally {
+            root.listFiles().orEmpty().filter { it.name !in existing }.forEach { it.deleteRecursively() }
+        }
     }
     @Test fun corruptedCiphertextFailsAndDoesNotLeakOpenDescriptors() {
         val context = ApplicationProvider.getApplicationContext<Context>()

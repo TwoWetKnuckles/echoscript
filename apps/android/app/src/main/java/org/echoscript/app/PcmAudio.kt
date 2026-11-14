@@ -118,6 +118,9 @@ internal fun putPcm16(bytes: ByteArray, offset: Int, value: Int) {
 }
 
 internal data class RenderSettings(
+    val rack: EffectRack? = null,
+    val trim: Boolean = false,
+    val workbenchPlan: String? = null,
     val gainDb: Double = 0.0,
     val lowDb: Double = 0.0,
     val midDb: Double = 0.0,
@@ -143,7 +146,7 @@ internal data class RenderSettings(
     }
 }
 
-private class Biquad(val b0: Double, val b1: Double, val b2: Double, val a1: Double, val a2: Double) {
+internal class Biquad(val b0: Double, val b1: Double, val b2: Double, val a1: Double, val a2: Double) {
     private var z1 = 0.0
     private var z2 = 0.0
     fun next(input: Double): Double {
@@ -154,7 +157,7 @@ private class Biquad(val b0: Double, val b1: Double, val b2: Double, val a1: Dou
     }
 }
 
-private fun filter(kind: String, hz: Double, q: Double, rate: Int, db: Double = 0.0): Biquad {
+internal fun filter(kind: String, hz: Double, q: Double, rate: Int, db: Double = 0.0): Biquad {
     require(hz > 0 && hz < rate / 2.0) { "Filter frequency must be below Nyquist (${rate / 2} Hz)" }
     val theta = 2 * PI * hz / rate
     val c = cos(theta)
@@ -181,6 +184,7 @@ internal fun renderWave(
     cancelled: () -> Boolean,
     progress: (Long) -> Unit,
 ): RenderStatistics {
+    settings.rack?.let { return renderRack(input, output, settings, it, cancelled, progress) }
     val format = input.format
     val rate = format.sampleRate
     val duration = format.millis(input.frames)

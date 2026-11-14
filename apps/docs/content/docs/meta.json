@@ -1,0 +1,20 @@
+{
+  "title": "EchoScript",
+  "pages": [
+    "index",
+    "downloads",
+    "android",
+    "evidence",
+    "releases",
+    "release-candidate",
+    "working-scope",
+    "qa",
+    "providers",
+    "architecture",
+    "implementation",
+    "file-tree",
+    "security",
+    "legal",
+    "development"
+  ]
+}
