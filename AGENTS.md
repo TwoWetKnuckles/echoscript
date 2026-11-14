@@ -16,6 +16,10 @@ Native UI changes must retain accessible touch targets, export acknowledgement a
 
 Keep `main` buildable, use focused conventional commits and existing module conventions/strict types. Run checks appropriate to the affected behavior; record actual results and limits in `docs/IMPLEMENTATION.md` / `docs/qa/STATUS.md`. Do not invent tests executed in an unavailable environment.
 
+## Product research reference
+
+For future product additions, consult `docs/research/COMPETITIVE-ANALYSIS-2026-11-14.md`, its mindmap and `docs/research/UNOFFICIAL-BACKLOG.md`. Cite the relevant idea ID, verify current sources, and record an owner scope decision before promoting research into release work. Research does not relax evidence invariants or mandatory gates. The owner has requested review and AOK before the proposed Vue/Tailwind migration, theme changes, codebase refactoring and beta rollout.
+
 ## Evidence invariants
 
 - Hash original bytes before decode. Never overwrite an acquired source, rendered derivative or transcript revision; changes create new artifacts/revisions.

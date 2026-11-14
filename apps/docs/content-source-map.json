@@ -63,6 +63,18 @@
     "source": "docs/RELEASE-CANDIDATE.md",
     "sha256": "fabe29e768a0e948ef20638c9caf22ca8c56dc3e04f51cda6f36db7b478bc7b5"
   },
+  "research/competitive-analysis-2026-11-14.mdx": {
+    "source": "docs/research/COMPETITIVE-ANALYSIS-2026-11-14.md",
+    "sha256": "fb27fb449427ed9151bee2e1e4f6db0e6c315a38077bf059ba3ea6a0fc3be738"
+  },
+  "research/sandbox-trial.mdx": {
+    "source": "docs/research/SANDBOX-TRIAL.md",
+    "sha256": "0fb203386770e9063a0254f1bb8e8f04399ef843b9e7d948245193a12330d5da"
+  },
+  "research/unofficial-backlog.mdx": {
+    "source": "docs/research/UNOFFICIAL-BACKLOG.md",
+    "sha256": "f61a111ad4ec095a51d25df9d4f83132e1cfd2a16ac53e435b75b96ec1a0acd6"
+  },
   "security/operations.mdx": {
     "source": "docs/security/OPERATIONS.md",
     "sha256": "2679c814769baf751f7a3f1a6f01a5e097b9458c11b95c65175b9e0681cde7b8"

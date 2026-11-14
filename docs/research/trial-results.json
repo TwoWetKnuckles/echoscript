@@ -1,0 +1,44 @@
+{
+  "result": "limited workflow completed",
+  "product": "Audacity 4.0.2 official x86_64 AppImage",
+  "installerSha256": "a5f8787aa13cdb500a60fc013403b986776876b960cca962bc6e7fff066172f3",
+  "networkGuard": "seccomp denies IPv4/IPv6 socket creation before exec; isolated XDG config/cache/data; no cloud account",
+  "workflow": [
+    "skip account setup",
+    "disable UUID",
+    "open synthetic WAV",
+    "select full 12s",
+    "toggle spectrogram",
+    "inspect effect menus",
+    "cancel uncommitted effect dialogs",
+    "export full project locally, mono 16kHz signed 16-bit PCM"
+  ],
+  "effectsApplied": [],
+  "speechTested": false,
+  "items": [
+    {
+      "file": "synthetic-tone-hum.wav",
+      "bytes": 384044,
+      "sha256": "1809a959e2a9fd637eb947b9a48d7b2460aab6a3dfaf163ede9d99f2bfc41d36",
+      "channels": 1,
+      "sampleRate": 16000,
+      "sampleWidth": 2,
+      "frames": 192000,
+      "peakDbfs": -13.639681495780511,
+      "rmsDbfs": -22.08133674911864
+    },
+    {
+      "file": "audacity-roundtrip.wav",
+      "bytes": 384044,
+      "sha256": "1809a959e2a9fd637eb947b9a48d7b2460aab6a3dfaf163ede9d99f2bfc41d36",
+      "channels": 1,
+      "sampleRate": 16000,
+      "sampleWidth": 2,
+      "frames": 192000,
+      "peakDbfs": -13.639681495780511,
+      "rmsDbfs": -22.08133674911864
+    }
+  ],
+  "maxAbsolutePcmDelta": 0.0,
+  "changedPcmSamples": 0
+}
