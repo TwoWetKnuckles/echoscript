@@ -8,7 +8,7 @@ export const docsContentRoute = "/llms.mdx/docs";
 export const gitConfig = {
   user: "TwoWetKnuckles",
   repo: "echoscript",
-  branch: "feature/clearvoice-whisper-beta",
+  branch: "main",
 };
 
 export const releaseUrl =

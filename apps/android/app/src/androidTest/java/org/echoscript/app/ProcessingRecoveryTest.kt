@@ -85,7 +85,10 @@ class ProcessingRecoveryTest {
                 val record = journal.read(id)
                 assertEquals(record.getString("message"), JobState.SUCCEEDED.name, record.getString("state"))
                 assertTrue("The same persisted worker must start a new attempt after process death", record.getInt("attempt") > saved.getInt("attemptBeforeKill"))
-                assertEquals(WorkInfo.State.SUCCEEDED, WorkManager.getInstance(context).getWorkInfoById(UUID.fromString(id)).get().state)
+                val manager = WorkManager.getInstance(context)
+                val completionDeadline = System.nanoTime() + 10_000_000_000L
+                while (!checkNotNull(manager.getWorkInfoById(UUID.fromString(id)).get()).state.isFinished && System.nanoTime() < completionDeadline) Thread.sleep(50)
+                assertEquals(WorkInfo.State.SUCCEEDED, checkNotNull(manager.getWorkInfoById(UUID.fromString(id)).get()).state)
                 val case = vault.listCases().cases.single { it.getString("caseId") == saved.getString("caseId") }
                 val passes = case.items("artifacts").filter { it.operationParameters().optJSONObject("processingJob")?.optString("id") == id }
                 assertEquals("All 32 completed passes, each exactly once", 32, passes.size)

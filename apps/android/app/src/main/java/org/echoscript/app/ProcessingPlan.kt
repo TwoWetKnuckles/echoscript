@@ -61,6 +61,7 @@ internal data class ProcessingPlan(
             require(value.keys().asSequence().toSet() == setOf("schema", "id", "rootId", "createdAtUtc", "request", "requestSha256"))
             require(value.getString("schema") == "org.echoscript.local-job/1")
             val body = value.getJSONObject("request")
+            require(EvidenceVault.sha(EvidenceVault.canonical(body)) == value.getString("requestSha256")) { "Local job settings differ from their recorded hash" }
             require(body.keys().asSequence().toSet() == setOf("caseId", "baseId", "baseSha256", "actor", "kind", "regions", "clearVoice", "requestedProvider", "softwareVersion", "modelHash", "speechModel", "speakerModel", "speechRuntime"))
             require(body.getString("speechModel") == SPEECH_MODEL && body.getString("speakerModel") == SPEAKER_MODEL && body.getString("speechRuntime") == VOSK_RUNTIME)
             val rows = body.getJSONArray("regions"); require(rows.length() <= 32)
@@ -69,6 +70,7 @@ internal data class ProcessingPlan(
                 LocalJobKind.valueOf(body.getString("kind")), (0 until rows.length()).map { parseRenderSettings(rows.getJSONObject(it)) },
                 if (body.isNull("clearVoice")) null else ClearVoicePlacement.valueOf(body.getString("clearVoice")),
                 body.getString("requestedProvider"), body.getString("softwareVersion"), body.getString("modelHash"))
+            require(EvidenceVault.canonical(plan.body()).contentEquals(EvidenceVault.canonical(body))) { "Local job settings contain ambiguous values" }
             require(plan.requestSha256 == value.getString("requestSha256")) { "Local job settings differ from their recorded hash" }
             return plan
         }

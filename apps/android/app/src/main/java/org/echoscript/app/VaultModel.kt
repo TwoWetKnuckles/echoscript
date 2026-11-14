@@ -244,7 +244,11 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
                 ?: infos.firstOrNull { !it.state.isFinished }
             if (active != null) {
                 val id = active.id.toString()
-                val record = journal.read(id)
+                val record = try { journal.read(id) } catch (_: Exception) {
+                    updateState { it.copy(backgroundJobId = id, job = "Local job needs review", failed = true,
+                        message = "The saved local job could not be authenticated. Cancel it and preserve the vault for review; no earlier job record was substituted.") }
+                    return@collect
+                }
                 val plan = ProcessingPlan.parse(record.getJSONObject("plan"))
                 val phase = active.progress.getString("stage") ?: "Queued for on-device processing"
                 val count = active.progress.getLong("units", 0)

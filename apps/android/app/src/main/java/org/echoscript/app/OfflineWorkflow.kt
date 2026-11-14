@@ -263,7 +263,7 @@ internal class OfflineWorkflow(private val context: Context, private val vault: 
                 maxBytes = 64L * 1024 * 1024) { output ->
                 transcript = OfflineSpeech(context).transcribe(wave, input.getString("sha256"), output, candidates, cancelled, progress)
                 JSONObject().put("model", SPEECH_MODEL).put("speakerModel", SPEAKER_MODEL).put("windowSeconds", 45).put("requestedAlternatives", 3)
-                    .forProcessing(processing?.let { it.step("recognition.raw.${it.plan.id}") })
+                    .forProcessing(processing?.let { it.step("recognition.raw.${it.plan.id}.${it.attempt}") })
             }
         }
         val payload = checkNotNull(transcript).put("audioArtifactId", audioId).put("duration", input.operationParameters().getLong("frames") / 16000.0)

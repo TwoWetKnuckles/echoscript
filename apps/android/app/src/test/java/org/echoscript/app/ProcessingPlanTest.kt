@@ -38,6 +38,8 @@ class ProcessingPlanTest {
         assertThrows(IllegalArgumentException::class.java) { parseRenderSettings(malformed) }
         val fractional = original.json(); fractional.getJSONObject("request").getJSONArray("regions").getJSONObject(0).put("startMs", 100.5)
         assertThrows(IllegalArgumentException::class.java) { ProcessingPlan.parse(fractional) }
+        fractional.put("requestSha256", EvidenceVault.sha(EvidenceVault.canonical(fractional.getJSONObject("request"))))
+        assertThrows(IllegalArgumentException::class.java) { ProcessingPlan.parse(fractional) }
         assertThrows(IllegalArgumentException::class.java) { original.copy(regions = List(33) { RenderSettings() }) }
         assertThrows(IllegalArgumentException::class.java) { original.copy(softwareVersion = "earlier-build").checkRuntime() }
     }

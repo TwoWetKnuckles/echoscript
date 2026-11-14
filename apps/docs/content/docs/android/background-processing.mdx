@@ -1,0 +1,30 @@
+---
+title: "Local processing and recovery"
+description: "EchoScript reference: Local processing and recovery."
+---
+
+Candidate 2 source keeps render and Vosk jobs outside the screen lifecycle. [Downloads](/docs/downloads) identifies the exact published build; [QA status](/docs/qa/status) records the tested source. Implementation alone does not pass the complete recovery gate.
+
+## Start, progress and cancellation
+
+Choose effects, ClearVoice placement and transcription route before **Render & transcribe**. The app saves the local request encrypted, including its base revision/hash, examiner, regions, model/software pins and request hash. Android WorkManager schedules an opaque UUID; case names, audio, transcript text and credentials do not enter its job input. Jobs run serially and the screen shows progress. You can navigate away or leave the app while a local job runs.
+
+A foreground-service notification shows generic processing status without case details. Use **Settings → Manage processing notifications** on Android 13+ to allow or manage notifications. Android permission/settings may hide them; progress remains available in the app. Android controls scheduling, battery restrictions, quotas and service lifetime, so immediate or indefinite execution is not guaranteed. Force-stopping an app prevents its jobs from continuing until the app is opened again. See [Android's long-running worker guidance](https://developer.android.com/develop/background-work/background-tasks/persistent/how-to/long-running).
+
+**Cancel current operation** and notification cancellation record a durable cancellation before stopping the worker. Originals and completed revisions remain. A failed/cancelled job offers **Retry saved job** or **Dismiss job notice**. Retry creates a new scheduling identity but retains the original request and completed-pass linkage. Failure does not silently restart a terminal job.
+
+## What resumes
+
+After interruption, a compatible local job returns to its saved base and replays its sequence. A completed pass is reused only when its request/step linkage, algorithm version, input ancestry, authenticated bytes, length and SHA-256 match. Missing or interrupted passes are rendered again as new artifacts. Duplicate or damaged completed outputs stop processing for review. Earlier revisions are never overwritten.
+
+The combined local render-and-Vosk request retains the transcription continuation across process death. Completed recognition input and normalized result can be reused. Incomplete recognition runs again from the prepared input; no uncommitted word-level state is claimed recovered. Encrypted job records are operational state, separate from the case evidence graph. Committed artifacts include the job root/request hash, attempt identity and step in operation parameters, so exported provenance can be independently checked.
+
+A changed software/model pin stops automatic reuse and asks for review with the current build. Job requests and records remain encrypted under the device vault key. Loss of that key/device still requires an independently preserved and verified protected case export. The app never substitutes an older authenticated job record when its newest committed record is damaged.
+
+## Whisper and remaining scope
+
+Whisper is never an unattended persisted job. Local enhancement can finish in the background, then the user prepares and approves the exact payload with current session credentials. After process death the app asks to prepare/approve again. API keys remain on the configured server; tokens, origins and remote approval are not queued with local work.
+
+File selection/acquisition, microphone capture, external-provider transmission, package import/export and human review keep their existing explicit workflows; they are not all converted into resumable jobs by this change. Android process-kill render testing is a subset. Physical power loss, every stage boundary, storage/key failures, resource thresholds and protected clean-device recovery remain in the mandatory release matrix. Keep verified exports before uninstall, reset or changing test packages.
+
+The implementation uses pinned AndroidX WorkManager 2.12.0. API 35+ uses the `mediaProcessing` foreground service type; API 29–34 uses `dataSync`. These OS limits and permissions are independent of feature access. All implemented tools remain available.

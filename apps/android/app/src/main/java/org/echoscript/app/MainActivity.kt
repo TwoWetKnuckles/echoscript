@@ -103,6 +103,9 @@ private fun VaultApp(model: VaultModel = viewModel()) {
         if (granted) model.record(title.ifBlank { "Microphone ${EvidenceVault.utc()}" }, actor) { tab = "Analyze" }
         else model.notice("Microphone permission was declined. Choose audio file to import a recording.")
     }
+    val notifications = rememberLauncherForActivityResult(ActivityResultContracts.RequestPermission()) { granted ->
+        model.notice(if (granted) "Processing notifications enabled." else "Progress remains available in the app. You can enable notifications in Android settings.")
+    }
     val importAudio = rememberLauncherForActivityResult(ActivityResultContracts.StartActivityForResult()) { result ->
         if (result.resultCode != android.app.Activity.RESULT_OK) {
             model.pickerNotice("No recording was selected. Choose a file or try the other file picker.")
@@ -292,6 +295,13 @@ private fun VaultApp(model: VaultModel = viewModel()) {
                                         appearance = mode; preferences.edit().putString("appearance", mode).apply()
                                     }, { Text(mode) }, modifier = Modifier.heightIn(min = 48.dp))
                                 }
+                            }
+                            if (android.os.Build.VERSION.SDK_INT >= 33) Section("Processing notifications", "Keep local job progress and cancellation within reach while using other apps.") {
+                                OutlinedButton(onClick = {
+                                    if (context.checkSelfPermission(android.Manifest.permission.POST_NOTIFICATIONS) == android.content.pm.PackageManager.PERMISSION_GRANTED)
+                                        context.startActivity(Intent(android.provider.Settings.ACTION_APP_NOTIFICATION_SETTINGS).putExtra(android.provider.Settings.EXTRA_APP_PACKAGE, context.packageName))
+                                    else notifications.launch(android.Manifest.permission.POST_NOTIFICATIONS)
+                                }) { Text("Manage processing notifications") }
                             }
                             Section("Companion processing", "Optional Whisper connection") {
                                 CompanionSettings(model, ready)
