@@ -200,3 +200,7 @@ All five older releases were downloaded before cleanup. All 41 original assets m
 The coexistence harness and instrumentation assertions were updated to use the retained 0.6 rollback ID and pinned APK, replacing their removed 0.5.1 dependency. This harness change requires a fresh Android 16 CI pass; earlier passes are not attributed to it. Application runtime code and the published APK are unchanged.
 
 Evaluation of the published exact-build acceptance record still reports `BETA GATE: NOT PASSED`, zero consecutive complete accepted workflows and all eleven mandatory acceptance rows unpassed. This is not an automated-test failure: it records the remaining engineering, physical-device, owner-signing and deployment acceptance work. No beta promotion or signing-key substitution was performed.
+
+## Development tooling — November 15, 2026
+
+The [tooling decision record](/docs/development/tools) documents the reviewed Pollen 0.7.0 CLI installation and pinned Assertrust 0.1.0 workflow. Both downloaded archives matched their recorded SHA-256 values and both version commands passed. A synthetic removed-assertion fixture produced the expected Assertrust finding and exit codes for observational and high-confidence failure modes. Kotlin and Node `assert` test bodies remain outside this detector's supported coverage. No application runtime or release gate changed; the Symfony importmap recipe is deferred because there is no Symfony application in this repository. Hosted workflow execution is tracked by the associated pull request.
