@@ -1,0 +1,50 @@
+name: assertrust
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: assertrust-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  assertrust:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Download the reviewed assertrust release
+        shell: bash
+        env:
+          TOOL_DIR: ${{ runner.temp }}/assertrust-0.1.0
+        run: |
+          set -euo pipefail
+          mkdir -p "$TOOL_DIR"
+          archive="$TOOL_DIR/assertrust.tar.xz"
+          curl --fail --silent --show-error --location --retry 3 \
+            --output "$archive" \
+            https://github.com/BeyondFolder/assertrust/releases/download/v0.1.0/assertrust-x86_64-unknown-linux-gnu.tar.xz
+          echo "172d5afdcb02c8c8b9f91093271cad453a0ffb6efbd7397517361db08ab9d127  $archive" | sha256sum --check --strict
+          tar --extract --xz --file "$archive" --directory "$TOOL_DIR" \
+            --no-same-owner --no-same-permissions \
+            assertrust-x86_64-unknown-linux-gnu/assertrust
+          chmod 0755 "$TOOL_DIR/assertrust-x86_64-unknown-linux-gnu/assertrust"
+      - name: Review test and CI changes
+        uses: BeyondFolder/assertrust@fc6ac2b77bb5694501b815bab9e03d43ce887ced # v0 / 0.1.0
+        with:
+          version: "0.1.0"
+          path: ${{ runner.temp }}/assertrust-0.1.0/assertrust-x86_64-unknown-linux-gnu/assertrust
+          # Observational feedback; existing release and quality gates still apply.
+          fail-on: never
+          comment: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository }}
