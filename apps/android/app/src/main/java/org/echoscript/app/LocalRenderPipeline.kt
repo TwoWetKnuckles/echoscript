@@ -7,7 +7,7 @@ import org.json.JSONObject
 /** Replays from the saved base, so disabling a stage never compounds the last render. */
 internal class LocalRenderPipeline(private val context: Context, private val vault: EvidenceVault, private val workflow: OfflineWorkflow) {
     fun render(manifest: JSONObject, actor: String, baseId: String, regions: List<RenderSettings>, clearVoice: ClearVoicePlacement?,
-        cancelled: () -> Boolean, progress: (Long) -> Unit): JSONObject {
+        cancelled: () -> Boolean, progress: (Long) -> Unit, processing: ProcessingContext? = null): JSONObject {
         require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
         vault.selectRevision(manifest, actor, baseId)
         if (clearVoice == ClearVoicePlacement.BEFORE) {
@@ -15,17 +15,20 @@ internal class LocalRenderPipeline(private val context: Context, private val vau
             val neuralOnly = JSONObject().put("baseId", baseId).put("rack", EffectRack().json())
                 .put("regions", JSONArray()).put("limit", false)
             ClearVoiceNative(context, vault, workflow).enhance(manifest, actor, clearVoice.name, cancelled, progress,
-                withClearVoiceRecipe(neuralOnly.toString(), clearVoice, true))
+                withClearVoiceRecipe(neuralOnly.toString(), clearVoice, true), processing?.step("render.before"))
         }
         for ((index, settings) in regions.withIndex()) {
             if (cancelled()) throw InterruptedException("Render cancelled; completed revisions remain in history")
             val plan = withClearVoiceRecipe(completedRegionPlan(settings.workbenchPlan, index + 1), clearVoice, clearVoice == ClearVoicePlacement.BEFORE)
-            workflow.enhance(manifest, actor, settings.copy(workbenchPlan = plan), cancelled, progress)
+            val step = processing?.step("render.region.$index")
+            val reused = step?.reuse(manifest, "ENHANCED_AUDIO", if (settings.rack == null) "native-pcm16-iir-enhancement" else "bounded-native-effect-rack")
+            if (reused != null) vault.selectRevision(manifest, actor, reused.getString("id"))
+            else workflow.enhance(manifest, actor, settings.copy(workbenchPlan = plan), cancelled, progress, step)
         }
         if (clearVoice == ClearVoicePlacement.AFTER) {
             val plan = manifest.activeAudio().operationParameters().optJSONObject("workbenchPlan")?.toString()
             ClearVoiceNative(context, vault, workflow).enhance(manifest, actor, clearVoice.name, cancelled, progress,
-                withClearVoiceRecipe(plan, clearVoice, true))
+                withClearVoiceRecipe(plan, clearVoice, true), processing?.step("render.after"))
         }
         return manifest.activeAudio()
     }

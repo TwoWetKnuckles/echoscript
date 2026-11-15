@@ -3,6 +3,7 @@
   "pages": [
     "offline",
     "enhancement-workbench",
+    "background-processing",
     "workbench-design",
     "owner-signing"
   ]
