@@ -131,7 +131,7 @@ internal object ProcessingJobs {
     }
     fun cancel(context: Context, id: String) {
         require(JOB_ID.matches(id))
-        ProcessingGate.cancellation(id).set(true)
+        val control = ProcessingGate.cancellation(id)
         // Only opaque, already-scheduled WorkManager UUIDs may appear here. This
         // durable tombstone also protects cancellation if the vault cannot open.
         synchronized(cancelLock) {
@@ -140,7 +140,13 @@ internal object ProcessingJobs {
         }
         // Persist cancellation before cancelling WorkManager, including the notification path.
         try { ProcessingJournal(EvidenceVault(context)).update(id, JobState.CANCELLED, "Cancelled. Completed originals and revisions remain preserved.") }
-        finally { WorkManager.getInstance(context).cancelWorkById(UUID.fromString(id)).result.get() }
+        finally {
+            // Let WorkManager commit CANCELLED before the cooperative stop flag
+            // can make doWork return FAILURE. A completed failure is terminal in
+            // WorkManager and cannot subsequently be changed by cancelWorkById.
+            try { WorkManager.getInstance(context).cancelWorkById(UUID.fromString(id)).result.get() }
+            finally { control.set(true) }
+        }
     }
 }
 
@@ -148,7 +154,6 @@ class LocalJobCancelReceiver : BroadcastReceiver() {
     override fun onReceive(context: Context, intent: Intent) {
         if (intent.action != "org.echoscript.CANCEL_LOCAL_JOB") return
         val id = intent.getStringExtra("id")?.takeIf(JOB_ID::matches) ?: return
-        ProcessingGate.cancellation(id).set(true)
         val pending = goAsync()
         CoroutineScope(SupervisorJob() + Dispatchers.IO).launch {
             try { runCatching { ProcessingJobs.cancel(context.applicationContext, id) } } finally { pending.finish() }
@@ -161,7 +166,12 @@ class LocalProcessingWorker(context: Context, parameters: WorkerParameters) : Co
     override suspend fun doWork(): Result {
         val jobId = inputData.getString("id") ?: return Result.failure()
         if (!JOB_ID.matches(jobId) || id.toString() != jobId) return Result.failure()
-        if (ProcessingJobs.cancellationRecorded(applicationContext, jobId)) return Result.failure()
+        if (ProcessingJobs.cancellationRecorded(applicationContext, jobId)) {
+            withContext(NonCancellable + Dispatchers.IO) {
+                WorkManager.getInstance(applicationContext).cancelWorkById(id).result.get()
+            }
+            throw CancellationException("Local processing was cancelled")
+        }
         var journal: ProcessingJournal? = null
         val control = ProcessingGate.cancellation(jobId)
         fun stopped() = isStopped || control.get() || Thread.currentThread().isInterrupted
@@ -216,7 +226,12 @@ class LocalProcessingWorker(context: Context, parameters: WorkerParameters) : Co
                 } finally { ProcessingGate.lock.unlock() }
             }
         } catch (failure: CancellationException) {
-            withContext(NonCancellable + Dispatchers.IO) { runCatching { journal?.update(jobId, JobState.PAUSED, "Paused by Android. The local job can resume from its completed passes.") } }
+            withContext(NonCancellable + Dispatchers.IO) { runCatching {
+                val cancelled = ProcessingJobs.cancellationRecorded(applicationContext, jobId)
+                journal?.update(jobId, if (cancelled) JobState.CANCELLED else JobState.PAUSED,
+                    if (cancelled) "Cancelled. Completed originals and revisions remain preserved."
+                    else "Paused by Android. The local job can resume from its completed passes.")
+            } }
             throw failure
         } catch (_: InterruptedException) {
             withContext(NonCancellable + Dispatchers.IO) { runCatching { journal?.update(jobId, if (control.get()) JobState.CANCELLED else JobState.PAUSED, "Local processing paused. Completed originals and revisions remain preserved.") } }
