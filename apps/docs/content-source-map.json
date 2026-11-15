@@ -57,7 +57,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "2454c5e4c9c7370cd41f581e5273ad6efb1cf39c991857ee5d95d758dac74934"
+    "sha256": "4197c0c351b5eb3c083c7407253f4e6880dddb78292c592bd647d2fc38c52ecd"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",

@@ -21,6 +21,14 @@ Development checkpoint. Historical measurements retain their original run dates.
 
 The local sequence performs source import/hash → decode → waveform/spectrogram data → speech-event selection → deterministic region render/preview bytes → transmission artifact → explicit synthetic approval → real Vosk API → exact raw result → normalized timestamps/score → revision exercise → WAV/documents/changelog → encrypted case export → import → independent verifier. It does not exercise Android UI, diarization, microphone, all codecs, full identity/sync or deployed external providers.
 
+## PWA tooling preparation - 15 November 2026
+
+Pinned `vite-plugin-pwa` 2.0.0 as a root development dependency and updated the npm lockfile for the browser companion's future Vite integration. The current browser build still uses esbuild and the documentation app still uses Next.js; no Vite configuration, service-worker registration, caching policy or stack migration was added. Broader design/refactor approval remains pending.
+
+On Node 24.22.1, importing the installed `VitePWA` export, the existing browser/API production build, lint and all 37 Node behavioral tests passed. Existing locked package versions were preserved. The full npm audit reported two low and four moderate development-toolchain findings; these include propagated findings, not six independent root causes. The production-only audit (`npm audit --omit=dev`) reported zero findings. This dependency preparation is not release qualification.
+
+The installed Workbox 7.4.1 dependency ranges do not provide a patch-only path for every finding: the reviewed deepmerge advisory lists no patched release, and the patched glob major is outside Workbox's declared glob range. Do not hide these findings with an advisory suppression, an untested major override or a forced plugin downgrade. Keep the dependency change in draft review until the toolchain is qualified before PWA integration. Primary references: [deepmerge advisory](https://github.com/advisories/GHSA-gcqx-w48m-w2h4), [glob advisory](https://github.com/advisories/GHSA-3g3m-2fjr-6pw4).
+
 ## Material outstanding release work
 
 Native feature parity and physical-device validation; resumable jobs and crash/restart recovery; biometric unlock/key recovery; digital signatures and trusted checkpoints; diarization accuracy on overlap and multiple speakers; qualified external adapters; OIDC, multi-user roles, approved preference/workflow sync; convenience encoders; complete cross-user/security/resource/device matrix; seven consecutive complete application runs.
