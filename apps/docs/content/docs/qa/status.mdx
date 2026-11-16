@@ -71,6 +71,24 @@ The combined-source run exposed an existing worker caller that omitted the newly
 
 The owner reported four to five hours of processing for a 300 MB MP3 and paused additional styling/refactoring. [The performance repair](/docs/development/performance) records source-level bottlenecks, the implemented changes, benchmark scope and managed-service blockers. The recording duration, installed build and per-stage times are still needed to qualify that report; compressed bytes alone do not establish an audio duration.
 
-Fresh local browser/API build, strict Vue/API checks, ESLint and all 39 Node tests pass. New Android changes and CPU profiles require their own exact-source CI results. The prior integration source `1f5f7bd589f135f3281ae2c4cbadef83e86ce09e` passed its push matrix, while the Android 10 PR job failed with a 16 MiB managed-heap allocation error and a UI timeout. CI now declares and verifies its test phone's memory profile without removing the memory-failure assertions. These observations are not physical-device acceptance.
+Fresh local browser/API build, strict Vue/API checks, ESLint and all 39 Node tests pass. Exact-source Android and CPU results are recorded below. The prior integration source `1f5f7bd589f135f3281ae2c4cbadef83e86ce09e` passed its push matrix, while the Android 10 PR job failed with a 16 MiB managed-heap allocation error and a UI timeout. CI now requests and records its test phone's memory profile and verifies a minimum heap before the suite, without removing the memory-failure assertions. These observations are not physical-device acceptance.
 
 PR #32 is held in draft. Vue/VitePress migration is approved after performance qualification; the current Fumadocs deployment remains live during that transition. No new free remote service, configuration-free connection, guaranteed completion time or beta publication is claimed.
+
+## Performance implementation checks — November 16, 2026
+
+Runtime source `edd162a41dff33cb7aa35e7ccef32ce1b06a6319` passed all eight quality jobs in both [the PR run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43953770401) and [the push run](https://github.com/TwoWetKnuckles/echoscript/actions/runs/43953760304). CodeQL, docs and the advisory check also passed. The later reporting-only commit does not alter the tested runtime. [The machine-readable record](https://github.com/TwoWetKnuckles/echoscript/blob/main/docs/qa/performance-validation-2026-11-16.json) preserves exact source/run/artifact hashes, observed memory limits and measured short-fixture inference timing.
+
+| Controlled check         | Executed result                                                                                                                                      |
+| ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Android JVM / Node       | 43 / 39 tests passed; native debug/release compilation and lint passed                                                                               |
+| Android 10 emulator      | 34 ordinary instrumentation passes, three designated skips; focused two-test companion subset and separate process-kill import/render subsets passed |
+| Android 16 emulator      | 35 ordinary passes, two designated skips; focused companion, 750 MB synthetic decode/render and separate process-kill subsets passed                 |
+| Independent verification | 33 exported synthetic cases per emulator passed                                                                                                      |
+| Whisper range/retry      | 241 seconds covered as 120/120/1 seconds; no transport during preparation; approved retry reused completed results without another upload            |
+| ClearVoice output        | Reused direct buffers matched ordinary ONNX floats exactly for two changed synthetic inputs; tested CPU profiles also matched exactly                |
+| CPU comparison           | Two bounded threads used about 33–36% less time than one across two short Linux comparisons; four threads were slower                                |
+
+The full-suite reports observed 576 / 192 MiB maximum managed heap on API 29 / 36. The preflight separately asserted at least 128 MiB; requesting that AVD property does not establish an exact 128 MiB runtime. No application `largeHeap` change or removed failure assertion is involved.
+
+The 5.525-second synthetic ClearVoice input recorded inference real-time factors about 1.43 / 2.61 on the API 29 / 36 emulators. These values exclude later stages and show that CPU-only neural enhancement can still exceed recording duration. No sustained target-phone or 300 MB MP3 completion time is established. No live external-provider speed/cost benchmark or managed free endpoint was executed. Automatic in-Workbench remote connection, the target-recording measurement and all outstanding beta gates remain open; styling/refactoring/Vue/VitePress rollout remain held behind that qualification.
