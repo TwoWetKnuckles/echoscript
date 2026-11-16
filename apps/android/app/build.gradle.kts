@@ -46,7 +46,7 @@ dependencies {
     implementation("androidx.compose.foundation:foundation")
     implementation("androidx.lifecycle:lifecycle-viewmodel-compose:2.9.4")
     implementation("androidx.lifecycle:lifecycle-runtime-compose:2.9.4")
-    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.10.2")
+    implementation("org.jetbrains.kotlinx:kotlinx-coroutines-android:1.11.0")
     implementation("com.google.crypto.tink:tink-android:1.24.0")
     implementation("io.github.erdtman:java-json-canonicalization:1.1")
     implementation("androidx.media3:media3-exoplayer:1.8.1")
