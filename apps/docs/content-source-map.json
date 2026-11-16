@@ -25,7 +25,7 @@
   },
   "development/approved-update.mdx": {
     "source": "docs/development/APPROVED-UPDATE.md",
-    "sha256": "c5cac86bed1ddfbb611084fbebde166a66935fdde8032d67fcc40e76d31e821c"
+    "sha256": "bde97c96e4719f79ee80127443351c9c25398fb02c5a359b49323ac077085a7a"
   },
   "development/tools.mdx": {
     "source": "docs/development/TOOLS.md",
@@ -69,7 +69,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "ede9feedb6b722d766d9c8779b7a53875b554e64dd5d98138c7632f14e0db22f"
+    "sha256": "e168efa536894259a605c4f0c122fed17cdb0f1c2172f926bb904fd316a2b40b"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",

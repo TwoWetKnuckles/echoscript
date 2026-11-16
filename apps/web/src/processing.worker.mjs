@@ -117,6 +117,13 @@ function commitAnalysis(info) {
   });
 }
 async function execute(action, data) {
+  // Preserve the local-default worker contract for existing callers. Explicit
+  // routes still bind preparation, approval and results to the same provider.
+  if (
+    ["prepareTransmission", "consent", "providerResult"].includes(action) &&
+    data.provider === undefined
+  )
+    data = { ...data, provider: "vosk-local" };
   if (action === "import") {
     if (data.bytes.length > 16 * 1024 * 1024)
       throw Error(

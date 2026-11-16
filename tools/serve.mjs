@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { createReadStream } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
+import { realpath, stat, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { resolve, sep, extname } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
@@ -58,6 +59,27 @@ export async function createStaticServer(directory = "dist") {
           throw Error("BAD_PATH");
         const info = await stat(file);
         if (!info.isFile()) throw Error("BAD_PATH");
+        if (extname(file) === ".html") {
+          if (info.size > 2 * 1024 * 1024) throw Error("HTML_TOO_LARGE");
+          const html = await readFile(file, "utf8");
+          const hashes = [
+            ...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi),
+          ]
+            .filter((match) => match[1].trim())
+            .map(
+              (match) =>
+                `'sha256-${createHash("sha256").update(match[1]).digest("base64")}'`,
+            );
+          res.setHeader(
+            "Content-Security-Policy",
+            res
+              .getHeader("Content-Security-Policy")
+              .replace(
+                "script-src 'self'",
+                `script-src 'self' ${hashes.join(" ")}`,
+              ),
+          );
+        }
         res.writeHead(200, {
           "Content-Type": types.get(extname(file)),
           "Content-Length": info.size,
