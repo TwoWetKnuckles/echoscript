@@ -66,9 +66,10 @@ class OfflineAudioTest {
     }
 
     @Test fun recognitionInputKeepsExactPcmAtDecoderRate() {
-        val source = wave(16001) { if (it % 2 == 0) -123 else 321 }
+        // Every signed PCM16 value, including extrema, across multiple I/O blocks.
+        val source = wave(65536) { it - 32768 }
         val output = ByteArrayOutputStream()
-        WaveReader(source.inputStream(), source.size.toLong()).use { assertEquals(16001L, recognitionWave(it, output, { false }, {})) }
+        WaveReader(source.inputStream(), source.size.toLong()).use { assertEquals(65536L, recognitionWave(it, output, { false }, {})) }
         assertArrayEquals(source, output.toByteArray())
     }
 

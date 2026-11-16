@@ -29,6 +29,58 @@ class CompanionWorkflowTest {
         finally { image.recycle() }
     }
 
+    @Test fun longerRequestsCoverEveryFrameAndApprovedRetryReusesCompletedResults() {
+        val context = ApplicationProvider.getApplicationContext<Context>()
+        val vault = EvidenceVault(context); val workflow = OfflineWorkflow(context, vault)
+        val frames = 241L * 16000
+        val header = waveHeader(PcmFormat(16000, 1), frames * 2)
+        val silence = object : java.io.InputStream() {
+            var remaining = frames * 2
+            override fun read(): Int = if (remaining > 0) { remaining--; 0 } else -1
+            override fun read(bytes: ByteArray, offset: Int, length: Int): Int {
+                if (length == 0) return 0
+                if (remaining == 0L) return -1
+                val count = minOf(length.toLong(), remaining).toInt()
+                java.util.Arrays.fill(bytes, offset, offset + count, 0.toByte()); remaining -= count
+                return count
+            }
+        }
+        val source = java.io.SequenceInputStream(header.inputStream(), silence)
+        val case = source.use { vault.importSource(it, "SYNTHETIC QUIET 241S.wav", "Synthetic long transport contract", "SYNTHETIC_QA") }
+        val hash = case.activeAudio().getString("sha256")
+        try {
+            TestCompanion().use { server ->
+                val remote = RemoteWorkflow(vault, workflow)
+                val batch = remote.prepare(case, "SYNTHETIC_QA", CompanionConfig("http://127.0.0.1:${server.port}", server.token), "openai-whisper", { false }, {})
+                assertTrue(server.requests.isEmpty())
+                assertEquals(3, batch.chunks.size)
+                var cursor = 0L
+                for (chunk in batch.chunks) {
+                    val params = chunk.operationParameters()
+                    assertEquals(cursor, params.getLong("startFrame"))
+                    assertTrue(chunk.getLong("bytes") <= RemoteChunkPolicy.MAX_WAVE_BYTES)
+                    cursor += params.getLong("frames")
+                }
+                assertEquals(frames, cursor)
+                val result = remote.execute(case, "SYNTHETIC_QA", batch, { false }, {})
+                val transcript = workflow.readTranscript(case, result)
+                assertEquals(3, transcript.getJSONArray("segments").length())
+                assertEquals(240.1, transcript.getJSONArray("segments").getJSONObject(2).getDouble("start"), 1e-9)
+                assertEquals(6, server.requests.size)
+                val firstRaw = case.items("artifacts").filter { it.getString("type") == "RAW_PROVIDER_RESULT" }.map { it.getString("id") }
+                remote.execute(case, "SYNTHETIC_QA", batch, { false }, {}) // Explicitly approved retry in the fixture.
+                assertEquals("Committed results must not be uploaded a second time", 6, server.requests.size)
+                assertEquals(firstRaw, case.items("artifacts").filter { it.getString("type") == "RAW_PROVIDER_RESULT" }.map { it.getString("id") })
+                assertEquals(hash, case.items("artifacts").first().getString("sha256"))
+                assertTrue(vault.verify(case).contains("agree"))
+                server.failure.get()?.let { throw AssertionError("Synthetic long companion failed", it) }
+                androidx.test.platform.app.InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { folder ->
+                    java.io.File(folder, "synthetic-long-whisper.echocase").outputStream().use { vault.exportPackage(case, it, "SYNTHETIC_QA") }
+                }
+            }
+        } finally { assertTrue(java.io.File(context.filesDir, "EvidenceVault/cases/${case.getString("caseId")}").deleteRecursively()) }
+    }
+
     @Test fun whisperSelectionPreparesWithoutSendingAndRequiresExplicitApproval() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val vault = EvidenceVault(context)
@@ -117,7 +169,7 @@ class CompanionWorkflowTest {
                     val headers = mutableMapOf<String, String>()
                     while (true) { val line = line(); if (line.isEmpty()) break; val i = line.indexOf(':'); headers[line.substring(0, i).lowercase()] = line.substring(i + 1).trim() }
                     check(headers["authorization"] == "Bearer $token")
-                    val length = checkNotNull(headers["content-length"]).toInt(); check(length in 1..(30 * 32000 + 65536))
+                    val length = checkNotNull(headers["content-length"]).toInt(); check(length in 1..(RemoteChunkPolicy.MAX_WAVE_BYTES + 65536))
                     val body = ByteArray(length); DataInputStream(input).readFully(body)
                     requests.add(path)
                     val response = if (path == "/v1/consents") {

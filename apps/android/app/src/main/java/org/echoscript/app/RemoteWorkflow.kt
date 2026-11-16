@@ -30,19 +30,19 @@ internal class RemoteWorkflow(private val vault: EvidenceVault, private val work
         }
         val chunks = mutableListOf<JSONObject>()
         vault.open(caseId, canonical.getString("id")).use { stream -> WaveReader(stream, canonical.getLong("bytes")).use { wave ->
-            val buffer = ByteArray(30 * 32000); var offset = 0L
+            val buffer = ByteArray(RemoteChunkPolicy.MAX_PCM_BYTES); var offset = 0L
             while (offset < wave.frames) {
                 if (cancelled()) throw InterruptedException("Preparation cancelled; no audio has been sent")
                 val length = wave.read(buffer)
                 val start = offset; val frames = length / 2
                 val existing = manifest.items("artifacts").lastOrNull {
-                    it.getJSONObject("operation").getString("algorithm") == "companion-exact-pcm-chunk" &&
-                        it.getJSONArray("parents").optString(0) == canonical.getString("id") && it.operationParameters().optLong("startFrame", -1) == start
+                    RemoteChunkPolicy.matches(it, canonical.getString("id"), start, frames, provider, model)
                 }
                 val chunk = existing ?: vault.addDerivative(manifest, actor, "TRANSCRIPTION_TRANSMISSION",
-                    listOf(canonical.getString("id")), "Prepared audio chunk ${chunks.size + 1}.wav", "companion-exact-pcm-chunk", "1", maxBytes = buffer.size + 44L) { out ->
+                    listOf(canonical.getString("id")), "Prepared audio chunk ${chunks.size + 1}.wav", "companion-exact-pcm-chunk", RemoteChunkPolicy.VERSION, maxBytes = buffer.size + 44L) { out ->
                     out.write(waveHeader(PcmFormat(16000, 1), length.toLong())); out.write(buffer, 0, length)
                     JSONObject().put("startFrame", start).put("frames", frames).put("provider", provider).put("model", model)
+                        .put("maximumChunkSeconds", RemoteChunkPolicy.SECONDS)
                 }
                 chunks.add(chunk); offset += frames; progress(offset)
             }
@@ -67,16 +67,20 @@ internal class RemoteWorkflow(private val vault: EvidenceVault, private val work
             if (cancelled()) throw InterruptedException("Processing cancelled; completed results remain for an approved retry")
             val old = manifest.items("artifacts").lastOrNull {
                 it.getString("type") == "RAW_PROVIDER_RESULT" && it.getJSONArray("parents").optString(0) == chunk.getString("id") &&
-                    it.operationParameters().optString("provider") == batch.provider && it.operationParameters().optString("endpoint") == batch.config.origin
+                    it.operationParameters().optString("provider") == batch.provider && it.operationParameters().optString("endpoint") == batch.config.origin &&
+                    it.operationParameters().optString("model") == batch.model
             }
             val result = old ?: run {
-                val input = readArtifact(manifest, chunk, 30 * 32000 + 44)
+                val input = readArtifact(manifest, chunk, RemoteChunkPolicy.MAX_WAVE_BYTES)
                 require(EvidenceVault.sha(input) == chunk.getString("sha256")) { "Prepared payload hash mismatch" }
                 vault.recordEvent(manifest, actor, "AUDIO_CHUNK_SUBMISSION", JSONObject().put("artifactId", chunk.getString("id")).put("sha256", chunk.getString("sha256"))
                     .put("bytes", input.size).put("provider", batch.provider).put("model", batch.model).put("approvalId", batch.approval.getString("id")))
+                val started = System.nanoTime()
                 val response = client.submit(batch.provider, batch.model, input)
+                val elapsedMillis = (System.nanoTime() - started) / 1_000_000
                 val details = JSONObject().put("provider", batch.provider).put("model", batch.model).put("endpoint", batch.config.origin)
                     .put("inputHash", chunk.getString("sha256")).put("submissionManifestId", batch.approval.getString("id"))
+                    .put("transportAndProviderMillis", elapsedMillis).put("inputBytes", input.size)
                 vault.addDerivative(manifest, actor, "RAW_PROVIDER_RESULT", listOf(chunk.getString("id")),
                     "Whisper chunk ${index + 1}.json",
                     "companion-${batch.provider}-result", "1", maxBytes = 8L * 1024 * 1024) { out -> out.write(response); details }
@@ -92,7 +96,7 @@ internal class RemoteWorkflow(private val vault: EvidenceVault, private val work
             .put("model", "whisper-1").put("language", "provider-detected").put("audioArtifactId", batch.audioId).put("duration", batch.duration)
             .put("transmissionHash", batch.canonical.getString("sha256")).put("submissionManifestId", batch.approval.getString("id"))
             .put("diarization", JSONObject().put("supported", false)).put("segments", segments)
-            .put("warnings", JSONArray(listOf("Unverified machine transcription; review against the audio.", "Whisper provides no confidence, N-best or speaker identification here.", "Independent 30-second requests can split speech; timestamps refer to the transmitted mono 16 kHz render.")))
+            .put("warnings", JSONArray(listOf("Unverified machine transcription; review against the audio.", "Whisper provides no confidence, N-best or speaker identification here.", "Independent requests of up to 120 seconds can split speech; timestamps refer to the transmitted mono 16 kHz render.")))
         return vault.addDerivative(manifest, actor, "NORMALIZED_TRANSCRIPT", results.map { it.getString("id") }, "Whisper draft transcript.json", "native-whisper-normalization", "1", maxBytes = 16L * 1024 * 1024) { out ->
             out.write(EvidenceVault.canonical(transcript)); JSONObject().put("audioArtifactId", batch.audioId).put("state", "AI_DRAFT").put("provider", batch.provider)
         }

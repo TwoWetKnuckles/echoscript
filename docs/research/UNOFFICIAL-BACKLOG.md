@@ -31,11 +31,13 @@ Owner approval on November 15, 2026 authorized the recommended stack/theme direc
 
 ## Decision log
 
-| Decision                                                                                             | State                     | Required next input                                           |
-| ---------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------- |
-| A: Vue/TypeScript/Tailwind hosted companion + current Fumadocs docs + native Compose + shared tokens | Approved November 15      | Implementation and validation evidence                        |
-| B: Also migrate documentation to Vue/VitePress                                                       | Alternative, not approved | Owner choice and migration acceptance scope                   |
-| New beta release                                                                                     | Not ready                 | Exact-build gate evidence and qualified signing               |
-| Competitor-inspired additions                                                                        | Research only             | Select idea IDs, acceptance criteria and owner scope decision |
+| Decision                                                                                             | State                | Required next input                                           |
+| ---------------------------------------------------------------------------------------------------- | -------------------- | ------------------------------------------------------------- |
+| A: Vue/TypeScript/Tailwind hosted companion + current Fumadocs docs + native Compose + shared tokens | Approved November 15 | Implementation and validation evidence                        |
+| B: Also migrate documentation to Vue/VitePress                                                       | Approved November 16 | Performance qualification, migration/deep-link acceptance     |
+| New beta release                                                                                     | Not ready            | Exact-build gate evidence and qualified signing               |
+| Competitor-inspired additions                                                                        | Research only        | Select idea IDs, acceptance criteria and owner scope decision |
 
 When promoting an item, create a focused implementation issue or PR, cite its E-ID and record the owner decision. Check an item only after linked evidence supports completion. Keep this research list separate from required release-gate records.
+
+November 16 steering: performance repair precedes additional styling/refactoring; the owner selected the Vue/VitePress documentation migration. See [performance and managed-service readiness](../development/PERFORMANCE.md). Research checkbox completion still requires evidence.

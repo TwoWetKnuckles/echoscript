@@ -63,3 +63,11 @@ Pinned Assertrust's hosted check and docs CI passed in PR #31. Its Kotlin/Node a
 The Android cancellation fix commits WorkManager's terminal cancellation before raising a cooperative stop signal. The earlier source returned `FAILED` in the existing notification-receiver test. Exact-source API 29/36 results are tracked in PR #27 and must complete before a replacement APK is published. Physical-device, owner-signing and full beta gates remain unpassed.
 
 The combined-source run exposed an existing worker caller that omitted the newly explicit provider field. The worker now preserves Vosk as the default for that legacy contract while rejecting explicit route mismatches. A focused worker integration regression covers default Vosk, explicit Whisper, exact transmission binding and invalidation after a new render. The local static host also hashes the portal's exact inline importmap/entry scripts for CSP rather than allowing unrestricted inline code; nested workbench routing is covered by its host regression.
+
+## Performance-first hold — November 16, 2026
+
+The owner reported four to five hours of processing for a 300 MB MP3 and paused additional styling/refactoring. [The performance repair](../development/PERFORMANCE.md) records source-level bottlenecks, the implemented changes, benchmark scope and managed-service blockers. The recording duration, installed build and per-stage times are still needed to qualify that report; compressed bytes alone do not establish an audio duration.
+
+Fresh local browser/API build, strict Vue/API checks, ESLint and all 39 Node tests pass. New Android changes and CPU profiles require their own exact-source CI results. The prior integration source `1f5f7bd589f135f3281ae2c4cbadef83e86ce09e` passed its push matrix, while the Android 10 PR job failed with a 16 MiB managed-heap allocation error and a UI timeout. CI now declares and verifies its test phone's memory profile without removing the memory-failure assertions. These observations are not physical-device acceptance.
+
+PR #32 is held in draft. Vue/VitePress migration is approved after performance qualification; the current Fumadocs deployment remains live during that transition. No new free remote service, configuration-free connection, guaranteed completion time or beta publication is claimed.

@@ -170,7 +170,6 @@ internal class VaultModel(application: Application) : AndroidViewModel(applicati
     fun cancel() {
         val id = mutable.value.backgroundJobId
         if (id == null) cancelled.set(true) else {
-            ProcessingGate.cancellation(id).set(true)
             viewModelScope.launch(Dispatchers.IO) {
                 try { ProcessingJobs.cancel(getApplication(), id) }
                 catch (_: Exception) { notice("Cancellation could not be fully recorded. Preserve the vault and check the job before retrying.") }

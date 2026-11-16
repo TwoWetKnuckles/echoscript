@@ -40,11 +40,15 @@ jobs:
           PYMODEL
       - name: Measure allocator memory and exact synthetic output with networking denied
         run: .clearvoice-export/bin/python scripts/qa-clearvoice-memory.py assets/clearvoice/frcrn-16k-2s.onnx qa-output/clearvoice-memory
+      - name: Compare CPU throughput and output parity without changing the model
+        run: .clearvoice-export/bin/python scripts/qa-clearvoice-throughput.py assets/clearvoice/frcrn-16k-2s.onnx qa-output/clearvoice-throughput
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
           name: synthetic-clearvoice-memory-comparison
-          path: qa-output/clearvoice-memory/memory-comparison.json
+          path: |
+            qa-output/clearvoice-memory/memory-comparison.json
+            qa-output/clearvoice-throughput/throughput.json
           if-no-files-found: error
           retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
@@ -242,10 +246,14 @@ jobs:
           api-level: ${{ matrix.api }}
           arch: x86_64
           target: google_apis
+          profile: Nexus 5
           disable-animations: true
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -partition-size 4096
           working-directory: apps/android
+          # The pinned runner's heap-size input writes unrecognized hw.heapSize.
+          pre-emulator-launch-script: python3 ../../scripts/configure-qa-avd.py "$ANDROID_AVD_HOME/test.avd/config.ini"
           script: |
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=org.echoscript.app.ResourceProfileTest -Pandroid.testInstrumentationRunnerArguments.expectedManagedHeapMiB=128
             python3 ../../scripts/qa-android-coexistence.py setup ${{ matrix.api }}
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=org.echoscript.app.CompanionWorkflowTest
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
