@@ -1,0 +1,81 @@
+{
+  "sourceCommit": "4ae4bba0291442010fadce35e6266e018c249ac5",
+  "qualityRun": "https://github.com/TwoWetKnuckles/echoscript/actions/runs/43952038614",
+  "artifactId": 14267773099,
+  "artifactSha256": "91ea98bf4826599b0432b680b53844b40df49c1ad5674e8951a7365c2ceb17ea",
+  "report": {
+    "scope": "Linux synthetic pinned-model CPU profiles; not phone or speech-quality acceptance",
+    "modelSha256": "5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2",
+    "runtime": "onnxruntime/1.32.0",
+    "numpy": "1.26.4",
+    "logicalCpus": 4,
+    "profiles": [
+      {
+        "threads": 1,
+        "arena": false,
+        "initSeconds": 0.4817825970000058,
+        "secondsPerOneSecondHop": 3.701374543,
+        "windowLatencies": [3.6887326460000054, 3.7140164399999946],
+        "maxRssKiB": 831508,
+        "repeatableWithinProfile": true,
+        "maxAbsoluteDifferenceFromBaseline": 0.0,
+        "changedPcmSamples": 0
+      },
+      {
+        "threads": 2,
+        "arena": false,
+        "initSeconds": 0.46618724999999017,
+        "secondsPerOneSecondHop": 2.386797001500014,
+        "windowLatencies": [2.416840575000009, 2.356753428000019],
+        "maxRssKiB": 832392,
+        "repeatableWithinProfile": true,
+        "maxAbsoluteDifferenceFromBaseline": 0.0,
+        "changedPcmSamples": 0
+      },
+      {
+        "threads": 4,
+        "arena": false,
+        "initSeconds": 0.4798452130000044,
+        "secondsPerOneSecondHop": 2.686632257999989,
+        "windowLatencies": [2.796890846999986, 2.5763736689999917],
+        "maxRssKiB": 846452,
+        "repeatableWithinProfile": true,
+        "maxAbsoluteDifferenceFromBaseline": 0.0,
+        "changedPcmSamples": 0
+      },
+      {
+        "threads": 1,
+        "arena": true,
+        "initSeconds": 0.5004703399999926,
+        "secondsPerOneSecondHop": 3.3002658679999826,
+        "windowLatencies": [3.452788809999987, 3.147742925999978],
+        "maxRssKiB": 1481824,
+        "repeatableWithinProfile": true,
+        "maxAbsoluteDifferenceFromBaseline": 0.0,
+        "changedPcmSamples": 0
+      },
+      {
+        "threads": 2,
+        "arena": true,
+        "initSeconds": 0.4946109130000025,
+        "secondsPerOneSecondHop": 2.182153029999995,
+        "windowLatencies": [2.2712123059999954, 2.0930937539999945],
+        "maxRssKiB": 1480880,
+        "repeatableWithinProfile": true,
+        "maxAbsoluteDifferenceFromBaseline": 0.0,
+        "changedPcmSamples": 0
+      },
+      {
+        "threads": 4,
+        "arena": true,
+        "initSeconds": 0.49526691400001255,
+        "secondsPerOneSecondHop": 2.6925668454999965,
+        "windowLatencies": [2.7712857490000147, 2.6138479419999783],
+        "maxRssKiB": 1478656,
+        "repeatableWithinProfile": true,
+        "maxAbsoluteDifferenceFromBaseline": 0.0,
+        "changedPcmSamples": 0
+      }
+    ]
+  }
+}

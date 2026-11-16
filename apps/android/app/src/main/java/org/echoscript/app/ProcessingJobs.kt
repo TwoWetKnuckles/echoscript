@@ -194,6 +194,10 @@ class LocalProcessingWorker(context: Context, parameters: WorkerParameters) : Co
                     val workflow = OfflineWorkflow(applicationContext, vault)
                     val processing = ProcessingContext(plan, vault, ::stopped, running.getInt("attempt"))
                     var lastProgress = 0L
+                    fun status(message: String) {
+                        setProgressAsync(workDataOf("stage" to message))
+                        setForegroundAsync(foreground(message))
+                    }
                     fun phase(label: String): (Long) -> Unit {
                         setProgressAsync(workDataOf("stage" to label))
                         setForegroundAsync(foreground(label))
@@ -208,11 +212,11 @@ class LocalProcessingWorker(context: Context, parameters: WorkerParameters) : Co
                     vault.selectRevision(manifest, plan.actor, plan.baseId)
                     when (plan.kind) {
                         LocalJobKind.RENDER, LocalJobKind.RENDER_TRANSCRIBE ->
-                            LocalRenderPipeline(applicationContext, vault, workflow).render(manifest, plan.actor, plan.baseId, plan.regions, plan.clearVoice, ::stopped, phase("Rendering audio"), processing)
+                            LocalRenderPipeline(applicationContext, vault, workflow).render(manifest, plan.actor, plan.baseId, plan.regions, plan.clearVoice, ::stopped, phase("Rendering audio"), processing, ::status)
                         LocalJobKind.CLEARVOICE, LocalJobKind.CLEARVOICE_TRANSCRIBE -> {
                             val recipe = JSONObject().put("baseId", plan.baseId).put("rack", EffectRack().json()).put("regions", org.json.JSONArray()).put("limit", false)
                             ClearVoiceNative(applicationContext, vault, workflow).enhance(manifest, plan.actor, ClearVoicePlacement.AFTER.name, ::stopped,
-                                phase("Enhancing speech"), withClearVoiceRecipe(recipe.toString(), ClearVoicePlacement.AFTER, true), processing.step("direct-clearvoice"))
+                                phase("Enhancing speech"), withClearVoiceRecipe(recipe.toString(), ClearVoicePlacement.AFTER, true), processing.step("direct-clearvoice"), ::status)
                         }
                         LocalJobKind.TRANSCRIBE -> Unit
                     }

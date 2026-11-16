@@ -10,6 +10,31 @@ import org.json.JSONArray
 import org.json.JSONObject
 
 class ClearVoiceNativeTest {
+    private fun comparePinnedIoWithOrdinaryOrt(context: Context) {
+        val model = File(context.filesDir, "ClearVoiceModels/$CLEARVOICE_ONNX_HASH/model.onnx")
+        val environment = ai.onnxruntime.OrtEnvironment.getEnvironment()
+        ai.onnxruntime.OrtSession.SessionOptions().use { options ->
+            options.setIntraOpNumThreads(clearVoiceThreadCount(Runtime.getRuntime().availableProcessors())); options.setInterOpNumThreads(1)
+            options.setExecutionMode(ai.onnxruntime.OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
+            options.setCPUArenaAllocator(false); options.setMemoryPatternOptimization(false)
+            environment.createSession(model.absolutePath, options).use { session ->
+                ClearVoiceInference(environment, session).use { inference ->
+                    repeat(2) { pass ->
+                        val samples = FloatArray(32000) { kotlin.math.sin(it * .013 + pass).toFloat() * .03f }
+                        ai.onnxruntime.OnnxTensor.createTensor(environment, java.nio.FloatBuffer.wrap(samples), longArrayOf(1, 32000)).use { tensor ->
+                            session.run(mapOf("audio" to tensor)).use { result ->
+                                val expected = (result[0].value as Array<*>).single() as FloatArray
+                                val actual = inference.run(samples)
+                                assertArrayEquals("Pinned I/O must preserve every float and read changed inputs", expected,
+                                    FloatArray(32000) { actual.get(it) }, 0f)
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
     @Test fun actualBundledModelPreservesSourceAndTimingAndProducesRepeatableProtectedRevisions() {
         val context = ApplicationProvider.getApplicationContext<Context>()
         val vault = EvidenceVault(context); val workflow = OfflineWorkflow(context, vault)
@@ -38,6 +63,9 @@ class ClearVoiceNativeTest {
             assertEquals("DISABLED_BEFORE_INITIALIZATION", parameters.getString("runtimeTelemetry"))
             assertFalse(parameters.getBoolean("cpuArenaAllocator"))
             assertFalse(parameters.getBoolean("memoryPatternOptimization"))
+            assertEquals("REUSED_DIRECT", parameters.getString("ioBuffers"))
+            assertTrue(parameters.getLong("inferenceMillis") > 0)
+            assertTrue(parameters.getDouble("inferenceRealtimeFactor") > 0)
             assertEquals(88400L, parameters.getLong("frames"))
             assertEquals(16000, parameters.getInt("sampleRate"))
             assertEquals(1, parameters.getInt("channels"))
@@ -57,6 +85,7 @@ class ClearVoiceNativeTest {
             assertTrue(replay.getJSONObject("clearVoice").getBoolean("applied"))
             assertEquals(ClearVoicePlacement.AFTER, clearVoiceFromRecipe(replay))
             assertEquals(first.getString("sha256"), second.getString("sha256"))
+            comparePinnedIoWithOrdinaryOrt(context)
             val disabled = pipeline.render(case, "SYNTHETIC_QA", replay.getString("baseId"), settings, null, { false }, {})
             assertEquals("Disabling must replay the original base", decoded.getString("sha256"), disabled.getString("sha256"))
             assertNull(clearVoiceFromRecipe(disabled.operationParameters().getJSONObject("workbenchPlan")))
@@ -70,6 +99,8 @@ class ClearVoiceNativeTest {
                 val highWaterKiB = File("/proc/self/status").readLines().single { it.startsWith("VmHWM:") }.filter { it.isDigit() }.toLong()
                 File(output, "synthetic-clearvoice-memory.json").writeText(JSONObject().put("scope", "synthetic-emulator-process-high-water-not-physical-acceptance")
                     .put("processHighWaterRssKiB", highWaterKiB).put("api", android.os.Build.VERSION.SDK_INT)
+                    .put("inferenceMillis", parameters.getLong("inferenceMillis"))
+                    .put("inferenceRealtimeFactor", parameters.getDouble("inferenceRealtimeFactor"))
                     .put("modelSha256", CLEARVOICE_ONNX_HASH).put("cpuArenaAllocator", false).put("memoryPatternOptimization", false).toString())
             }
         } finally { assertTrue(File(context.filesDir,"EvidenceVault/cases/$id").deleteRecursively()) }

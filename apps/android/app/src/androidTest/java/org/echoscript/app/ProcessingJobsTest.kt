@@ -26,18 +26,38 @@ class ProcessingJobsTest {
     }
 
     @Test fun notificationCancellationStopsAScheduledJobAndKeepsTheSavedRequest() {
+        cancelScheduledJob(fromWorkbench = false)
+    }
+
+    @Test fun workbenchCancellationCommitsCancelledBeforeStoppingTheWorker() {
+        cancelScheduledJob(fromWorkbench = true)
+    }
+
+    private fun cancelScheduledJob(fromWorkbench: Boolean) {
         val vault = EvidenceVault(context)
         val case = context.assets.open("synthetic-speech.wav").use { vault.importSource(it, "SYNTHETIC.wav", "Synthetic scheduled cancellation", "SYNTHETIC_QA") }
         val request = plan(case, List(32) { RenderSettings(gainDb = .1, limit = false) })
         val journal = ProcessingJournal(vault)
         val manager = WorkManager.getInstance(context)
         val scenario = ActivityScenario.launch(MainActivity::class.java)
+        lateinit var model: VaultModel
         try {
+            if (fromWorkbench) {
+                scenario.onActivity { model = androidx.lifecycle.ViewModelProvider(it)[VaultModel::class.java] }
+                val ready = System.nanoTime() + 20_000_000_000L
+                while (!model.state.value.ready && System.nanoTime() < ready) Thread.sleep(20)
+                assertTrue(model.state.value.ready)
+            }
             ProcessingJobs.enqueue(context, vault, request)
             val started = System.nanoTime() + 20_000_000_000L
             while (manager.getWorkInfoById(UUID.fromString(request.id)).get()?.state != WorkInfo.State.RUNNING && System.nanoTime() < started) Thread.sleep(20)
             assertEquals(WorkInfo.State.RUNNING, checkNotNull(manager.getWorkInfoById(UUID.fromString(request.id)).get()).state)
-            context.sendBroadcast(Intent(context, LocalJobCancelReceiver::class.java).setAction("org.echoscript.CANCEL_LOCAL_JOB").putExtra("id", request.id))
+            if (fromWorkbench) {
+                val observed = System.nanoTime() + 20_000_000_000L
+                while (model.state.value.backgroundJobId != request.id && System.nanoTime() < observed) Thread.sleep(20)
+                assertEquals(request.id, model.state.value.backgroundJobId)
+                scenario.onActivity { model.cancel() }
+            } else context.sendBroadcast(Intent(context, LocalJobCancelReceiver::class.java).setAction("org.echoscript.CANCEL_LOCAL_JOB").putExtra("id", request.id))
             val stopped = System.nanoTime() + 20_000_000_000L
             while (manager.getWorkInfoById(UUID.fromString(request.id)).get()?.state != WorkInfo.State.CANCELLED && System.nanoTime() < stopped) Thread.sleep(20)
             assertEquals(WorkInfo.State.CANCELLED, checkNotNull(manager.getWorkInfoById(UUID.fromString(request.id)).get()).state)

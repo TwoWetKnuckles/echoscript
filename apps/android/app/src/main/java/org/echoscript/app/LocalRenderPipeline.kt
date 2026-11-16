@@ -7,7 +7,7 @@ import org.json.JSONObject
 /** Replays from the saved base, so disabling a stage never compounds the last render. */
 internal class LocalRenderPipeline(private val context: Context, private val vault: EvidenceVault, private val workflow: OfflineWorkflow) {
     fun render(manifest: JSONObject, actor: String, baseId: String, regions: List<RenderSettings>, clearVoice: ClearVoicePlacement?,
-        cancelled: () -> Boolean, progress: (Long) -> Unit, processing: ProcessingContext? = null): JSONObject {
+        cancelled: () -> Boolean, progress: (Long) -> Unit, processing: ProcessingContext? = null, status: (String) -> Unit = {}): JSONObject {
         require(regions.size in 1..32) { "Use at most 32 processing regions per render" }
         vault.selectRevision(manifest, actor, baseId)
         if (clearVoice == ClearVoicePlacement.BEFORE) {
@@ -15,7 +15,7 @@ internal class LocalRenderPipeline(private val context: Context, private val vau
             val neuralOnly = JSONObject().put("baseId", baseId).put("rack", EffectRack().json())
                 .put("regions", JSONArray()).put("limit", false)
             ClearVoiceNative(context, vault, workflow).enhance(manifest, actor, clearVoice.name, cancelled, progress,
-                withClearVoiceRecipe(neuralOnly.toString(), clearVoice, true), processing?.step("render.before"))
+                withClearVoiceRecipe(neuralOnly.toString(), clearVoice, true), processing?.step("render.before"), status)
         }
         for ((index, settings) in regions.withIndex()) {
             if (cancelled()) throw InterruptedException("Render cancelled; completed revisions remain in history")
@@ -28,7 +28,7 @@ internal class LocalRenderPipeline(private val context: Context, private val vau
         if (clearVoice == ClearVoicePlacement.AFTER) {
             val plan = manifest.activeAudio().operationParameters().optJSONObject("workbenchPlan")?.toString()
             ClearVoiceNative(context, vault, workflow).enhance(manifest, actor, clearVoice.name, cancelled, progress,
-                withClearVoiceRecipe(plan, clearVoice, true), processing?.step("render.after"))
+                withClearVoiceRecipe(plan, clearVoice, true), processing?.step("render.after"), status)
         }
         return manifest.activeAudio()
     }

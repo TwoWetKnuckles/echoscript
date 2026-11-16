@@ -28,6 +28,8 @@ In **Cases**, choose a recording, confirm its name under **Selected recording**,
 
 ## Documentation site
 
+The November 16 priority is [long-audio performance repair](docs/development/PERFORMANCE.md), followed by the approved Vue/VitePress documentation migration. The current docs stay live during validation.
+
 The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
 
 From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The docs retain Fumadocs and share the graphite/cyan theme with the Vue workbench and separate Symfony portal. [Approved update and verification scope](docs/development/APPROVED-UPDATE.md).

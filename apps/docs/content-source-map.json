@@ -27,6 +27,10 @@
     "source": "docs/development/APPROVED-UPDATE.md",
     "sha256": "567f69a189605a990d96e1b56f945cbc44c7a4c7c33b08c026ae5e555a96df9a"
   },
+  "development/performance.mdx": {
+    "source": "docs/development/PERFORMANCE.md",
+    "sha256": "746775127ae84664bf7a1cb2efbd07e1a281bbd0dc95c78dde67123eda6e8aad"
+  },
   "development/tools.mdx": {
     "source": "docs/development/TOOLS.md",
     "sha256": "0ca4554d1fc2d27a49d4203a828cd60ffb3255892f2941c45e6cc007f711f587"
@@ -57,7 +61,7 @@
   },
   "providers/openai-whisper.mdx": {
     "source": "docs/providers/openai-whisper.md",
-    "sha256": "88e85a2feecf3c977b7c6d839c9e46e55adf1bd50f4f864882863728df7cd579"
+    "sha256": "8ec9b423dbeaaed33bad586f21584b48ae605697732f7e259fac073cc9bf7f60"
   },
   "qa/rc-acceptance.mdx": {
     "source": "docs/qa/RC-ACCEPTANCE.md",
@@ -69,7 +73,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "e168efa536894259a605c4f0c122fed17cdb0f1c2172f926bb904fd316a2b40b"
+    "sha256": "328e79a9c4553ea00c48218498002c05b8adae5e698e05a9e813c171cd841759"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
@@ -85,7 +89,7 @@
   },
   "research/unofficial-backlog.mdx": {
     "source": "docs/research/UNOFFICIAL-BACKLOG.md",
-    "sha256": "2c0483c7cef32f1b73410a87e30b3f14689947114789cf4406aca5d28020654a"
+    "sha256": "9e24f92133177f9c0a3150bc3aba9ecb9e43d29298743663db4da1a28778ac2a"
   },
   "security/operations.mdx": {
     "source": "docs/security/OPERATIONS.md",

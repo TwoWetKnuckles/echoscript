@@ -31,6 +31,19 @@ internal fun recognitionWave(input: WaveReader, output: OutputStream, cancelled:
     val frames = input.frames * SPEECH_RATE / source.sampleRate
     output.write(waveHeader(PcmFormat(SPEECH_RATE, 1), frames * 2))
     val inputBuffer = ByteArray(PCM_BLOCK_BYTES)
+    if (source.sampleRate == SPEECH_RATE && source.channels == 1) {
+        var copiedFrames = 0L
+        while (true) {
+            if (cancelled()) throw InterruptedException("Recognition input cancelled")
+            val count = input.read(inputBuffer)
+            if (count == 0) break
+            output.write(inputBuffer, 0, count)
+            copiedFrames += count / 2
+            progress(copiedFrames)
+        }
+        check(copiedFrames == frames)
+        return copiedFrames
+    }
     val outputBuffer = ByteArray(PCM_BLOCK_BYTES)
     var used = 0
     var i = 0L

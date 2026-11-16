@@ -1,0 +1,197 @@
+{
+  "sourceCommit": "edd162a41dff33cb7aa35e7ccef32ce1b06a6319",
+  "scope": "Controlled synthetic implementation checks, not physical-device, multi-hour performance, live API or beta acceptance",
+  "qualityRuns": {
+    "pullRequest": "https://github.com/TwoWetKnuckles/echoscript/actions/runs/43953770401",
+    "push": "https://github.com/TwoWetKnuckles/echoscript/actions/runs/43953760304"
+  },
+  "qualityJobsPassedPerRun": 8,
+  "androidUnitTests": {
+    "passed": 43,
+    "failed": 0
+  },
+  "emulators": [
+    {
+      "api": 29,
+      "artifactId": 14271697600,
+      "artifactSha256": "89ba31dcc84c9ac9f9af41d223bfabe64d3b57410913bcb6f298d256dbab6823",
+      "ordinaryTestsPassed": 34,
+      "ordinaryTestsSkipped": 3,
+      "failures": 0,
+      "focusedCompanionTestsPassed": 2,
+      "independentlyVerifiedExports": 33,
+      "resourceProfile": {
+        "scope": "Declared emulator profile, not physical-device acceptance",
+        "sdk": 29,
+        "expectedManagedHeapMiB": 32,
+        "actualMaxHeapBytes": 603979776,
+        "memoryClassMiB": 576,
+        "totalDeviceMemoryBytes": 3143385088,
+        "availableDeviceMemoryBytes": 1447411712
+      },
+      "clearVoiceShortFixture": {
+        "audioSeconds": 5.525,
+        "scope": "synthetic-emulator-process-high-water-not-physical-acceptance",
+        "processHighWaterRssKiB": 956520,
+        "api": 29,
+        "inferenceMillis": 7892,
+        "inferenceRealtimeFactor": 1.428558325791855,
+        "modelSha256": "5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2",
+        "cpuArenaAllocator": false,
+        "memoryPatternOptimization": false
+      },
+      "processKillImport": {
+        "check": "ANDROID_ACTUAL_PROCESS_KILL_IMPORT_SUBSET",
+        "result": "PASS",
+        "originalPreserved": true,
+        "falseCompleteCase": false,
+        "interruptedEncryptedBytesPreservedAndReported": true,
+        "scope": "Actual host force-stop during encrypted acquisition; not power loss, all-stage recovery or automatic resumable jobs"
+      },
+      "processKillRender": {
+        "result": "PASS",
+        "scope": "process-kill-local-render-subset",
+        "completedPasses": 32,
+        "completedBeforeKill": 1,
+        "attempts": 2,
+        "originalPreserved": true,
+        "completedPassReused": true,
+        "duplicatePasses": 0,
+        "caseVerified": true,
+        "fullRecoveryGate": "NOT_PASSED"
+      }
+    },
+    {
+      "api": 36,
+      "artifactId": 14272163100,
+      "artifactSha256": "17a2993eefc7e7b346e8d9613c80c0a8bd10ee060670b714d2fd55b190bd3cb7",
+      "ordinaryTestsPassed": 35,
+      "ordinaryTestsSkipped": 2,
+      "failures": 0,
+      "focusedCompanionTestsPassed": 2,
+      "independentlyVerifiedExports": 33,
+      "resourceProfile": {
+        "scope": "Declared emulator profile, not physical-device acceptance",
+        "sdk": 36,
+        "expectedManagedHeapMiB": 32,
+        "actualMaxHeapBytes": 201326592,
+        "memoryClassMiB": 192,
+        "totalDeviceMemoryBytes": 3121553408,
+        "availableDeviceMemoryBytes": 1524903936
+      },
+      "clearVoiceShortFixture": {
+        "audioSeconds": 5.525,
+        "scope": "synthetic-emulator-process-high-water-not-physical-acceptance",
+        "processHighWaterRssKiB": 924872,
+        "api": 36,
+        "inferenceMillis": 14446,
+        "inferenceRealtimeFactor": 2.614693430950226,
+        "modelSha256": "5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2",
+        "cpuArenaAllocator": false,
+        "memoryPatternOptimization": false
+      },
+      "processKillImport": {
+        "check": "ANDROID_ACTUAL_PROCESS_KILL_IMPORT_SUBSET",
+        "result": "PASS",
+        "originalPreserved": true,
+        "falseCompleteCase": false,
+        "interruptedEncryptedBytesPreservedAndReported": true,
+        "scope": "Actual host force-stop during encrypted acquisition; not power loss, all-stage recovery or automatic resumable jobs"
+      },
+      "processKillRender": {
+        "result": "PASS",
+        "scope": "process-kill-local-render-subset",
+        "completedPasses": 32,
+        "completedBeforeKill": 1,
+        "attempts": 2,
+        "originalPreserved": true,
+        "completedPassReused": true,
+        "duplicatePasses": 0,
+        "caseVerified": true,
+        "fullRecoveryGate": "NOT_PASSED"
+      }
+    }
+  ],
+  "hostedComputeActivated": false,
+  "targetRecordingMeasured": false,
+  "resourceProfileNote": "CI requests 3072 MiB RAM / vm.heapSize=128 and separately asserts at least 128 MiB managed heap before the full suite. Android images select actual heap limits shown above; the full suite subsequently writes the recorded report using its default 32 MiB minimum. Requested configuration is not proof of the actual limit.",
+  "cpuComparison": {
+    "artifactId": 14269232355,
+    "artifactSha256": "ea9dfa620fc54aafee6ba6f45568e8f74322ecdf3f7c4f97d7e7502f4788c4ae",
+    "report": {
+      "scope": "Linux synthetic pinned-model CPU profiles; not phone or speech-quality acceptance",
+      "modelSha256": "5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2",
+      "runtime": "onnxruntime/1.32.0",
+      "numpy": "1.26.4",
+      "logicalCpus": 4,
+      "profiles": [
+        {
+          "threads": 1,
+          "arena": false,
+          "initSeconds": 0.4784290789999659,
+          "secondsPerOneSecondHop": 3.4997764674999416,
+          "windowLatencies": [3.514943427999924, 3.484609506999959],
+          "maxRssKiB": 831080,
+          "repeatableWithinProfile": true,
+          "maxAbsoluteDifferenceFromBaseline": 0.0,
+          "changedPcmSamples": 0
+        },
+        {
+          "threads": 2,
+          "arena": false,
+          "initSeconds": 0.4812749120000035,
+          "secondsPerOneSecondHop": 2.351771618500038,
+          "windowLatencies": [2.328025088000004, 2.3755181490000723],
+          "maxRssKiB": 832388,
+          "repeatableWithinProfile": true,
+          "maxAbsoluteDifferenceFromBaseline": 0.0,
+          "changedPcmSamples": 0
+        },
+        {
+          "threads": 4,
+          "arena": false,
+          "initSeconds": 0.5186984389999907,
+          "secondsPerOneSecondHop": 2.83083585899999,
+          "windowLatencies": [2.8284435220000432, 2.8332281959999364],
+          "maxRssKiB": 832568,
+          "repeatableWithinProfile": true,
+          "maxAbsoluteDifferenceFromBaseline": 0.0,
+          "changedPcmSamples": 0
+        },
+        {
+          "threads": 1,
+          "arena": true,
+          "initSeconds": 0.47203198199997587,
+          "secondsPerOneSecondHop": 3.1792949014999863,
+          "windowLatencies": [3.3206692659999817, 3.037920536999991],
+          "maxRssKiB": 1479660,
+          "repeatableWithinProfile": true,
+          "maxAbsoluteDifferenceFromBaseline": 0.0,
+          "changedPcmSamples": 0
+        },
+        {
+          "threads": 2,
+          "arena": true,
+          "initSeconds": 0.47785476199999266,
+          "secondsPerOneSecondHop": 2.128679680999994,
+          "windowLatencies": [2.235287802000016, 2.022071559999972],
+          "maxRssKiB": 1481004,
+          "repeatableWithinProfile": true,
+          "maxAbsoluteDifferenceFromBaseline": 0.0,
+          "changedPcmSamples": 0
+        },
+        {
+          "threads": 4,
+          "arena": true,
+          "initSeconds": 0.4962621270000227,
+          "secondsPerOneSecondHop": 2.738294845499979,
+          "windowLatencies": [2.8756978039999694, 2.600891886999989],
+          "maxRssKiB": 1479068,
+          "repeatableWithinProfile": true,
+          "maxAbsoluteDifferenceFromBaseline": 0.0,
+          "changedPcmSamples": 0
+        }
+      ]
+    }
+  }
+}

@@ -1,0 +1,58 @@
+---
+title: "Processing performance and managed-service readiness"
+description: "EchoScript reference: Processing performance and managed-service readiness."
+---
+
+Owner steering, November 16, 2026: qualify performance before continuing styling/refactoring. The owner also selected the Vue/VitePress documentation migration. These decisions supersede the earlier retained-Fumadocs direction; the existing docs remain live until the replacement is qualified.
+
+## What the source establishes
+
+Before this repair, the ClearVoice renderer ran the pinned FRCRN graph on one CPU thread, using a two-second neural window for every one-second output hop. It preserves half-second context on each side. This deliberately bounded model can take substantial CPU time on long recordings; model timing, audio duration and device thermals matter more than compressed file size.
+
+Whisper previously prepared and submitted separate 30-second PCM chunks sequentially. Each chunk required consent/transport requests, an encrypted artifact and additional durable full-manifest snapshots. The companion accepts up to 24 MiB and 750 seconds per canonical PCM request, so that short request size was unnecessarily conservative. At four hours of audio it meant 480 requests and up to 960 HTTP exchanges, before retries.
+
+A 300 MB MP3 may contain about 2.1 hours at 320 kbps or 5.2 hours at 128 kbps. These are examples for constant bitrate and decimal megabytes, not a measurement of the owner's recording. Four to five hours of processing cannot be classified against a target until its duration and per-stage timings are known.
+
+## Implemented performance repair
+
+- Native Whisper uses chunks of up to 120 seconds, below 4 MiB each. A four-hour recording now needs 120 provider requests, one quarter as many. This is a request-count reduction, not a claim of fourfold overall speed. Actual transport/provider milliseconds and input bytes are retained with raw results.
+- Chunk reuse requires the exact parent, start frame, frame count, byte length, provider, model and policy version. Old 30-second chunks cannot be mistaken for a longer range during retry. Preparation still sends nothing; exact-payload consent, ordered timestamp offsets, cancellation and durable raw-result reuse remain.
+- Already-canonical mono 16 kHz PCM is copied in bounded blocks instead of recalculated sample by sample. Original bytes and the exact canonical waveform remain unchanged.
+- ClearVoice reuses direct input/output tensors across the render. Pinned outputs avoid repeated Java array materialization and JNI tensor allocation. The pinned model, FP32 math, context and bounded allocator are retained. A measured bounded profile now uses up to two intra-op threads, with one on single-core devices.
+- The Workbench and foreground job show an estimate for the enhancement stage after enough measured windows. The estimate excludes later processing/upload stages. Actual inference milliseconds and real-time factor are recorded with the derivative.
+- Workbench cancellation now follows the same durable cancellation order as the notification receiver. It no longer raises the cooperative stop flag before WorkManager commits cancellation.
+
+No speech is silently removed with VAD, no quiet sections are skipped, no lossy transmission encoding or lower-precision model is selected, and no paid provider fallback was added.
+
+## Measurement and test scope
+
+`scripts/qa-clearvoice-throughput.py` compares one/two/four CPU threads with both allocator policies using the exact model/runtime and seeded synthetic inputs. It records latency, peak RSS, repeatability, float differences and PCM differences. Linux results do not establish Galaxy S22+ throughput, long-run thermals or intelligibility. The local sandbox's first full profile exceeded its timeout; it is not reported as a completed benchmark or a phone result. The full CI profile comparison completed on source `4ae4bba0291442010fadce35e6266e018c249ac5`; [the exact report](https://github.com/TwoWetKnuckles/echoscript/blob/main/docs/qa/clearvoice-throughput-2026-11-16.json) binds its source, workflow and original artifact digest. Bounded one-thread median latency was 3.701 s per one-second output hop; two threads took 2.387 s, about 35.5% less time, with 831,508 / 832,392 KiB peak RSS. All tested profiles returned identical floats and PCM for the two seeded inputs. Four threads were slower. The high-memory arena increased RSS to about 1.41 GiB for a smaller additional time improvement and remains disabled. These are short Linux measurements, not a phone or multi-hour speed guarantee. The repeated profile on source `edd162a41dff33cb7aa35e7ccef32ce1b06a6319` observed 3.500 / 2.352 s with bounded one/two-thread execution, about 32.8% less time. Exact-source Android checks passed; [the validation record](https://github.com/TwoWetKnuckles/echoscript/blob/main/docs/qa/performance-validation-2026-11-16.json) preserves both emulator reports and the repeated CPU comparison.
+
+New native checks cover every PCM16 sample value in the canonical copy path, stale/fractional chunk range rejection, a 241-second three-request transport/retry case, direct-tensor parity with ordinary ONNX Runtime, enhancement estimate behavior and the actual Workbench cancel path. These controlled checks passed on the named source; results and their limits are preserved in the performance PR and QA status.
+
+The earlier Android 10 PR failure used a 16 MiB managed heap and produced both allocation failure and a UI timeout. CI now requests a 3 GiB RAM / 128 MiB managed-heap profile and separately verifies at least 128 MiB before the full suite. The actual Android images selected 576 MiB on API 29 and 192 MiB on API 36; the saved reports retain those observed limits rather than claiming the requested value was applied exactly. The pinned emulator runner's `heap-size` input writes an unrecognized `hw.heapSize`; the prelaunch script writes the official `vm.heapSize` property. Existing failure assertions are retained. This test profile does not qualify all Android 10 hardware or change the application's heap manifest.
+
+## Free remote compute and the interface contract
+
+The intended interface keeps provider/compute toggles, job state, consent, quota notices, cancellation and retry inside Workbench. Provider credentials belong on the operator's service; end users must not copy shared provider keys, open a cloud console or configure a backend. A preconfigured origin and a real authenticated service are prerequisites, not values that can be invented or replaced with a key in the APK.
+
+Current public options have constraints:
+
+| Option                          | Verified limitation                                                                                                                         | Qualification                                                                                                                                  |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------- |
+| OpenAI Whisper                  | Metered API using the existing configured server key                                                                                        | Retained optional route; no new paid request was made for this repair and it is not labeled free                                               |
+| Groq-hosted Whisper             | Quotas apply at organization level; published base audio limits include 7,200 seconds/hour and 28,800/day; actual account limits may differ | An operator free account/key and its actual limits must be qualified; a multi-hour job can exhaust the hourly allowance                        |
+| Hugging Face ZeroGPU            | Anonymous use has two GPU minutes/day; free signed-in use has five, with queues                                                             | Insufficient basis for a reliable unrestricted long-audio service; credentials, hosting and retention need qualification                       |
+| Operator-controlled accelerator | Can run open models without a per-request provider bill                                                                                     | Requires an available CPU/GPU host, authenticated endpoint, resource limits and deployment testing; none is currently activated by this repair |
+
+No new free cloud service is claimed active. No shared key is embedded, third-party public demo used for case audio, quota bypass attempted or paid capacity silently enabled. The lack of a qualified no-configuration service remains an integration blocker for those remote toggles. App features remain unrestricted; external service quotas are separate constraints.
+
+Sources checked November 16: [Groq speech](https://console.groq.com/docs/speech-to-text), [Groq limits](https://console.groq.com/docs/rate-limits), [ZeroGPU](https://huggingface.co/docs/hub/spaces-zerogpu), [OpenAI file transcription](https://developers.openai.com/api/docs/guides/speech-to-text), [ONNX threading](https://onnxruntime.ai/docs/performance/tune-performance/threading.html), [ONNX Java](https://onnxruntime.ai/docs/get-started/with-java.html), [Android VM property](https://android.googlesource.com/platform/prebuilts/android-emulator/+/master/linux-x86_64/lib/hardware-properties.ini), [Android 10 CDD](https://source.android.com/docs/compatibility/10/android-10-cdd), [pinned runner heap correction discussion](https://github.com/ReactiveCircus/android-emulator-runner/pull/480).
+
+## Required order
+
+1. Exact-source controlled transport, memory and cancellation checks passed. Obtain actual recording duration and per-stage timing from the target device before promising a large-file completion time. The short synthetic ClearVoice fixture took about 1.43 / 2.61 times its audio duration for inference on API 29 / 36 emulators, so CPU-only enhancement can still take hours for long recordings.
+2. Qualify any zero-cost remote service and automatic authenticated connection; otherwise keep it unavailable with a clear reason.
+3. Finish the approved styling and Vue/VitePress migration, preserve canonical GitHub documents and deep links, then complete the remaining refactoring and release gates.
+
+The beta gates remain unpassed. No replacement download or beta promotion follows from partial benchmark or emulator results.
