@@ -1,0 +1,73 @@
+{
+  "tag": "android-preview-0.6.0-dev.20261113",
+  "releaseId": 443777297,
+  "appArchiveSha256": "d6fcec268ca35fed773d4f2613b4125f7abc7f6c7d7bfa47dd4087a8bb9f244c",
+  "validationArchiveSha256": "37c4ed41cecc4c62c0bf6b5f7c1b358ac88c9fb3195ff0e52b06fd863227b39f",
+  "assets": [
+    {
+      "name": "BUILD.txt",
+      "bytes": 343,
+      "sha256": "b530fa69c1dfdb0cde68eb24e796107043334a783b80edb17db791878387aba7"
+    },
+    {
+      "name": "EchoScript-Android-preview.zip",
+      "bytes": 84923029,
+      "sha256": "fe9c11095b10fe4dbff30c69e22570a4c1d356e4dbce6ff35755bd5c2c8daa46"
+    },
+    {
+      "name": "EchoScript-offline-preview.apk",
+      "bytes": 140290236,
+      "sha256": "0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3"
+    },
+    {
+      "name": "EchoScript-validation.zip",
+      "bytes": 72202509,
+      "sha256": "67e521643bb3e70972deec39fab2c9813779506167247d13276cd316fdcda213"
+    },
+    {
+      "name": "INSTALL.txt",
+      "bytes": 3509,
+      "sha256": "03f732a67bf397b7f4cf35163344fcd3d597a4df66be3f68e4528f465f0a4194"
+    },
+    {
+      "name": "LICENSE.txt",
+      "bytes": 11358,
+      "sha256": "cfc7749b96f63bd31c3c42b5c471bf756814053e847c10f3eb003417bc523d30"
+    },
+    {
+      "name": "NOTICE.txt",
+      "bytes": 437,
+      "sha256": "07ab3997e863a0a8ecb553ae4762b5feacf45f679461747beab48dd39b12ebbf"
+    },
+    {
+      "name": "RELEASE-NOTES.md",
+      "bytes": 3955,
+      "sha256": "e4675e5b6268a77cd94b76474e7e625a27f1823bc8b8b1ad8a75225ac41eb029"
+    },
+    {
+      "name": "SHA256SUMS.txt",
+      "bytes": 1030,
+      "sha256": "a51254654dad85e014ee9cd35a0516dae7368246e5ec49ecd15f6b30a8192c59"
+    },
+    {
+      "name": "VALIDATION.txt",
+      "bytes": 4629,
+      "sha256": "503770e292aa5e4d3850c2e8f6e56c82f8619384edd65b22c3e3033bd1c286c6"
+    },
+    {
+      "name": "ui-selected-ready.png",
+      "bytes": 40926,
+      "sha256": "dda6e68cc2d30435b1ad186210d869ce24a4ea633eb1b10676d55986a733e17e"
+    },
+    {
+      "name": "ui-workbench-effects.png",
+      "bytes": 42706,
+      "sha256": "c54be5e2de934eb00658ada6b88d52edde2fbd083578a9876cfa0d017438244e"
+    },
+    {
+      "name": "ui-workbench-timeline.png",
+      "bytes": 60270,
+      "sha256": "f4742a069f36c8a0129a118786554afcce3ba19bfc876508d17a9cf43986b80b"
+    }
+  ]
+}

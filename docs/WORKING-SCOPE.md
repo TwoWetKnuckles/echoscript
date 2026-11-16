@@ -1,6 +1,6 @@
 # Working release scope — owner decision
 
-Decision recorded November 11, 2026 (America/Los_Angeles), after the numbered historical feature reconciliation. EchoScript 0.6 Test is now the published synthetic-evaluation preview. It remains incomplete against this scope and is not an accepted release candidate.
+Decision recorded November 11, 2026 (America/Los_Angeles), after the numbered historical feature reconciliation. The Android 0.6 speech candidate is the published synthetic-evaluation build; see [downloads](../downloads/README.md) for the exact current installer. It remains incomplete against this scope and is not an accepted release candidate.
 
 ## Scope decisions
 

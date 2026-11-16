@@ -19,7 +19,6 @@ import androidx.compose.ui.unit.dp
 @OptIn(ExperimentalLayoutApi::class)
 internal fun ProviderControls(model: VaultModel, ready: Boolean, placementSelection: Boolean = true) {
     Column(verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        Text("Speech workflow", style = MaterialTheme.typography.titleMedium)
         FlowRow(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
             for (provider in TranscriptionProvider.entries) FilterChip(model.transcriptionProvider == provider,
                 { model.transcriptionProvider = provider }, { Text(provider.label) }, enabled = ready, modifier = Modifier.heightIn(min = 48.dp))

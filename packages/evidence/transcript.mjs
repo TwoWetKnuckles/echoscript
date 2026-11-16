@@ -185,6 +185,86 @@ export function normalizeVosk(
   };
   return validateTranscript(t, duration);
 }
+export function normalizeWhisper(
+  raw,
+  { duration, events = [], transmissionHash },
+) {
+  if (
+    typeof raw?.text !== "string" ||
+    !Array.isArray(raw.segments) ||
+    raw.segments.length > 10000 ||
+    (raw.words !== undefined &&
+      (!Array.isArray(raw.words) || raw.words.length > 100000))
+  )
+    throw Error("Malformed Whisper result");
+  const words = raw.words ?? [];
+  for (const word of words)
+    if (
+      typeof word?.word !== "string" ||
+      !Number.isFinite(word.start) ||
+      !Number.isFinite(word.end)
+    )
+      throw Error("Malformed Whisper word alignment");
+  const segments = raw.segments.map((segment, index) => {
+    if (
+      typeof segment?.text !== "string" ||
+      !Number.isFinite(segment.start) ||
+      !Number.isFinite(segment.end)
+    )
+      throw Error("Malformed Whisper segment alignment");
+    const selectedWords = words.filter((word) => {
+      const midpoint = (word.start + word.end) / 2;
+      return midpoint >= segment.start && midpoint < segment.end;
+    });
+    return {
+      id: `segment-${index + 1}`,
+      start: segment.start,
+      end: segment.end,
+      text: segment.text,
+      speaker: null,
+      confidence: null,
+      alternatives: [],
+      verification: "UNVERIFIED",
+      words: selectedWords.map((word) => ({
+        text: word.word,
+        start: word.start,
+        end: word.end,
+        confidence: null,
+      })),
+      flags: [
+        ...(!selectedWords.length ? ["WORD_ALIGNMENT_UNAVAILABLE"] : []),
+        ...(!events.some(
+          (event) => event.start < segment.end && event.end > segment.start,
+        )
+          ? ["LOW_ACOUSTIC_SUPPORT"]
+          : []),
+      ],
+    };
+  });
+  if (raw.text.trim() && !segments.length)
+    throw Error("Whisper returned words without segment alignment");
+  return validateTranscript(
+    {
+      schema: "org.echoscript.transcript/1",
+      state: "AI_DRAFT",
+      language: raw.language ?? "unknown",
+      provider: "openai-whisper",
+      model: "whisper-1",
+      transmissionHash,
+      diarization: {
+        supported: false,
+        warning: "This Whisper route does not identify speakers.",
+      },
+      segments,
+      warnings: [
+        "AI transcription requires independent human verification.",
+        "Whisper supplies no confidence, N-best or speaker identity on this route; raw provider metrics are retained separately.",
+      ],
+    },
+    duration,
+  );
+}
+
 export function reviseTranscript(
   c,
   parentId,

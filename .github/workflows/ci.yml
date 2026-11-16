@@ -38,6 +38,15 @@ jobs:
               assert hashlib.file_digest(stream,'sha256').hexdigest() == manifest['sha256']
           assert p.stat().st_size == manifest['bytes']
           PYMODEL
+      - name: Measure allocator memory and exact synthetic output with networking denied
+        run: .clearvoice-export/bin/python scripts/qa-clearvoice-memory.py assets/clearvoice/frcrn-16k-2s.onnx qa-output/clearvoice-memory
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: synthetic-clearvoice-memory-comparison
+          path: qa-output/clearvoice-memory/memory-comparison.json
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         with:
           name: ClearVoice-pinned-offline-graph
@@ -93,6 +102,7 @@ jobs:
       - run: npm run build
       - run: npm run lint
       - run: npm test
+      - run: python3 tools/test-publish-evaluation.py
       - run: npm audit --audit-level=high
       - name: Install local decoder and verified model
         run: |
@@ -118,6 +128,44 @@ jobs:
           name: synthetic-local-workflow-results
           path: qa-output/local-provider/
           retention-days: 1
+  publish-evaluation:
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    needs:
+      [
+        clearvoice-model,
+        case-security-interop,
+        web-api-evidence,
+        rust-streaming,
+        android,
+        android-device,
+        desktop-streaming-stress,
+      ]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      actions: read
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
+        with:
+          name: EchoScript-Android10-Offline-Test-Candidate-0.6
+          path: qa-output/publish-input
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: android-device-*-reports
+          path: qa-output/publish-validation
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: synthetic-*
+          path: qa-output/publish-validation
+      - name: Publish the exact tested evaluation candidate
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 tools/publish-evaluation.py qa-output/publish-input/EchoScript-Android qa-output/publish-release --source "$GITHUB_SHA" --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --validation-folder qa-output/publish-validation
   rust-streaming:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
@@ -203,6 +251,7 @@ jobs:
             ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
             python3 ../../scripts/qa-android-coexistence.py check ${{ matrix.api }}
             cd ../.. && python3 scripts/qa-android-crash.py
+            cd ../.. && python3 scripts/qa-android-processing.py
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
       - name: Verify and stage the Android 16 emulator build
         if: matrix.api == 36 && github.event_name != 'pull_request'
@@ -212,8 +261,8 @@ jobs:
           "$tools/apksigner" verify --verbose "$apk"
           "$tools/zipalign" -c -P 16 4 "$apk"
           badging=$("$tools/aapt" dump badging "$apk")
-          grep -Eq "^package: name='org[.]echoscript[.]app[.]candidate06' " <<< "$badging"
-          grep -Eq "^application-label:'EchoScript 0[.]6 Candidate'$" <<< "$badging"
+          grep -Eq "^package: name='org[.]echoscript[.]app[.]candidate06r2' " <<< "$badging"
+          grep -Eq "^application-label:'EchoScript 0[.]6 Candidate 2'$" <<< "$badging"
           permissions=$("$tools/aapt" dump permissions "$apk")
           if ! printf '%s\n' "$permissions" | grep -q 'android.permission.INTERNET' || printf '%s\n' "$permissions" | grep -q 'android.permission.ACCESS_NETWORK_STATE'; then
             exit 1
@@ -243,6 +292,7 @@ jobs:
             apps/android/app/build/outputs/androidTest-results/
             apps/android/app/build/outputs/connected_android_test_additional_output/
             qa-output/android-crash/
+            qa-output/android-processing/
           retention-days: 1
   desktop-streaming-stress:
     runs-on: ubuntu-24.04

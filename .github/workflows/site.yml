@@ -1,0 +1,62 @@
+name: Symfony site
+on:
+  pull_request:
+    paths:
+      [
+        "apps/site/**",
+        "packages/ui/**",
+        "downloads/current.json",
+        "package*.json",
+        "tools/package-hosted.mjs",
+        ".github/workflows/site.yml",
+      ]
+  push:
+    branches: [main, "feature/**", "fix/**"]
+    paths:
+      [
+        "apps/site/**",
+        "packages/ui/**",
+        "downloads/current.json",
+        "package*.json",
+        "tools/package-hosted.mjs",
+        ".github/workflows/site.yml",
+      ]
+  workflow_dispatch:
+permissions:
+  contents: read
+concurrency:
+  group: site-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  site:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    env:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          persist-credentials: false
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+          cache: npm
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962
+        with:
+          php-version: "8.4"
+          extensions: ctype, iconv, mbstring, xml, curl, zip
+          coverage: none
+          tools: composer:v2
+      - run: npm ci --ignore-scripts
+      - run: npm run build:site-css
+      - run: composer validate --working-dir=apps/site --strict
+      - run: composer install --working-dir=apps/site --no-scripts --no-interaction --prefer-dist
+      - run: php apps/site/bin/console importmap:install
+      - run: php apps/site/bin/console lint:twig apps/site/templates
+      - run: php apps/site/bin/console lint:container
+      - run: php apps/site/bin/console asset-map:compile
+      - run: php apps/site/tests/smoke.php
+      - run: php apps/site/tools/export-static.php qa-output/site-static
+      - run: composer audit --working-dir=apps/site
+      - run: php apps/site/bin/console importmap:audit

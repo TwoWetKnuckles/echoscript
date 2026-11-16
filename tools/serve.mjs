@@ -1,6 +1,7 @@
 import { createServer } from "node:http";
 import { createReadStream } from "node:fs";
-import { realpath, stat } from "node:fs/promises";
+import { realpath, stat, readFile } from "node:fs/promises";
+import { createHash } from "node:crypto";
 import { resolve, sep, extname } from "node:path";
 import { pipeline } from "node:stream/promises";
 import { pathToFileURL } from "node:url";
@@ -14,6 +15,8 @@ const types = new Map([
   [".ttf", "font/ttf"],
   [".txt", "text/plain; charset=utf-8"],
   [".wav", "audio/wav"],
+  [".svg", "image/svg+xml"],
+  [".webmanifest", "application/manifest+json"],
 ]);
 
 /** Loopback-only static development host. It has no evidence upload endpoint. */
@@ -46,7 +49,7 @@ export async function createStaticServer(directory = "dist") {
           throw Error("BAD_PATH");
         const candidate = resolve(
           root,
-          "." + (name === "/" ? "/index.html" : name),
+          "." + (name.endsWith("/") ? name + "index.html" : name),
         );
         // Check the normalized path before any filesystem lookup, then check
         // again after resolving symlinks. Both boundaries include the separator.
@@ -56,6 +59,27 @@ export async function createStaticServer(directory = "dist") {
           throw Error("BAD_PATH");
         const info = await stat(file);
         if (!info.isFile()) throw Error("BAD_PATH");
+        if (extname(file) === ".html") {
+          if (info.size > 2 * 1024 * 1024) throw Error("HTML_TOO_LARGE");
+          const html = await readFile(file, "utf8");
+          const hashes = [
+            ...html.matchAll(/<script\b[^>]*>([\s\S]*?)<\/script\s*>/gi),
+          ]
+            .filter((match) => match[1].trim())
+            .map(
+              (match) =>
+                `'sha256-${createHash("sha256").update(match[1]).digest("base64")}'`,
+            );
+          res.setHeader(
+            "Content-Security-Policy",
+            res
+              .getHeader("Content-Security-Policy")
+              .replace(
+                "script-src 'self'",
+                `script-src 'self' ${hashes.join(" ")}`,
+              ),
+          );
+        }
         res.writeHead(200, {
           "Content-Type": types.get(extname(file)),
           "Content-Length": info.size,

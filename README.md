@@ -1,5 +1,7 @@
 # EchoScript
 
+![EchoScript audio workbench](assets/branding/echoscript-banner.svg)
+
 Local-first audio evidence development platform, designed to support defensible forensic-audio analysis, transcription, evidence preservation, and chain-of-custody workflows.
 
 ## Download for Android
@@ -28,7 +30,17 @@ In **Cases**, choose a recording, confirm its name under **Selected recording**,
 
 The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
 
-From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The existing protected documentation deployment predates this candidate. Further documentation-site design and deployment changes are paused; the Android workbench uses its palette.
+From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The docs retain Fumadocs and share the graphite/cyan theme with the Vue workbench and separate Symfony portal. [Approved update and verification scope](docs/development/APPROVED-UPDATE.md).
+
+## Web workbench and product site
+
+The browser companion now uses Vue 3, TypeScript, compiled Tailwind and Vite. Run `npm ci --ignore-scripts`, `npm run build` and `npm run serve`. It retains its bounded in-memory WAV workflow, selectable Vosk/Whisper submissions with exact-payload approval, revision history and independently verifiable exports. Optional offline caching stores the app shell and synthetic sample; export case packages to preserve work. Minimum browser versions: Chrome/Edge 111+, Firefox 128+, Safari 16.4+; Android's version alone does not establish browser support.
+
+The separate [Symfony/AssetMapper portal](apps/site/README.md) provides the product/download page, Twig templates, local assets and importmap maintenance. It takes no evidence uploads and reads the verified download from [current release metadata](downloads/current.json). [Update scope](docs/development/APPROVED-UPDATE.md) distinguishes the in-progress source from the currently available APK.
+
+## Product research for review
+
+[Eight-product comparison and stack proposal](docs/research/COMPETITIVE-ANALYSIS-2026-11-14.md) · [Evolution mindmap](docs/research/EVOLUTION-MINDMAP.svg) · [Unofficial ideas checklist](https://github.com/TwoWetKnuckles/echoscript/issues/28) · [Synthetic editor trial](docs/research/SANDBOX-TRIAL.md). The owner approved the recommended stack/theme and refactoring on November 15. The research remains a reference for future decisions; beta publication requires the exact-build acceptance gates.
 
 ## Responsibility and limitations
 
@@ -106,11 +118,11 @@ cd apps/android
 adb install -r app/build/outputs/apk/debug/app-debug.apk
 ```
 
-This source builds **EchoScript 0.6 Candidate** (`org.echoscript.app.candidate06`), with its own vault alongside the earlier published test apps. Physical-device validation remains open. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
+This source builds **EchoScript 0.6 Candidate 2** (`org.echoscript.app.candidate06r2`), with its own vault alongside the earlier published test apps. Physical-device validation remains open. The release APK is unsigned until an independently controlled signing configuration is supplied. The manual [owner-signing workflow](docs/android/OWNER-SIGNING.md) verifies a pinned certificate and produces a non-debug evaluation artifact, without publishing or declaring readiness. CI stages a development-signed APK and SHA-256 after the Android 16 emulator checks. Published install ZIPs are linked from [downloads](downloads/README.md). Signing keys stay outside Git.
 
 Native acquisition has a 4 GiB preservation policy. Processing accepts sources up to 750 MB, with a separate decoded WAV and disk-space limit. The app streams source/derivative bytes and stores new revisions separately. Vosk and draft speaker grouping run in-process. Vosk remains on device by default. Optional companion processing requires explicit payload approval and network access. See the offline guide for codec, editing, transfer and recovery limits.
 
-Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Preview 0.5.1 offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
+Source keys are protected by Android Keystore; Tink Streaming AEAD encrypts persistent app-private files. Android cloud backup and device transfer are excluded. Device reset/key loss is unrecoverable without a separately preserved export. Android offers an opt-in streaming protected case container and device-signed historical checkpoints. Individual audio/documents and legacy case ZIPs remain plaintext. Protect destinations and retain hashes, passwords and independently trusted signer fingerprints separately.
 
 ## Verification and QA
 
@@ -138,7 +150,7 @@ Source audio, derivatives, transcripts, notes, audit and manifests remain in the
 
 Vosk and ClearVoice run locally. Whisper API use is optional and is charged to the configured OpenAI account; a live check used only the licensed synthetic fixture. Workflows use standard public-repository runners; [GitHub documents these as free](https://docs.github.com/en/billing/concepts/product-billing/github-actions), with separate artifact/cache limits. No hosting plan change, larger runner or domain registration was performed. Existing provider/hosting quotas and ongoing operational support remain separate deployment responsibilities. [GitHub Pages usage limits](https://docs.github.com/en/pages/getting-started-with-github-pages/github-pages-limits) do not permit commercial SaaS hosting.
 
-The existing companion is published through Sites with its existing audience. Source publication does not change Site access. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
+The browser companion is available from source for local use. The previously referenced Sites project was unavailable through the connected account at the last check; no hosted companion is claimed verified. Optional Pages publishing stays disabled until a repository administrator enables GitHub Actions as the Pages source and sets the non-secret repository variable `GITHUB_PAGES_ENABLED=true`.
 
 ## Project map and licensing
 

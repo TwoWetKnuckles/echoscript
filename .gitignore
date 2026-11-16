@@ -22,3 +22,15 @@ __pycache__/
 
 /.clearvoice-export/
 /assets/clearvoice/*.onnx
+apps/web/public/fixtures/
+apps/web/public/NotoSans-Regular.ttf
+apps/web/public/OFL.txt
+apps/web/public/build.json
+apps/site/vendor/
+apps/site/var/
+apps/site/public/assets/
+apps/site/assets/vendor/
+apps/site/.env.local
+!apps/site/.env
+apps/site/config/reference.php
+apps/site/assets/styles/app.css

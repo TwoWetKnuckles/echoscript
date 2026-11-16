@@ -98,6 +98,32 @@ class EvidenceVault(private val context: Context) {
     }
     private fun caseDir(caseId: String): File { require(ID.matches(caseId)); return File(root, caseId) }
     private fun associated(caseId: String, artifactId: String) = "$caseId:$artifactId".toByteArray(Charsets.UTF_8)
+    // Operational job records are encrypted and immutable, but are not evidence
+    // artifacts or case snapshots. Their AAD is a separate namespace.
+    internal fun processingJobIds(): List<String> = File(context.filesDir, "EvidenceVault/jobs").listFiles()
+        ?.filter { it.isDirectory && ID.matches(it.name) }?.map { it.name } ?: emptyList()
+    internal fun readProcessingRecord(id: String): JSONObject? {
+        require(ID.matches(id))
+        val folder = File(context.filesDir, "EvidenceVault/jobs/$id")
+        val file = folder.listFiles()?.filter { it.name.matches(Regex("[0-9]{8}\\.enc")) }?.maxByOrNull { it.name } ?: return null
+        val sequence = file.nameWithoutExtension.toInt()
+        require(file.length() in 1..(5L * 1024 * 1024)) { "Local job record is oversized" }
+        val bytes = FileInputStream(file).use { physical ->
+            primitive.newDecryptingStream(physical, "org.echoscript.local-job-record/1:$id:$sequence".toByteArray()).use { input ->
+                val out = ByteArrayOutputStream(); val block = ByteArray(65536)
+                while (true) { val n = input.read(block); if (n < 0) break; require(out.size() + n <= 4 * 1024 * 1024); out.write(block, 0, n) }
+                out.toByteArray()
+            }
+        }
+        val value = JSONObject(bytes.toString(Charsets.UTF_8))
+        check(canonical(value).contentEquals(bytes) && value.getInt("sequence") == sequence && value.getJSONObject("plan").getString("id") == id) { "Local job record could not be authenticated" }
+        return value
+    }
+    internal fun writeProcessingRecord(id: String, sequence: Int, record: JSONObject) {
+        require(ID.matches(id) && sequence in 0..99999999)
+        val file = File(context.filesDir, "EvidenceVault/jobs/$id/${sequence.toString().padStart(8, '0')}.enc")
+        writeEncrypted(file, "org.echoscript.local-job-record/1:$id:$sequence".toByteArray(), canonical(record).inputStream(), 4L * 1024 * 1024, { false }, {})
+    }
     private fun encryptedFile(caseId: String, artifactId: String): File { require(ID.matches(artifactId)); return File(caseDir(caseId), "artifacts/$artifactId.enc") }
     private fun writeGenerated(file: File, aad: ByteArray, max: Long, produce: (OutputStream) -> Unit): Pair<String, Long> {
         check(!file.exists()) { "Immutable artifact already exists" }; file.parentFile!!.mkdirs()

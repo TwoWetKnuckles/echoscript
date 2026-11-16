@@ -1,6 +1,6 @@
 import { test } from "node:test";
 import assert from "node:assert/strict";
-import { mkdtemp, writeFile, symlink, rm } from "node:fs/promises";
+import { mkdtemp, writeFile, symlink, rm, mkdir } from "node:fs/promises";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { request } from "node:http";
@@ -11,9 +11,11 @@ test("static host serves modules and rejects traversal, symlink escape and write
   const outside = await mkdtemp(join(tmpdir(), "echoscript-outside-"));
   await writeFile(
     join(root, "index.html"),
-    "SYNTHETIC TEST DATA — NOT EVIDENCE",
+    `SYNTHETIC TEST DATA — NOT EVIDENCE<script type="importmap">{"imports":{"app":"/app.js"}}</script><script type="module">import 'app';</script>`,
   );
   await writeFile(join(root, "main.mjs"), "export const synthetic = true;");
+  await mkdir(join(root, "workbench"));
+  await writeFile(join(root, "workbench/index.html"), "Synthetic workbench");
   await writeFile(join(outside, "private.txt"), "synthetic secret");
   await symlink(join(outside, "private.txt"), join(root, "escape.txt"));
   const server = await createStaticServer(root);
@@ -39,6 +41,21 @@ test("static host serves modules and rejects traversal, symlink escape and write
     const page = await get("/");
     assert.equal(page.status, 200);
     assert.match(page.headers["content-security-policy"], /object-src 'none'/);
+    assert.ok(
+      page.headers["content-security-policy"].includes(
+        "'sha256-p1X6VJqnERmVYq7xlUzMoIS+hewd3Zq6DiWhtpMQhno='",
+      ),
+    );
+    assert.ok(
+      page.headers["content-security-policy"].includes(
+        "'sha256-6PeNBy+owUm6Gd8Z5yEum0eIWDj1/qFaCZ3n8xIKraY='",
+      ),
+    );
+    assert.doesNotMatch(
+      page.headers["content-security-policy"],
+      /unsafe-inline|unsafe-eval/,
+    );
+    assert.equal((await get("/workbench/")).body, "Synthetic workbench");
     const module = await get("/main.mjs");
     assert.equal(module.status, 200);
     assert.match(module.headers["content-type"], /javascript/);

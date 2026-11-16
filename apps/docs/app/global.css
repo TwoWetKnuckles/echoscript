@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "./shared-theme.css";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
 
@@ -8,22 +9,22 @@
 }
 
 .dark {
-  --color-fd-background: #0b1219;
-  --color-fd-foreground: #e0e8ef;
-  --color-fd-card: #182431;
-  --color-fd-card-foreground: #e0e8ef;
-  --color-fd-popover: #182431;
-  --color-fd-popover-foreground: #e0e8ef;
-  --color-fd-primary: #65d8e6;
-  --color-fd-primary-foreground: #08272d;
-  --color-fd-muted: #182431;
-  --color-fd-muted-foreground: #b0c2d2;
-  --color-fd-secondary: #223141;
-  --color-fd-secondary-foreground: #e0e8ef;
-  --color-fd-accent: #293c4d;
-  --color-fd-accent-foreground: #e0e8ef;
-  --color-fd-border: #344757;
-  --color-fd-ring: #65d8e6;
+  --color-fd-background: var(--es-canvas);
+  --color-fd-foreground: var(--es-text);
+  --color-fd-card: var(--es-panel);
+  --color-fd-card-foreground: var(--es-text);
+  --color-fd-popover: var(--es-panel);
+  --color-fd-popover-foreground: var(--es-text);
+  --color-fd-primary: var(--es-accent);
+  --color-fd-primary-foreground: var(--es-on-accent);
+  --color-fd-muted: var(--es-panel);
+  --color-fd-muted-foreground: var(--es-muted);
+  --color-fd-secondary: var(--es-raised);
+  --color-fd-secondary-foreground: var(--es-text);
+  --color-fd-accent: var(--es-raised);
+  --color-fd-accent-foreground: var(--es-text);
+  --color-fd-border: var(--es-line);
+  --color-fd-ring: var(--es-accent);
 }
 
 html {
@@ -33,4 +34,11 @@ html {
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
+}
+
+:root:not(.dark) {
+  --color-fd-background: var(--es-canvas);
+  --color-fd-foreground: var(--es-text);
+  --color-fd-card: var(--es-panel);
+  --color-fd-border: var(--es-line);
 }

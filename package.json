@@ -8,7 +8,7 @@
     "node": ">=24 <25"
   },
   "scripts": {
-    "build": "node tools/build.mjs && tsc",
+    "build": "node tools/sync-theme.mjs --check && node tools/build.mjs && npm run typecheck:web && tsc && npm run build:site-css",
     "typecheck": "tsc --noEmit",
     "test": "node tools/build.mjs --schema-only && tsc && node --test tests/*.test.mjs",
     "serve": "node tools/serve.mjs",
@@ -16,7 +16,10 @@
     "qa:local": "node --expose-gc tools/qa-local.mjs",
     "lint": "eslint 'packages/**/*.mjs' 'tools/**/*.mjs' 'tests/**/*.mjs' 'apps/web/src/*.mjs' eslint.config.mjs",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "typecheck:web": "vue-tsc --noEmit -p apps/web/tsconfig.json",
+    "build:site-css": "tailwindcss -i apps/site/styles/app.css -o apps/site/assets/styles/app.css --minify",
+    "build:hosted": "npm run build && php apps/site/bin/console cache:clear --env=prod --no-debug && php apps/site/bin/console asset-map:compile --env=prod --no-debug && php apps/site/tools/export-static.php qa-output/site-static && node tools/package-hosted.mjs qa-output/site-static"
   },
   "dependencies": {
     "@noble/hashes": "2.4.0",
@@ -25,16 +28,24 @@
     "fflate": "0.8.3",
     "json-canonicalize": "3.0.1",
     "jspdf": "4.2.1",
+    "vue": "3.5.45",
     "yauzl": "3.4.0"
   },
   "devDependencies": {
     "@eslint/js": "10.0.1",
+    "@tailwindcss/cli": "4.3.5",
+    "@tailwindcss/vite": "4.3.5",
     "@types/node": "24.19.2",
+    "@vitejs/plugin-vue": "6.0.11",
     "esbuild": "0.28.2",
     "eslint": "10.14.0",
     "globals": "17.14.0",
     "prettier": "3.9.10",
-    "typescript": "7.0.2"
+    "tailwindcss": "4.3.5",
+    "typescript": "6.0.3",
+    "vite": "8.3.8",
+    "vite-plugin-pwa": "2.0.0",
+    "vue-tsc": "3.3.14"
   },
   "overrides": {
     "eslint": {

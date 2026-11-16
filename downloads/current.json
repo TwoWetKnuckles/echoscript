@@ -1,0 +1,10 @@
+{
+  "label": "EchoScript Android 10 Offline Test Candidate 0.6",
+  "tag": "android10-offline-test-candidate-0.6.0-dev.20261113",
+  "sourceCommit": "ef5da08a9be8a2cf5fd38e2668fcb2d510de9258",
+  "apkSha256": "664854f670987ad3136e9030262861c194ba62fe877742ee009024e18a8b8f82",
+  "betaGate": "NOT PASSED",
+  "releaseUrl": "https://github.com/TwoWetKnuckles/echoscript/releases/tag/android10-offline-test-candidate-0.6.0-dev.20261113",
+  "apkUrl": "https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk",
+  "zipUrl": "https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.zip"
+}
