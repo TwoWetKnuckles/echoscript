@@ -1,0 +1,17 @@
+{
+  "schema": "org.echoscript.evaluation-publication/1",
+  "tag": "android10-offline-test-candidate-0.6.0-r2.20261115",
+  "title": "EchoScript Android 10 Offline Test Candidate 0.6 · Revision 2",
+  "ownerApprovalDate": "2026-11-15",
+  "betaGate": "NOT PASSED",
+  "nativeInputs": [
+    "apps/android",
+    "packages/case-security",
+    "assets/clearvoice",
+    "specs/models",
+    "scripts/bundle-android-models.py",
+    "LICENSE",
+    "NOTICE",
+    "downloads/android/INSTALL-CANDIDATE.txt"
+  ]
+}
