@@ -29,7 +29,7 @@
   },
   "development/performance.mdx": {
     "source": "docs/development/PERFORMANCE.md",
-    "sha256": "0561e710b7e4fbd792d06dea43c66c365a86a25e79a47ec35e0293b7db074173"
+    "sha256": "9d3293c299c019979c878f43566e4f334ecd6aa4664a5af096384dc961ca0dc4"
   },
   "development/tools.mdx": {
     "source": "docs/development/TOOLS.md",
@@ -61,7 +61,7 @@
   },
   "providers/openai-whisper.mdx": {
     "source": "docs/providers/openai-whisper.md",
-    "sha256": "88e85a2feecf3c977b7c6d839c9e46e55adf1bd50f4f864882863728df7cd579"
+    "sha256": "8ec9b423dbeaaed33bad586f21584b48ae605697732f7e259fac073cc9bf7f60"
   },
   "qa/rc-acceptance.mdx": {
     "source": "docs/qa/RC-ACCEPTANCE.md",

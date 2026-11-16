@@ -4,6 +4,11 @@ import org.junit.Assert.*
 import org.junit.Test
 
 class ClearVoiceProgressTest {
+    @Test fun boundedCpuProfileDoesNotOversubscribeSingleCoreDevices() {
+        assertEquals(1, clearVoiceThreadCount(1))
+        assertEquals(2, clearVoiceThreadCount(2))
+        assertEquals(2, clearVoiceThreadCount(8))
+    }
     @Test fun estimateWaitsForMeasurementsAndLabelsOnlyTheEnhancementStage() {
         assertTrue(clearVoiceProgress(0, 100, 0, 0).contains("estimating"))
         assertTrue(clearVoiceProgress(40, 100, 20000, 4).contains("estimating"))

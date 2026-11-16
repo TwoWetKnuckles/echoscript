@@ -14,7 +14,7 @@ class ClearVoiceNativeTest {
         val model = File(context.filesDir, "ClearVoiceModels/$CLEARVOICE_ONNX_HASH/model.onnx")
         val environment = ai.onnxruntime.OrtEnvironment.getEnvironment()
         ai.onnxruntime.OrtSession.SessionOptions().use { options ->
-            options.setIntraOpNumThreads(1); options.setInterOpNumThreads(1)
+            options.setIntraOpNumThreads(clearVoiceThreadCount(Runtime.getRuntime().availableProcessors())); options.setInterOpNumThreads(1)
             options.setExecutionMode(ai.onnxruntime.OrtSession.SessionOptions.ExecutionMode.SEQUENTIAL)
             options.setCPUArenaAllocator(false); options.setMemoryPatternOptimization(false)
             environment.createSession(model.absolutePath, options).use { session ->

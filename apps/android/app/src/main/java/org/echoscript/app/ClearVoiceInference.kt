@@ -8,6 +8,8 @@ import java.nio.ByteOrder
 import java.nio.FloatBuffer
 import kotlin.math.ceil
 
+internal fun clearVoiceThreadCount(available: Int) = if (available >= 2) 2 else 1
+
 /** ORT retains these direct buffers; one input/output allocation for the entire render. */
 internal class ClearVoiceInference(environment: OrtEnvironment, private val session: OrtSession) : AutoCloseable {
     private val inputBuffer = ByteBuffer.allocateDirect(32000 * 4).order(ByteOrder.nativeOrder()).asFloatBuffer()
