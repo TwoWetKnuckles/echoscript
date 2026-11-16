@@ -30,6 +30,10 @@ The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its 
 
 From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The existing protected documentation deployment predates this candidate. Further documentation-site design and deployment changes are paused; the Android workbench uses its palette.
 
+## Product research for review
+
+[Eight-product comparison and stack proposal](docs/research/COMPETITIVE-ANALYSIS-2026-11-14.md) · [Evolution mindmap](docs/research/EVOLUTION-MINDMAP.svg) · [Unofficial ideas checklist](https://github.com/TwoWetKnuckles/echoscript/issues/28) · [Synthetic editor trial](docs/research/SANDBOX-TRIAL.md). These references support future decisions; Vue/Tailwind migration, theme implementation, refactoring and beta rollout await owner review and AOK.
+
 ## Responsibility and limitations
 
 **The examiner and deploying organization are responsible for lawful use and case-specific evidence handling.** Before each use, determine the recording/access authority, consent requirements, jurisdiction, agency and court rules, confidentiality obligations, retention and legal holds applicable to that particular matter. Preserve originals and independent custody records; control devices, keys and exports; validate the exact build and workflow; independently review all processing, transcription and reports before relying on or submitting them. A hash match establishes byte consistency against a trusted reference, not lawful acquisition, speaker identity, completeness or legal admissibility.
