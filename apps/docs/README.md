@@ -30,6 +30,8 @@ The HTTP verification starts a temporary production server on loopback, checks e
 
 Edit canonical Markdown, run synchronization and commit the updated MDX/source map together. `check:content` detects drift without changing files. `meta.json` files explicitly order navigation. Dated logs under `docs/qa/archive/` stay in Git rather than the current docs navigation; their links remain available from current status pages. Add new hand-authored MDX pages with a title and description, and list them in the relevant metadata. Never edit the generated `.source/` folder.
 
+The generated `app/shared-theme.css` mirrors `packages/ui/theme.css`; run `node tools/sync-theme.mjs` from the repository root after a palette change. `check:content` also checks that mirror.
+
 Brand/navigation settings live in `lib/layout.shared.tsx`; repository, release and route settings live in `lib/shared.ts`. Pages stay under `/docs`. Download links point to the current verified Android 0.6 test candidate. All implemented tools are available.
 
 ## Deploy independently
@@ -42,4 +44,4 @@ The app builds solely from its committed directory. Synchronization requires a f
 
 Local Node 24 checks passed: content synchronization/verification, route/TypeScript checking, the optimized production build, all 26 documentation page responses, internal navigation targets, examiner-note search, LLM index/full export, Markdown negotiation and suffix routes, OG image generation and a 404 response. `npm audit --audit-level=high` reported zero known findings. The starter dev server also rendered `/docs` with HTTP 200.
 
-The remote browser could not connect to the workspace's loopback server, so these HTTP/build results are not a visual phone/browser acceptance claim. The existing protected Vercel deployment predates this candidate. Further standalone docs design/deployment work is paused; these source changes keep release links and factual content consistent.
+The remote browser could not connect to the workspace's loopback server, so these HTTP/build results are not a visual phone/browser acceptance claim. The existing protected Vercel deployment predates this candidate. The November 15 owner approval includes shared theme and source updates; exact final hosted deployment and visual results are tracked in the implementation PR.

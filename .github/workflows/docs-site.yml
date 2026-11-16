@@ -5,6 +5,8 @@ on:
     paths:
       [
         "apps/docs/**",
+        "packages/ui/**",
+        "tools/sync-theme.mjs",
         "docs/**",
         "downloads/**",
         "DISCLAIMER.md",
@@ -16,6 +18,8 @@ on:
     paths:
       [
         "apps/docs/**",
+        "packages/ui/**",
+        "tools/sync-theme.mjs",
         "docs/**",
         "downloads/**",
         "DISCLAIMER.md",

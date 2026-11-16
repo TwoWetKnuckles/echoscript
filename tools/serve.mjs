@@ -14,6 +14,8 @@ const types = new Map([
   [".ttf", "font/ttf"],
   [".txt", "text/plain; charset=utf-8"],
   [".wav", "audio/wav"],
+  [".svg", "image/svg+xml"],
+  [".webmanifest", "application/manifest+json"],
 ]);
 
 /** Loopback-only static development host. It has no evidence upload endpoint. */
@@ -46,7 +48,7 @@ export async function createStaticServer(directory = "dist") {
           throw Error("BAD_PATH");
         const candidate = resolve(
           root,
-          "." + (name === "/" ? "/index.html" : name),
+          "." + (name.endsWith("/") ? name + "index.html" : name),
         );
         // Check the normalized path before any filesystem lookup, then check
         // again after resolving symlinks. Both boundaries include the separator.

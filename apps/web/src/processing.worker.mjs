@@ -17,6 +17,7 @@ import {
 } from "../../../packages/audio/index.mjs";
 import {
   normalizeVosk,
+  normalizeWhisper,
   reviseTranscript,
   validateTranscript,
 } from "../../../packages/evidence/transcript.mjs";
@@ -250,33 +251,52 @@ async function execute(action, data) {
     return { profile };
   }
   if (action === "prepareTransmission") {
+    if (!["vosk-local", "openai-whisper"].includes(data.provider))
+      throw Error("Select a supported transcription provider");
     const input = audio(),
       pcm = mixMono(input, 16000),
       bytes = encodeWav(pcm);
     const a = c.add(bytes, {
       type: "TRANSCRIPTION_TRANSMISSION",
       parents: [audioId],
-      name: "Local Vosk transmission WAV",
+      name: `${data.provider} transmission WAV`,
       operation: op("windowed-sinc-resample", {
         sampleRate: 16000,
         channels: 1,
         bitDepth: 16,
         kernelRadius: 32,
         cutoffRatio: 0.94,
-        provider: "vosk-local",
+        provider: data.provider,
       }),
     });
     return { artifact: a, duration: pcm.duration, bytes };
   }
   if (action === "consent") {
+    const artifact = c.manifest.artifacts.find(
+      (a) =>
+        a.id === data.artifactId && a.type === "TRANSCRIPTION_TRANSMISSION",
+    );
+    if (
+      !artifact ||
+      artifact.sha256 !== data.sha256 ||
+      artifact.operation.parameters.provider !== data.provider ||
+      !artifact.parents.includes(audioId)
+    )
+      throw Error("Transmission changed; prepare and review a new submission");
     c.log("TRANSCRIPT_SUBMISSION_APPROVAL", {
       artifactId: data.artifactId,
-      provider: "vosk-local",
-      model: "vosk-model-small-en-us-0.15",
+      provider: data.provider,
+      model:
+        data.provider === "openai-whisper"
+          ? "whisper-1"
+          : "vosk-model-small-en-us-0.15",
       sha256: data.sha256,
       duration: data.duration,
       approved: data.approved,
-      retention: "Local service; no evidence files written by this adapter",
+      retention:
+        data.provider === "openai-whisper"
+          ? "External provider policy must be reviewed by the operator"
+          : "Local service; no evidence files written by this adapter",
       purpose: "Verbatim English transcript draft",
     });
     return { approved: data.approved };
@@ -287,15 +307,27 @@ async function execute(action, data) {
       (a) =>
         a.id === data.transmissionId && a.type === "TRANSCRIPTION_TRANSMISSION",
     );
-    if (!transmission || transmission.sha256 !== data.transmissionHash)
+    if (
+      !transmission ||
+      transmission.sha256 !== data.transmissionHash ||
+      transmission.operation.parameters.provider !== data.provider ||
+      !transmission.parents.includes(audioId)
+    )
       throw Error("Provider result transmission binding mismatch");
     const raw = c.add(data.bytes, {
       type: "RAW_PROVIDER_RESULT",
       parents: [data.transmissionId],
-      name: "Exact local Vosk result",
-      operation: op("vosk-local", { model: "vosk-model-small-en-us-0.15" }),
+      name: `Exact ${data.provider} result`,
+      operation: op(data.provider, {
+        model:
+          data.provider === "openai-whisper"
+            ? "whisper-1"
+            : "vosk-model-small-en-us-0.15",
+      }),
     });
-    const nextTranscript = normalizeVosk(parsed, {
+    const normalize =
+      data.provider === "openai-whisper" ? normalizeWhisper : normalizeVosk;
+    const nextTranscript = normalize(parsed, {
       duration: audio().duration,
       events,
       transmissionHash: data.transmissionHash,
@@ -304,8 +336,8 @@ async function execute(action, data) {
       type: "NORMALIZED_TRANSCRIPT",
       parents: [raw.id, data.transmissionId],
       name: "AI transcript draft",
-      operation: op("vosk-normalization", {
-        provider: "vosk-local",
+      operation: op(`${data.provider}-normalization`, {
+        provider: data.provider,
         model: nextTranscript.model,
       }),
     });

@@ -1,5 +1,7 @@
 # EchoScript
 
+![EchoScript audio workbench](assets/branding/echoscript-banner.svg)
+
 Local-first audio evidence development platform, designed to support defensible forensic-audio analysis, transcription, evidence preservation, and chain-of-custody workflows.
 
 ## Download for Android
@@ -28,7 +30,17 @@ In **Cases**, choose a recording, confirm its name under **Selected recording**,
 
 The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
 
-From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The existing protected documentation deployment predates this candidate. Further documentation-site design and deployment changes are paused; the Android workbench uses its palette.
+From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The docs retain Fumadocs and share the graphite/cyan theme with the Vue workbench and separate Symfony portal. [Approved update and verification scope](docs/development/APPROVED-UPDATE.md).
+
+## Web workbench and product site
+
+The browser companion now uses Vue 3, TypeScript, compiled Tailwind and Vite. Run `npm ci --ignore-scripts`, `npm run build` and `npm run serve`. It retains its bounded in-memory WAV workflow, selectable Vosk/Whisper submissions with exact-payload approval, revision history and independently verifiable exports. Optional offline caching stores the app shell and synthetic sample; export case packages to preserve work. Minimum browser versions: Chrome/Edge 111+, Firefox 128+, Safari 16.4+; Android's version alone does not establish browser support.
+
+The separate [Symfony/AssetMapper portal](apps/site/README.md) provides the product/download page, Twig templates, local assets and importmap maintenance. It takes no evidence uploads and reads the verified download from [current release metadata](downloads/current.json). [Update scope](docs/development/APPROVED-UPDATE.md) distinguishes the in-progress source from the currently available APK.
+
+## Product research for review
+
+[Eight-product comparison and stack proposal](docs/research/COMPETITIVE-ANALYSIS-2026-11-14.md) · [Evolution mindmap](docs/research/EVOLUTION-MINDMAP.svg) · [Unofficial ideas checklist](https://github.com/TwoWetKnuckles/echoscript/issues/28) · [Synthetic editor trial](docs/research/SANDBOX-TRIAL.md). The owner approved the recommended stack/theme and refactoring on November 15. The research remains a reference for future decisions; beta publication requires the exact-build acceptance gates.
 
 ## Responsibility and limitations
 

@@ -1,0 +1,27 @@
+{% extends 'base.html.twig' %}
+{% block body %}
+<section class="grid gap-10 py-14 lg:grid-cols-2 lg:items-center">
+  <div>
+    <p class="eyebrow">LOCAL AUDIO WORKBENCH</p>
+    <h1>Your audio.<br>A clear record.</h1>
+    <p class="lead">Inspect the recording, refine a separate working copy, review the words and keep every step traceable.</p>
+    <div class="mt-8 flex flex-wrap gap-3"><a class="button primary" href="#download">Get the Android candidate</a><a class="button" href="/workbench/">Open browser workbench</a></div>
+    <p class="mt-5 text-sm text-muted">Android 10+ · Local Vosk by default · Optional Whisper API</p>
+  </div>
+  <div class="rounded-2xl border border-line bg-panel p-7" aria-label="Illustrated audio workflow">
+    <div class="flex justify-between text-sm text-muted"><span>Working copy</span><span>Source preserved</span></div>
+    <svg viewBox="0 0 520 160" role="img" aria-label="Illustrative audio waveform" class="my-7 w-full"><path d="M0 80H40l10-20 12 40 14-65 14 90 16-110 14 130 16-115 14 80 16-55 14 35 14-20h35l12-30 14 65 14-100 14 120 15-100 14 75 14-45 15 25h42l12-35 12 60 14-75 14 90 14-65 14 40 14-25h45" fill="none" stroke="currentColor" stroke-width="3"/></svg>
+    <ol class="grid gap-3 text-sm"><li><strong>01 Source</strong><span>Original bytes and SHA-256</span></li><li><strong>02 Working copy</strong><span>Visible effects and revision history</span></li><li><strong>03 Transcript</strong><span>Draft words and examiner review</span></li><li><strong>04 Export</strong><span>Protected package and verification</span></li></ol>
+  </div>
+</section>
+<section id="workflow" class="grid gap-5 py-8 md:grid-cols-3" aria-label="Workbench tools">
+  <article class="card"><p class="eyebrow">INSPECT</p><h2>Find the moment.</h2><p>Waveform, spectrum, selections and notes keep the audio at the center of your review.</p></article>
+  <article class="card"><p class="eyebrow">REFINE</p><h2>Keep the original.</h2><p>Toggle local ClearVoice before or after effects. Render a separate derivative and retain its settings.</p></article>
+  <article class="card"><p class="eyebrow">REVIEW</p><h2>Choose the route.</h2><p>Use on-device Vosk or explicitly approve a hashed transmission to Whisper through your configured service.</p></article>
+</section>
+<section id="download" class="card my-12 grid gap-7 lg:grid-cols-2">
+  <div><p class="eyebrow">CURRENT VERIFIED DOWNLOAD</p><h2>{{ release.label }}</h2><p>This development-signed candidate is for evaluation. Physical-device acceptance, owner signing and the full beta gates remain open.</p><p class="mt-4 text-sm text-muted">The available APK predates the in-progress Vue/site and recovery update. Download links advance only after the exact replacement is validated.</p></div>
+  <div><div class="flex flex-wrap gap-3"><a class="button primary" href="{{ release.apkUrl }}">Download APK</a><a class="button" href="{{ release.zipUrl }}">ZIP with instructions</a></div><p class="mt-5 text-sm"><a href="{{ release.releaseUrl }}">Build record and release notes</a></p><p class="hash mt-4 text-xs text-muted">APK SHA-256<br>{{ release.apkSha256 }}</p></div>
+</section>
+<p class="max-w-3xl text-sm text-muted">Enhancement estimates and machine transcripts require independent review. They do not establish spoken words, speaker identity or court admissibility. The optional browser workbench has a separate resource and format scope.</p>
+{% endblock %}

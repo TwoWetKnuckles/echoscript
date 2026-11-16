@@ -7,6 +7,7 @@ import {
 } from "../packages/evidence/index.mjs";
 import {
   normalizeVosk,
+  normalizeWhisper,
   reviseTranscript,
   validateTranscript,
 } from "../packages/evidence/transcript.mjs";
@@ -162,5 +163,51 @@ test("human verification requires all segments and preserves parent bytes and wo
   assert.throws(
     () => exportTranscript(next.transcript, "ctm"),
     /word alignment/,
+  );
+});
+
+test("Whisper alignment retains anomalies without fabricating confidence or speaker identity", () => {
+  const raw = {
+    text: "synthetic words",
+    language: "en",
+    segments: [
+      { start: -0.2, end: 2.1, text: "synthetic words", avg_logprob: -0.1 },
+    ],
+    words: [
+      { start: 0, end: 0.8, word: "synthetic" },
+      { start: 0.8, end: 1.5, word: "words" },
+    ],
+  };
+  const before = structuredClone(raw);
+  const normalized = normalizeWhisper(raw, {
+    duration: 2,
+    transmissionHash: "a".repeat(64),
+  });
+  assert.deepEqual(raw, before);
+  assert.equal(normalized.provider, "openai-whisper");
+  assert.equal(normalized.segments[0].start, -0.2);
+  assert.equal(normalized.segments[0].end, 2.1);
+  assert.ok(normalized.segments[0].flags.includes("OUT_OF_RANGE"));
+  assert.equal(normalized.segments[0].confidence, null);
+  assert.equal(normalized.segments[0].speaker, null);
+  assert.deepEqual(normalized.segments[0].alternatives, []);
+  assert.ok(
+    normalized.segments[0].words.every((word) => word.confidence === null),
+  );
+  assert.throws(
+    () =>
+      normalizeWhisper(
+        { text: "unbound", segments: [] },
+        { duration: 2, transmissionHash: "a".repeat(64) },
+      ),
+    /alignment/,
+  );
+  assert.throws(
+    () =>
+      normalizeWhisper(
+        { ...raw, words: [{ word: "bad", start: "0", end: 1 }] },
+        { duration: 2, transmissionHash: "a".repeat(64) },
+      ),
+    /alignment/,
   );
 });

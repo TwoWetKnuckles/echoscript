@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="description" content="EchoScript: local audio inspection, optional speech enhancement, transcript review and verifiable case exports.">
+  <meta name="theme-color" content="#0b1219">
+  <title>{% block title %}EchoScript · A clear record{% endblock %}</title>
+  {{ importmap('app') }}
+</head>
+<body data-controller="appearance">
+  <a href="#main" class="skip">Skip to content</a>
+  <header class="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-6 px-6 py-6">
+    <a href="{{ path('home') }}" class="brand" aria-label="EchoScript home"><span aria-hidden="true">≋</span> EchoScript</a>
+    <nav aria-label="Main navigation" class="flex flex-wrap items-center gap-5">
+      <a href="#download">Download</a>
+      <a href="https://github.com/TwoWetKnuckles/echoscript/tree/main/docs">Documentation</a>
+      <a href="https://github.com/TwoWetKnuckles/echoscript">GitHub</a>
+      <button type="button" data-action="appearance#toggle" data-appearance-target="toggle" aria-label="Switch to light appearance">Light appearance</button>
+    </nav>
+  </header>
+  <main id="main" tabindex="-1" class="mx-auto max-w-6xl px-6 pb-16">{% block body %}{% endblock %}</main>
+  <footer class="mx-auto max-w-6xl border-t border-line px-6 py-8 text-sm text-muted">EchoScript · Source integrity first. All implemented tools available. Apache-2.0.</footer>
+</body>
+</html>

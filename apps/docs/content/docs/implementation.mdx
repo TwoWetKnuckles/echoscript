@@ -23,7 +23,9 @@ Local render and Vosk jobs now use encrypted persistent requests and WorkManager
 | `packages/evidence`, `packages/audio`, `packages/exports`             | Browser/domain contracts, DSP, provenance and exports                                                                 |
 | `packages/case-security`, `tools/case-protect`, `tools/case-verify`   | Protected transfers, historical checkpoints and independent verification                                              |
 | `services/api`                                                        | Optional local provider mediation; no evidence persistence or secret logging                                          |
-| `apps/docs`                                                           | Separate Fumadocs app mirroring canonical Markdown; design/deployment work remains paused                             |
+| `apps/docs`                                                           | Separate Fumadocs app mirroring canonical Markdown and the shared visual theme                                        |
+
+The browser companion now uses Vue/TypeScript/Tailwind and Vite around its existing audio worker. The separate Symfony/AssetMapper portal lives in `apps/site`, accepts no evidence and can render a static product/download page. [Approved stack/refactor scope](/docs/development/approved-update).
 
 ## Release and validation
 

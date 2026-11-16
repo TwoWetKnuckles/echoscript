@@ -1,4 +1,4 @@
-import { build } from "esbuild";
+import { build } from "vite";
 import { mkdir, writeFile, copyFile, cp, rm } from "node:fs/promises";
 import Ajv from "ajv";
 import standaloneCode from "ajv/dist/standalone/index.js";
@@ -23,32 +23,18 @@ await writeFile(
 if (process.argv.includes("--schema-only")) process.exit(0);
 await rm("apps/web/dist", { recursive: true, force: true });
 await rm("dist", { recursive: true, force: true });
-await mkdir("apps/web/dist", { recursive: true });
-await build({
-  entryPoints: ["apps/web/src/main.mjs", "apps/web/src/processing.worker.mjs"],
-  outdir: "apps/web/dist",
-  outExtension: { ".js": ".mjs" },
-  bundle: true,
-  format: "esm",
-  target: "es2023",
-  sourcemap: true,
-  minify: false,
-  legalComments: "linked",
-});
-await copyFile("apps/web/src/index.html", "apps/web/dist/index.html");
-await copyFile("apps/web/src/workbench.css", "apps/web/dist/workbench.css");
+await mkdir("apps/web/public/fixtures", { recursive: true });
 await copyFile(
   "apps/web/assets/NotoSans-Regular.ttf",
-  "apps/web/dist/NotoSans-Regular.ttf",
+  "apps/web/public/NotoSans-Regular.ttf",
 );
-await copyFile("apps/web/assets/OFL.txt", "apps/web/dist/OFL.txt");
-await mkdir("apps/web/dist/fixtures", { recursive: true });
+await copyFile("apps/web/assets/OFL.txt", "apps/web/public/OFL.txt");
 await copyFile(
   "specs/fixtures/synthetic-speech.wav",
-  "apps/web/dist/fixtures/synthetic-speech.wav",
+  "apps/web/public/fixtures/synthetic-speech.wav",
 );
 await writeFile(
-  "apps/web/dist/build.json",
+  "apps/web/public/build.json",
   JSON.stringify(
     {
       version: "0.6.0-preview",
@@ -59,6 +45,7 @@ await writeFile(
     2,
   ) + "\n",
 );
+await build({ configFile: "apps/web/vite.config.ts" });
 await cp("apps/web/dist", "dist", { recursive: true });
 process.stdout.write(
   "Built browser workbench and independent schema validator.\n",

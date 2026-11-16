@@ -1,0 +1,41 @@
+name: Importmap updates
+on:
+  schedule:
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: Plan updates without changing branches or pull requests
+        type: boolean
+        default: true
+permissions:
+  contents: read
+concurrency:
+  group: importmap-updates
+  cancel-in-progress: false
+jobs:
+  update:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    permissions:
+      contents: write
+      pull-requests: write
+    env:
+      APP_ENV: prod
+      APP_DEBUG: "0"
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: shivammathur/setup-php@eb7c497e18156a6bbabfef1d3a82760b9eda3962 # v2
+        with:
+          php-version: "8.4"
+          extensions: ctype, iconv, mbstring, xml, curl, zip
+          coverage: none
+          tools: composer:v2
+      - run: composer install --working-dir=apps/site --no-scripts --no-interaction --prefer-dist
+      - uses: chr-hertel/symfony-asset-mapper-update@61e0023f4f04a1b9ce184377149ed1171009656a # v1 / 1.0.1
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          working-directory: apps/site
+          dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
