@@ -75,6 +75,34 @@ def gh(*args: str) -> str:
     return result.stdout
 
 
+def preserve_reports(folder: Path, output: Path, source: str, run_url: str) -> Path:
+    expected = {"android-device-29-reports", "android-device-36-reports",
+        "synthetic-case-security-interop", "synthetic-clearvoice-memory-comparison",
+        "synthetic-hour-streaming-resource-results", "synthetic-local-workflow-results"}
+    if {p.name for p in folder.iterdir()} != expected:
+        raise ValueError("All six exact-run report groups must be retained")
+    files = sorted(folder.rglob("*"))
+    if any(p.is_symlink() for p in files) or any(not any(p.is_file() for p in (folder / name).rglob("*")) for name in expected):
+        raise ValueError("Report groups must be nonempty regular files without symlinks")
+    inventory = []
+    path = output / "EchoScript-Candidate-0.6-R2-validation.zip"
+    with zipfile.ZipFile(path, "w", zipfile.ZIP_DEFLATED, compresslevel=6) as archive:
+        for item in files:
+            if not item.is_file():
+                continue
+            name = item.relative_to(folder).as_posix()
+            inventory.append({"path": name, "bytes": item.stat().st_size, "sha256": digest(item)})
+            archive.write(item, name)
+        archive.writestr("BUILD-AND-SCOPE.json", json.dumps({"sourceCommit": source,
+            "qualityRun": run_url, "betaGate": "NOT PASSED", "files": inventory}, indent=2) + "\n")
+        archive.writestr("README.txt", "Synthetic exact-run reports, not case evidence or full beta acceptance.\n"
+            "Controlled emulators and desktop/provider subsets do not establish physical-device, owner-signing, accuracy, security/team/trust or seven complete-workflow acceptance.\n")
+    with zipfile.ZipFile(path) as archive:
+        if archive.testzip() is not None:
+            raise ValueError("Permanent report archive CRC verification failed")
+    return path
+
+
 def remote_release(tag: str) -> dict | None:
     result = subprocess.run(["gh", "api", f"repos/{REPOSITORY}/releases/tags/{tag}"], capture_output=True, text=True)
     if result.returncode == 0:
@@ -114,6 +142,7 @@ def main() -> None:
     parser.add_argument("--source", required=True)
     parser.add_argument("--run-url", required=True)
     parser.add_argument("--prepare-only", action="store_true")
+    parser.add_argument("--validation-folder", type=Path)
     args = parser.parse_args()
     if args.prepare_only:
         files = prepare(args.folder, args.output, args.source, args.run_url)
@@ -143,6 +172,10 @@ def main() -> None:
     if not codeql or codeql[0]["conclusion"] != "success":
         raise RuntimeError("The exact-source CodeQL push run must pass before publication")
     files = prepare(args.folder, args.output, args.source, args.run_url)
+    if args.validation_folder is None:
+        raise ValueError("Permanent exact-run validation reports are required")
+    reports = preserve_reports(args.validation_folder, args.output, args.source, args.run_url)
+    files.append(reports)
     notes = args.output / "RELEASE-NOTES.md"
     notes.write_text(f"# {request['title']}\n\nDevelopment-signed synthetic-evaluation candidate. **BETA GATE: NOT PASSED.**\n\n"
         "Bundled local ClearVoice before/after effects, default Vosk and selectable Whisper with exact-payload approval, encrypted background local jobs, durable cancellation/recovery and the graphite/cyan workbench. All implemented tools are available.\n\n"
@@ -150,6 +183,8 @@ def main() -> None:
         "Physical Galaxy S22+ acceptance, owner production signing/upgrades, the full accuracy/resource/recovery/security/team/trust matrix and seven complete accepted workflows remain open. Emulator subsets are not full beta acceptance.\n\n"
         "The separate candidate package preserves older vaults. Export and independently verify protected cases before uninstall/reset. See the included installation guide and checksums.\n")
     files.append(notes)
+    checksums = args.output / "SHA256SUMS.txt"
+    checksums.write_text("".join(f"{digest(path)}  {path.name}\n" for path in files if path != checksums))
     if existing is None:
         gh("release", "create", request["tag"], "--repo", REPOSITORY, "--target", args.source,
             "--title", request["title"], "--notes-file", str(notes), "--draft", "--prerelease", "--latest=false")

@@ -154,10 +154,18 @@ jobs:
         with:
           name: EchoScript-Android10-Offline-Test-Candidate-0.6
           path: qa-output/publish-input
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: android-device-*-reports
+          path: qa-output/publish-validation
+      - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333
+        with:
+          pattern: synthetic-*
+          path: qa-output/publish-validation
       - name: Publish the exact tested evaluation candidate
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python3 tools/publish-evaluation.py qa-output/publish-input/EchoScript-Android qa-output/publish-release --source "$GITHUB_SHA" --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+        run: python3 tools/publish-evaluation.py qa-output/publish-input/EchoScript-Android qa-output/publish-release --source "$GITHUB_SHA" --run-url "$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID" --validation-folder qa-output/publish-validation
   rust-streaming:
     runs-on: ubuntu-24.04
     timeout-minutes: 10
