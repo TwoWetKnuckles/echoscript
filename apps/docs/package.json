@@ -12,6 +12,7 @@
     "verify:site": "node scripts/check-site.mjs"
   },
   "dependencies": {
+    "@vercel/analytics": "^2.0.1",
     "cn": "^0.5.2",
     "fumadocs-core": "16.19.0",
     "fumadocs-mdx": "15.6.1",
