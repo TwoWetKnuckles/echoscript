@@ -197,3 +197,7 @@ All five older releases were downloaded before cleanup. All 41 original assets m
 The coexistence harness and instrumentation assertions were updated to use the retained 0.6 rollback ID and pinned APK, replacing their removed 0.5.1 dependency. This harness change requires a fresh Android 16 CI pass; earlier passes are not attributed to it. Application runtime code and the published APK are unchanged.
 
 Evaluation of the published exact-build acceptance record still reports `BETA GATE: NOT PASSED`, zero consecutive complete accepted workflows and all eleven mandatory acceptance rows unpassed. This is not an automated-test failure: it records the remaining engineering, physical-device, owner-signing and deployment acceptance work. No beta promotion or signing-key substitution was performed.
+
+## ClearVoice export dependency repair
+
+The ClearVoice export pins were restored to the recorded PyTorch 2.10.0 CPU model environment with setuptools 78.1.1. The inventory and matching audio/vision pins were checked locally. A Python 3.12 install was attempted but could not download the PyTorch CPU wheel because `download-r2.pytorch.org` did not resolve; dependency resolution, `pip check` and graph reproduction therefore remain unverified locally and require a fresh CI run. The full seven-run gate remains unpassed.
