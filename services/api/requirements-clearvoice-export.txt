@@ -53,14 +53,14 @@ rotary-embedding-torch==0.8.3
 scenedetect==0.6.6
 scikit-learn==1.9.1
 scipy==1.17.1
-setuptools==84.1.0
+setuptools==78.1.1
 socksio==1.0.0
 soundfile==0.12.1
 soupsieve==4.1
 soxr==1.1.0
 sympy==1.14.0
 threadpoolctl==3.8.0
-torch==2.12.1+cpu
+torch==2.10.0+cpu
 torchaudio==2.10.0+cpu
 torchinfo==1.8.0
 torchvision==0.25.0+cpu
