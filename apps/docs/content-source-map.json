@@ -19,6 +19,10 @@
     "source": "docs/architecture.md",
     "sha256": "de1705a2ffdd6ad435d8b63830292bf45696e7da5c8a6c23ca493c13cb7f9d6c"
   },
+  "development/tools.mdx": {
+    "source": "docs/development/TOOLS.md",
+    "sha256": "bc335c5e33ea4303125fe4f6fb265eb6edc7f2bc5d322eab7fec3997e2715aef"
+  },
   "evidence/protected-transfer.mdx": {
     "source": "docs/evidence/PROTECTED-TRANSFER.md",
     "sha256": "4f00d9aacf6eefe16c3d4fcf64084da33ab5ba4eee1d1ab5d148ef547b5df7d3"
@@ -57,7 +61,7 @@
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "2454c5e4c9c7370cd41f581e5273ad6efb1cf39c991857ee5d95d758dac74934"
+    "sha256": "9e8ad3eabb21749cb3e02b18208c8b657d8d5d3de38810bf097d34e2d40eac0d"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
