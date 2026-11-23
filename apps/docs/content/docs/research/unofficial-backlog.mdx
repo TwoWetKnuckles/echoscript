@@ -1,0 +1,44 @@
+---
+title: "EchoScript unofficial evolution checklist"
+description: "EchoScript reference: EchoScript unofficial evolution checklist."
+---
+
+**Research ideas for owner review, 14 November 2026.** This is not an approved release scope, roadmap promise or substitute for [mandatory acceptance](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/specs/release-gates.json). Review the [eight-product analysis](/docs/research/competitive-analysis-2026-11-14) and [mindmap](https://github.com/TwoWetKnuckles/echoscript/blob/docs/product-discovery-20261114/docs/research/EVOLUTION-MINDMAP.svg) before proposing additions. [GitHub issue #28](https://github.com/TwoWetKnuckles/echoscript/issues/28) tracks decisions; this document records the proposal baseline.
+
+No new stack migration, theme implementation, refactoring or beta rollout is authorized by this checklist. Obtain the owner's AOK on the concrete scope first. Keep existing runtime fixes in their draft review until qualified. All implemented EchoScript features remain available without payment gates.
+
+## P0 - correctness and release obligations
+
+- [ ] **E01:** Diagnose the exact-source API 29/36 failures in PR #27. Validate durable cancellation, idempotent scheduling, retry and process-death recovery; preserve source and avoid duplicate artifacts.
+- [ ] **E02:** Finish pinned model-build dependency updates and advisory review. Re-export, verify numerical/graph parity, record the actual new model hash and rerun native tests. Prior toolchain observations are not exact-build acceptance.
+- [ ] **E13:** Align release name, tested APK, SHA-256, certificate, source and download links. Qualify owner-controlled signing and upgrade, archive the replaced build and retain one rollback. New permanent deletion requires its own concrete review.
+- [ ] **E14:** Implement and satisfy the remaining eleven mandatory gates, including physical-device resources, complete enhancement/accuracy/recovery/team/trust work and seven full accepted runs on the exact APK.
+
+## P1 - core workflow and design proposals
+
+- [ ] **E03:** ClearVoice enable + Before effects / After effects with an exact visible rendered chain; test bypass, both orders, immutable history and payload approval invalidation.
+- [ ] **E04:** Aligned level-matched A/B and removed-signal listening; test delay, clipping and the difference between loudness and intelligibility.
+- [ ] **E05:** Segment-linked transcript correction, uncertainty queue and reviewer revisions; no invented confidence or automatic human-verification labels.
+- [ ] **E06:** Readable summary plus complete machine-readable processing report, linked to source/derivative hashes, selections and independent verification.
+- [ ] **E07:** Persist time/frequency/channel selections with feathering and render/export parity; preserve overlap and phase semantics.
+- [ ] **E08:** Measured, source-linked noise profiles with clear selection and mismatch checks; evaluate the risk of suppressing quiet speech.
+- [ ] **E09:** Obtain owner stack AOK, then align visual tokens, concise actions and navigation across native/web/docs/repository assets. Check dark/light, contrast, large text, touch and keyboard behavior.
+- [ ] **E10:** Define and test actual browser/WebView minimums for Tailwind 4, local/offline assets and caching. Do not infer browser support from Android OS version.
+- [ ] **E16:** Provide a synthetic tutorial case demonstrating import, inspection, rendering, review and independently verified export.
+
+## P2 - later experiments
+
+- [ ] **E11:** Similar-event search with labeled-event precision/recall; never infer speakers or intent from repeated sounds.
+- [ ] **E12:** Searchable actions and explainable starting presets; measure findability, expose settings, preserve reset/undo/history.
+- [ ] **E15:** Evaluate additional local speech models for license, package size, RAM, battery, thermals and accuracy; no silent downloads or provider fallback.
+
+## Decision log
+
+| Decision                                                                                             | State                     | Required next input                                           |
+| ---------------------------------------------------------------------------------------------------- | ------------------------- | ------------------------------------------------------------- |
+| A: Vue/TypeScript/Tailwind hosted companion + current Fumadocs docs + native Compose + shared tokens | Recommended, not approved | Owner AOK                                                     |
+| B: Also migrate documentation to Vue/VitePress                                                       | Alternative, not approved | Owner choice and migration acceptance scope                   |
+| New beta release                                                                                     | Not ready                 | Exact-build gate evidence and qualified signing               |
+| Competitor-inspired additions                                                                        | Research only             | Select idea IDs, acceptance criteria and owner scope decision |
+
+When promoting an item, create a focused implementation issue or PR, cite its E-ID and record the owner decision. Check an item only after linked evidence supports completion. Keep this research list separate from required release-gate records.
