@@ -54,3 +54,16 @@ Original bytes, encrypted local storage, complete provenance/audit linkage and e
 Feature confirmation does not establish provider credits or an approved hosted deployment, organization roles and metadata field allowlist, trusted timestamp authority, owner signing material, physical device access, quantitative accuracy/resource thresholds or policy acceptance. Build and test the concrete implementation first; request only the necessary missing deployment decisions when their dependent integration is ready for review. No external processing or evidence sync is authorized merely by enabling a provider option.
 
 Galaxy S22+ / Android 16 is the user-reported physical device. Emulator results must be labeled separately. IDs 29/30 require evidence against the exact final APK/source, followed by owner acceptance; they cannot be silently marked passed or waived. See specs/release-gates.json and docs/qa/RC-ACCEPTANCE.md.
+
+## Requested product direction — November 23, 2026
+
+The owner has since requested the following direction for future scope planning. This updates the earlier browser-parity deferral as a requested target, but does not mean these capabilities are implemented, technically qualified, or accepted as release evidence:
+
+- An Android-only APK and a separately hosted browser workbench, with bundled offline Whisper available in both.
+- A browser per-file ingest limit of 250 MB and lower case capacity than Android, while preserving the agreed core workflow and evidence semantics.
+- Google Play distribution and a hosted trial after beta acceptance. iOS, macOS, Windows, and Linux are later platform targets for the intended 1.0 launch, not part of the current Android/web acceptance matrix.
+- Paid SaaS tiers, subscriptions, and opt-in beta feedback are later product work, not authorization for evidence upload or a change to the current no-payment-gating policy.
+
+The earlier ID 21 browser deferral is historical and must not be read as implementing this newer request. Before promoting this direction into a release commitment, qualify a specific offline Whisper runtime/model and its redistribution terms, size, languages, accuracy, memory, thermal, and storage behavior separately on Android and supported browsers. Define browser persistence/eviction and recovery limits, plus a capacity policy beyond the 250 MB per-file ceiling. The web app's key custody and evidence protection must be evaluated independently; browser storage is not the Android Keystore vault.
+
+No hosting provider, custom domain, browser support matrix, SaaS architecture, entitlement policy, or jurisdictional compliance conclusion is selected by this request. A GitHub-hosted static site is not a case-storage or transcription backend. Record those decisions only after the actual deployment and applicable organizational requirements have been reviewed. Continue using synthetic/licensed test data, and do not claim admissibility, identity authentication, or compliance based on hashing or hosting alone.
