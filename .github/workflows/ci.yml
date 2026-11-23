@@ -198,9 +198,36 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -partition-size 4096
           working-directory: apps/android
           script: |
+            run_gradle_with_compose_plugin_retry() {
+              local output_file status
+              output_file="$(mktemp)"
+              if ./gradlew "$@" >"$output_file" 2>&1; then
+                cat "$output_file"
+                rm -f "$output_file"
+                return 0
+              else
+                status=$?
+                cat "$output_file"
+                if ! grep -Fq "Plugin [id: 'org.jetbrains.kotlin.plugin.compose', version: '2.2.10'" "$output_file" || ! grep -Fq 'was not found in any of the following sources' "$output_file"; then
+                  rm -f "$output_file"
+                  return "$status"
+                fi
+              fi
+              echo "Kotlin Compose plugin resolution failed; retrying once with refreshed dependencies."
+              if ./gradlew "$@" --refresh-dependencies >"$output_file" 2>&1; then
+                cat "$output_file"
+                rm -f "$output_file"
+                return 0
+              else
+                status=$?
+                cat "$output_file"
+                rm -f "$output_file"
+                return "$status"
+              fi
+            }
             python3 ../../scripts/qa-android-coexistence.py setup ${{ matrix.api }}
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=org.echoscript.app.CompanionWorkflowTest
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
+            run_gradle_with_compose_plugin_retry :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=org.echoscript.app.CompanionWorkflowTest
+            run_gradle_with_compose_plugin_retry :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
             python3 ../../scripts/qa-android-coexistence.py check ${{ matrix.api }}
             cd ../.. && python3 scripts/qa-android-crash.py
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
