@@ -6,9 +6,9 @@ import subprocess
 import sys
 
 # Exercise the one published rollback retained after historical release archival.
-OLD_ID = "org.echoscript.app.preview06"
-URL = "https://github.com/TwoWetKnuckles/echoscript/releases/download/android-preview-0.6.0-dev.20261113/EchoScript-offline-preview.apk"
-SHA256 = "0efbfe18fffda6b0141cb13cdeb56e301ff12fa617539e47042b57a37fba50d3"
+OLD_ID = "org.echoscript.app.candidate06"
+URL = "https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk"
+SHA256 = "664854f670987ad3136e9030262861c194ba62fe877742ee009024e18a8b8f82"
 MARKER = "files/synthetic-preview-isolation.txt"
 VALUE = b"SYNTHETIC_OLD_PREVIEW_DATA"
 
@@ -40,4 +40,4 @@ else:
     marker = subprocess.check_output(["adb", "shell", "run-as", OLD_ID, "cat", MARKER], timeout=10).strip()
     if marker != VALUE:
         raise RuntimeError("The earlier preview's synthetic private-data marker changed")
-    print("PASS: earlier preview's synthetic data remains after candidate testing.")
+    print("PASS: earlier candidate's synthetic data remains after candidate testing.")

@@ -36,6 +36,8 @@ class ClearVoiceNativeTest {
             assertEquals(CLEARVOICE_ONNX_HASH, parameters.getString("modelSha256"))
             assertEquals("IN_PROCESS_ONLY", parameters.getString("transport"))
             assertEquals("DISABLED_BEFORE_INITIALIZATION", parameters.getString("runtimeTelemetry"))
+            assertFalse(parameters.getBoolean("cpuArenaAllocator"))
+            assertFalse(parameters.getBoolean("memoryPatternOptimization"))
             assertEquals(88400L, parameters.getLong("frames"))
             assertEquals(16000, parameters.getInt("sampleRate"))
             assertEquals(1, parameters.getInt("channels"))
@@ -65,6 +67,10 @@ class ClearVoiceNativeTest {
             val output = InstrumentationRegistry.getArguments().getString("additionalTestOutputDir")?.let { File(it).apply { mkdirs() } }
             if (output != null) {
                 File(output,"synthetic-clearvoice.echocase").outputStream().use { vault.exportPackage(case,it,"SYNTHETIC_QA") }
+                val highWaterKiB = File("/proc/self/status").readLines().single { it.startsWith("VmHWM:") }.filter { it.isDigit() }.toLong()
+                File(output, "synthetic-clearvoice-memory.json").writeText(JSONObject().put("scope", "synthetic-emulator-process-high-water-not-physical-acceptance")
+                    .put("processHighWaterRssKiB", highWaterKiB).put("api", android.os.Build.VERSION.SDK_INT)
+                    .put("modelSha256", CLEARVOICE_ONNX_HASH).put("cpuArenaAllocator", false).put("memoryPatternOptimization", false).toString())
             }
         } finally { assertTrue(File(context.filesDir,"EvidenceVault/cases/$id").deleteRecursively()) }
     }

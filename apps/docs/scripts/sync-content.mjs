@@ -7,7 +7,7 @@ const app = fileURLToPath(new URL("../", import.meta.url));
 const repo = resolve(app, "../..");
 const content = join(app, "content/docs");
 const check = process.argv.includes("--check");
-const branch = "feature/clearvoice-whisper-beta";
+const branch = "main";
 const repository = "https://github.com/TwoWetKnuckles/echoscript";
 const entries = [];
 
@@ -16,7 +16,7 @@ async function collect(folder) {
     await readdir(join(repo, folder), { withFileTypes: true })
   ).sort((a, b) => a.name.localeCompare(b.name))) {
     const name = posix.join(folder, item.name);
-    if (item.isDirectory()) await collect(name);
+    if (item.isDirectory() && item.name !== "archive") await collect(name);
     else if (item.isFile() && name.endsWith(".md"))
       entries.push({
         source: name,
