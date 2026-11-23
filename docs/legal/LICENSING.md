@@ -21,7 +21,7 @@ Sections 7–8 contain the warranty and liability provisions and their exception
 
 ## Third-party components and case data
 
-Dependencies, fonts, codecs, speech-model weights and external services keep their respective licenses/terms. The bundled Noto Sans font includes its [SIL Open Font License](../../apps/web/assets/OFL.txt). The pinned Vosk model's qualification and sources are in the [provider record](../providers/local-vosk.md); the weights are downloaded separately, not licensed by this project's NOTICE. The synthetic fixture has a committed [provenance record](../../specs/fixtures/synthetic-speech.provenance.json). These examples are not a complete third-party license audit.
+Dependencies, fonts, codecs, speech-model weights and external services keep their respective licenses/terms. The bundled Noto Sans font includes its [SIL Open Font License](../../apps/web/assets/OFL.txt). The pinned Vosk model's qualification and sources are in the [provider record](../providers/local-vosk.md); the Android build fetches and bundles two pinned model archives with their license notice. The browser loopback setup fetches the English model separately. The synthetic fixture has a committed [provenance record](../../specs/fixtures/synthetic-speech.provenance.json). These examples are not a complete third-party license audit.
 
 Before distributing a build or adding an encoder/model, review the exact component/version's license, attribution, redistribution and applicable patent obligations. Preserve its notices in the distribution. Do not assume that a package's presence or this repository's Apache license clears every codec, model, service or use case.
 

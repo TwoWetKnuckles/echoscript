@@ -1,0 +1,81 @@
+{
+  "schema": "org.echoscript.release-gates/1",
+  "gates": [
+    {
+      "id": "DEVICE_UI",
+      "acceptance": "Physical phones and tablets on the supported OS matrix; accessibility service, large text, dark/light, rotation and landscape workflows."
+    },
+    {
+      "id": "EVIDENCE",
+      "acceptance": "Immutable encrypted intake, all artifact/audit/provenance/tamper checks, independently trusted checkpoints, protected transfer and approved tested recovery policy."
+    },
+    {
+      "id": "REAL_WORKFLOW",
+      "acceptance": "Actual supported file providers, microphone acquisition, authorized roles and the full accepted application workflow, with genuine user-interface interaction."
+    },
+    {
+      "id": "DEVICE_RESOURCES",
+      "acceptance": "Declared device-specific RAM, descriptor, disk, duration, thermal and battery thresholds; sustained large-file, cancellation and cleanup measurements within those limits."
+    },
+    {
+      "id": "RECOVERY",
+      "acceptance": "Process-kill and power-loss matrix at each long-running stage, source preservation, honest incomplete states, resumable jobs and protected clean-device recovery."
+    },
+    {
+      "id": "ENHANCEMENT",
+      "acceptance": "Native time-frequency selection, measured noise profiles, agreed disclosed restoration, delay, before/after comparison and non-destructive deterministic history/render/export parity."
+    },
+    {
+      "id": "SPEECH",
+      "acceptance": "Controlled multi-speaker/overlap and uncertainty accuracy evaluation; genuine score/word timing/alternative semantics; provider/model/deployment permission and policy qualification."
+    },
+    {
+      "id": "TEAM_PORTABILITY",
+      "acceptance": "Authenticated roles, authorization/revocation/cross-user tests, explicit approved metadata fields, conflict handling and no hidden evidence synchronization."
+    },
+    {
+      "id": "DISTRIBUTION",
+      "acceptance": "Owner-controlled non-debug production signing, independently pinned certificate, upgrade/key custody and tested direct APK/MDM policy for the selected deployment."
+    },
+    {
+      "id": "GOVERNANCE",
+      "acceptance": "Exact jurisdiction, organizational and case authority, retention/legal holds, licensing and required executed agreements reviewed for the actual deployed configuration."
+    },
+    {
+      "id": "SEVEN_FULL_RUNS",
+      "acceptance": "Seven consecutive full accepted workflows on the exact release APK/source, after the other gates pass. A failure resets the consecutive counter; partial/subset runs never count."
+    }
+  ],
+  "fullWorkflowStages": [
+    "SYNTHETIC_FIXTURE",
+    "IMPORT",
+    "SOURCE_HASH",
+    "ENCRYPT_PERSIST",
+    "DECODE",
+    "WAVEFORM",
+    "SPECTROGRAM",
+    "SPEECH_ACTIVITY",
+    "REGION_SELECTION",
+    "ENHANCEMENT",
+    "PREVIEW",
+    "RENDER",
+    "DERIVATIVE_HASH",
+    "TRANSMISSION_ARTIFACT",
+    "SUBMISSION_APPROVAL",
+    "REAL_CONFIGURED_PROVIDER",
+    "NORMALIZE",
+    "SPEAKERS",
+    "TIMESTAMPS",
+    "SCORE_SEMANTICS",
+    "ALTERNATIVE_SEMANTICS",
+    "HUMAN_REVISION",
+    "AUDIO_EXPORT",
+    "TRANSCRIPT_EXPORT",
+    "CHANGELOG_EXPORT",
+    "CASE_EXPORT",
+    "CASE_REIMPORT",
+    "HASH_VERIFY",
+    "PROVENANCE_VERIFY",
+    "AUDIT_VERIFY"
+  ]
+}

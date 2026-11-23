@@ -32,7 +32,7 @@ Making the source available does not, by itself, appoint contributors as evidenc
 
 ## Technical verification and legal conclusions
 
-A matching SHA-256 establishes consistency with the compared bytes or trusted checkpoint. An internally consistent provenance graph or audit chain does not prove that the recording is authentic, complete, lawfully acquired or attributed to the correct person. An attacker able to replace an entire unsigned package may replace its hashes and chain together. Digital signatures and trusted timestamps are not implemented in the current build.
+A matching SHA-256 establishes consistency with the compared bytes or trusted checkpoint. An internally consistent provenance graph or audit chain does not prove that the recording is authentic, complete, lawfully acquired or attributed to the correct person. An attacker able to replace an entire unsigned package may replace its hashes and chain together. Opt-in device-key checkpoints authenticate stated historical prefixes; examiner identity, independent signer trust and trusted timestamping are not supplied by those checkpoints. See the [implemented signature boundaries](docs/evidence/PROTECTED-TRANSFER.md).
 
 EchoScript does not itself make evidence admissible, court-admissible or legally authenticated. No NIST, CJIS, FIPS, FedRAMP, HIPAA or other certification/compliance claim is made for the application or a deployment. Technical controls, organizational procedure, provider qualifications, deployment assessment and legal admissibility are separate questions. Their determination remains with the responsible organizations, qualified professionals and competent authorities under the applicable rules.
 

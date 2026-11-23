@@ -1,0 +1,36 @@
+@import "tailwindcss";
+@import "fumadocs-ui/css/neutral.css";
+@import "fumadocs-ui/css/preset.css";
+
+@theme {
+  --color-fd-primary: #006a76;
+  --color-fd-primary-foreground: #ffffff;
+}
+
+.dark {
+  --color-fd-background: #0b1219;
+  --color-fd-foreground: #e0e8ef;
+  --color-fd-card: #182431;
+  --color-fd-card-foreground: #e0e8ef;
+  --color-fd-popover: #182431;
+  --color-fd-popover-foreground: #e0e8ef;
+  --color-fd-primary: #65d8e6;
+  --color-fd-primary-foreground: #08272d;
+  --color-fd-muted: #182431;
+  --color-fd-muted-foreground: #b0c2d2;
+  --color-fd-secondary: #223141;
+  --color-fd-secondary-foreground: #e0e8ef;
+  --color-fd-accent: #293c4d;
+  --color-fd-accent-foreground: #e0e8ef;
+  --color-fd-border: #344757;
+  --color-fd-ring: #65d8e6;
+}
+
+html {
+  scrollbar-gutter: stable;
+}
+
+html > body[data-scroll-locked] {
+  margin-right: 0px !important;
+  --removed-body-scroll-bar-size: 0px !important;
+}

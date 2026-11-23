@@ -1,0 +1,33 @@
+---
+title: "Licensing and distribution"
+description: "EchoScript reference: Licensing and distribution."
+---
+
+Original EchoScript project code and documentation are offered under [Apache License 2.0](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/LICENSE), as indicated by [NOTICE](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/NOTICE). The SPDX identifier is `Apache-2.0`. The license text is kept unmodified; its appendix contains the standard example copyright placeholders, not a project-specific copyright declaration.
+
+## What the documents do
+
+| Document        | Purpose                                                                                                         |
+| --------------- | --------------------------------------------------------------------------------------------------------------- |
+| `LICENSE`       | Operative copyright/patent permissions, conditions, warranty disclaimer and liability limitation                |
+| `NOTICE`        | Project attribution and informational notices; it does not change the license                                   |
+| `DISCLAIMER.md` | Explains development limits and user/deployer responsibilities; adds no license condition or separate agreement |
+| `SECURITY.md`   | Reporting route, maintenance status and security boundaries; not a service or security guarantee                |
+
+Apache-2.0 permits commercial use under its terms. A public repository, free license or successful test does not approve a particular deployment, make evidence admissible or provide hosting/support. No jurisdiction, dispute forum, arbitration agreement, blanket end-user indemnity or waiver of non-waivable rights is established by these documents. An organization requiring a separate service contract or deployment-specific terms should obtain jurisdiction-specific legal review rather than treating repository notices as that agreement.
+
+## Redistribution and additional promises
+
+Comply with the full license, including retaining required notices, supplying the license, marking modified files and handling applicable NOTICE attribution. Do not remove another contributor's attribution or imply that Apache-2.0 grants trademark endorsement. This overview does not replace the license text.
+
+Sections 7–8 contain the warranty and liability provisions and their exceptions. Section 9 addresses obligations a redistributor chooses to offer: support, warranties or other additional liability must not be accepted on other contributors' behalf. The project offers no separate service-level or ongoing maintenance commitment merely through publication.
+
+## Third-party components and case data
+
+Dependencies, fonts, codecs, speech-model weights and external services keep their respective licenses/terms. The bundled Noto Sans font includes its [SIL Open Font License](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/apps/web/assets/OFL.txt). The pinned Vosk model's qualification and sources are in the [provider record](/docs/providers/local-vosk); the Android build fetches and bundles two pinned model archives with their license notice. The browser loopback setup fetches the English model separately. The synthetic fixture has a committed [provenance record](https://github.com/TwoWetKnuckles/echoscript/blob/feature/clearvoice-whisper-beta/specs/fixtures/synthetic-speech.provenance.json). These examples are not a complete third-party license audit.
+
+Before distributing a build or adding an encoder/model, review the exact component/version's license, attribution, redistribution and applicable patent obligations. Preserve its notices in the distribution. Do not assume that a package's presence or this repository's Apache license clears every codec, model, service or use case.
+
+The software license does not grant rights in imported recordings, transcripts, case materials or third-party voices. Users must establish the authority and permissions for those materials separately. Never submit real evidence or secrets as a contribution. Intentionally submitted contributions are handled under Apache section 5 unless an applicable separate agreement states otherwise; contributors must have the authority to submit them. See [CONTRIBUTING.md](/docs/development/contributing).
+
+Primary reference: [Apache Software Foundation's license text](https://www.apache.org/licenses/LICENSE-2.0.html). This guide is technical project documentation, not legal advice or a guarantee of enforceability in a particular jurisdiction.

@@ -1,0 +1,8 @@
+{
+  "title": "Speech providers",
+  "pages": [
+    "local-vosk",
+    "openai-whisper",
+    "clearvoice"
+  ]
+}

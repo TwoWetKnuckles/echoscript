@@ -16,6 +16,20 @@ class OfflineAudioTest {
         return waveHeader(format, bytes.size.toLong()) + bytes
     }
 
+    @Test fun candidateAdjustmentCreatesIndependentAnalysisWithoutInventingScores() {
+        val original=org.json.JSONObject().put("durationMs",1000).put("events",JSONArray().put(org.json.JSONObject()
+            .put("eventId","candidate-1").put("startMs",100).put("endMs",200).put("sourceAlgorithm","energy-zero-crossings/1")))
+        val edited=reviseSpeechCandidate(original,120,250,"review me","candidate-1","unused")
+        val event=edited.getJSONArray("events").getJSONObject(0)
+        assertEquals("candidate-1",event.getString("eventId"));assertEquals(120,event.getLong("startMs"))
+        assertEquals("examiner-adjusted/1",event.getString("sourceAlgorithm"));assertFalse(event.has("confidence"))
+        assertEquals(100,original.getJSONArray("events").getJSONObject(0).getLong("startMs"))
+        val added=reviseSpeechCandidate(edited,300,400,"new",null,"manual-test")
+        assertEquals(2,added.getJSONArray("events").length());assertEquals(1,edited.getJSONArray("events").length())
+        assertThrows(IllegalStateException::class.java){reviseSpeechCandidate(original,120,250,"","missing","new")}
+        assertThrows(IllegalArgumentException::class.java){reviseSpeechCandidate(original,120,1100,"",null,"new")}
+    }
+
     @Test fun gainRenderPreservesUnselectedSamplesAndIsDeterministic() {
         val source = wave(16000) { 1000 }
         val settings = RenderSettings(gainDb = 6.020599913279624, limit = false, startMs = 250, endMs = 750)

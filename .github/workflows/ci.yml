@@ -6,10 +6,77 @@ on:
   workflow_dispatch:
 permissions:
   contents: read
+env:
+  ORT_DISABLE_TELEMETRY: "1"
 concurrency:
   group: quality-${{ github.ref }}
   cancel-in-progress: true
 jobs:
+  clearvoice-model:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-python@6d4fd22b20465ccc0f7354476588e8df7c9ca0e0
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: services/api/requirements-clearvoice-export.txt
+      - name: Reproduce the pinned offline ClearVoice graph
+        run: |
+          python -m venv .clearvoice-export
+          .clearvoice-export/bin/pip install -r services/api/requirements-clearvoice-export.txt
+          .clearvoice-export/bin/pip check
+          .clearvoice-export/bin/python scripts/setup-clearvoice.py "$RUNNER_TEMP/clearvoice" --revision 3766e6a64b0d8cb58f08d913d617bf129f11ed53
+          .clearvoice-export/bin/python scripts/export-clearvoice-onnx.py "$RUNNER_TEMP/clearvoice" assets/clearvoice/frcrn-16k-2s.onnx
+          python - <<'PYMODEL'
+          import json, hashlib
+          from pathlib import Path
+          p=Path('assets/clearvoice/frcrn-16k-2s.onnx')
+          manifest=json.loads(Path('assets/clearvoice/inventory.json').read_text())
+          with p.open('rb') as stream:
+              assert hashlib.file_digest(stream,'sha256').hexdigest() == manifest['sha256']
+          assert p.stat().st_size == manifest['bytes']
+          PYMODEL
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/frcrn-16k-2s.onnx
+          if-no-files-found: error
+          retention-days: 7
+  case-security-interop:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
+        with:
+          distribution: temurin
+          java-version: "17"
+          cache: gradle
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1
+        with:
+          node-version: "24"
+          cache: npm
+      - run: npm ci --ignore-scripts
+      - run: node tools/build.mjs --schema-only
+      - run: node tools/qa-case-security.mjs prepare
+      - name: Test maintained crypto integration and build independent tool
+        env:
+          ECHOSCRIPT_INTEROP_DIR: ${{ github.workspace }}/qa-output/case-security
+        run: apps/android/gradlew -p tools/case-protect :case-security:test installDist --no-daemon
+      - name: Verify JVM-signed protected cases with the independent Node verifier
+        run: node tools/qa-case-security.mjs verify
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: always()
+        with:
+          name: synthetic-case-security-interop
+          path: |
+            packages/case-security/build/reports/
+            packages/case-security/build/test-results/
+            tools/case-protect/build/install/
+            qa-output/case-security/
+          retention-days: 7
   web-api-evidence:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
@@ -62,11 +129,16 @@ jobs:
       - run: cargo test --workspace --locked
       - run: cargo build --workspace --release --locked
   android:
+    needs: clearvoice-model
     runs-on: ubuntu-24.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           distribution: temurin
           java-version: "17"
@@ -74,24 +146,8 @@ jobs:
       - name: Compile, unit test, lint, instrumentation APK and unsigned release
         working-directory: apps/android
         run: ./gradlew :app:assembleDebug :app:testDebugUnitTest :app:lintDebug :app:assembleDebugAndroidTest :app:assembleRelease --no-daemon
-      - name: Verify and stage the installable offline preview
-        run: |
-          apk=apps/android/app/build/outputs/apk/debug/app-debug.apk
-          "$ANDROID_HOME/build-tools/36.0.0/apksigner" verify --verbose "$apk"
-          "$ANDROID_HOME/build-tools/36.0.0/zipalign" -c -P 16 4 "$apk"
-          if "$ANDROID_HOME/build-tools/36.0.0/aapt" dump permissions "$apk" | rg -q 'android.permission.INTERNET'; then
-            exit 1
-          fi
-          mkdir -p qa-output/android-preview
-          cp "$apk" qa-output/android-preview/EchoScript-offline-preview.apk
-          cd qa-output/android-preview
-          sha256sum EchoScript-offline-preview.apk > SHA256SUMS.txt
-      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
-        if: github.event_name != 'pull_request'
-        with:
-          name: EchoScript-offline-Android-preview
-          path: qa-output/android-preview/
-          retention-days: 7
+      - name: Exercise non-debug signing and certificate rejection with disposable synthetic key
+        run: python3 scripts/qa-owner-signing.py
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -99,8 +155,10 @@ jobs:
           path: |
             apps/android/app/build/reports/
             apps/android/app/build/test-results/
+            qa-output/signing/
           retention-days: 1
   android-device:
+    needs: clearvoice-model
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     strategy:
@@ -109,7 +167,11 @@ jobs:
         api: [29, 36]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
-      - uses: actions/setup-java@b843ebf9b913146b38da2eaa7aeddf76074ae1ad
+      - uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53
+        with:
+          name: ClearVoice-pinned-offline-graph
+          path: assets/clearvoice/
+      - uses: actions/setup-java@77dd5b2ce225ea11469928ac317850245a74ae78
         with:
           distribution: temurin
           java-version: "17"
@@ -119,6 +181,8 @@ jobs:
           node-version: "24"
           cache: npm
       - run: npm ci --ignore-scripts
+      - name: Build independent protected-case verifier
+        run: apps/android/gradlew -p tools/case-protect installDist --no-daemon
       - name: Enable hardware virtualization for the disposable emulator
         run: |
           echo 'KERNEL=="kvm", GROUP="kvm", MODE="0666", OPTIONS+="static_node=kvm"' | sudo tee /etc/udev/rules.d/99-kvm4all.rules
@@ -134,8 +198,42 @@ jobs:
           emulator-options: -no-window -gpu swiftshader_indirect -noaudio -no-boot-anim -camera-back none -partition-size 4096
           working-directory: apps/android
           script: |
-            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }}
+            python3 ../../scripts/qa-android-coexistence.py setup ${{ matrix.api }}
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.class=org.echoscript.app.CompanionWorkflowTest
+            ./gradlew :app:connectedDebugAndroidTest --no-daemon -Pandroid.testInstrumentationRunnerArguments.nativeLarge=${{ matrix.api == 36 }} -Pandroid.testInstrumentationRunnerArguments.verifyCoexistence=${{ matrix.api == 36 }}
+            python3 ../../scripts/qa-android-coexistence.py check ${{ matrix.api }}
+            cd ../.. && python3 scripts/qa-android-crash.py
             cd ../.. && node tools/qa-native-output.mjs apps/android/app/build/outputs/connected_android_test_additional_output
+      - name: Verify and stage the Android 16 emulator build
+        if: matrix.api == 36 && github.event_name != 'pull_request'
+        run: |
+          apk=apps/android/app/build/outputs/apk/debug/app-debug.apk
+          tools="$ANDROID_HOME/build-tools/36.0.0"
+          "$tools/apksigner" verify --verbose "$apk"
+          "$tools/zipalign" -c -P 16 4 "$apk"
+          badging=$("$tools/aapt" dump badging "$apk")
+          grep -Eq "^package: name='org[.]echoscript[.]app[.]candidate06' " <<< "$badging"
+          grep -Eq "^application-label:'EchoScript 0[.]6 Candidate'$" <<< "$badging"
+          permissions=$("$tools/aapt" dump permissions "$apk")
+          if ! printf '%s\n' "$permissions" | grep -q 'android.permission.INTERNET' || printf '%s\n' "$permissions" | grep -q 'android.permission.ACCESS_NETWORK_STATE'; then
+            exit 1
+          fi
+          folder=qa-output/android-preview/EchoScript-Android
+          mkdir -p "$folder"
+          cp "$apk" "$folder/EchoScript-Android10-Offline-Test-Candidate-0.6.apk"
+          cp downloads/android/INSTALL-CANDIDATE.txt "$folder/INSTALL.txt"
+          cp LICENSE "$folder/LICENSE.txt"
+          cp NOTICE "$folder/NOTICE.txt"
+          printf 'Source commit %s\nQuality checks %s/%s/actions/runs/%s\n' "$GITHUB_SHA" "$GITHUB_SERVER_URL" "$GITHUB_REPOSITORY" "$GITHUB_RUN_ID" > "$folder/BUILD.txt"
+          cd "$folder"
+          sha256sum EchoScript-Android10-Offline-Test-Candidate-0.6.apk INSTALL.txt LICENSE.txt NOTICE.txt BUILD.txt > SHA256SUMS.txt
+      - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+        if: matrix.api == 36 && github.event_name != 'pull_request'
+        with:
+          name: EchoScript-Android10-Offline-Test-Candidate-0.6
+          path: qa-output/android-preview/
+          if-no-files-found: error
+          retention-days: 7
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
         if: always()
         with:
@@ -144,6 +242,7 @@ jobs:
             apps/android/app/build/reports/androidTests/
             apps/android/app/build/outputs/androidTest-results/
             apps/android/app/build/outputs/connected_android_test_additional_output/
+            qa-output/android-crash/
           retention-days: 1
   desktop-streaming-stress:
     runs-on: ubuntu-24.04

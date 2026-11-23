@@ -79,6 +79,23 @@ test("timestamp anomalies and overlap remain review flags; subtitle and CTM expo
   validateTranscript(t, 3);
   assert.ok(t.segments[1].flags.includes("OVERLAP"));
 });
+test("optional examiner notes are bounded and remain separate from spoken words", () => {
+  const transcript = normalizeVosk(raw, options);
+  const segment = transcript.segments[0];
+  const text = segment.text;
+  segment.examinerNote = "Synthetic examiner note — not speech";
+  validateTranscript(transcript, 3);
+  assert.equal(segment.text, text);
+  assert.equal(segment.verification, "UNVERIFIED");
+  for (const invalid of [null, 123, "x".repeat(4001), "bad\u0000note"]) {
+    const changed = structuredClone(transcript);
+    changed.segments[0].examinerNote = invalid;
+    assert.throws(
+      () => validateTranscript(changed, 3),
+      /Invalid transcript segment/,
+    );
+  }
+});
 test("human verification requires all segments and preserves parent bytes and word-alignment uncertainty", () => {
   const c = new EvidenceCase({
     title: "SYNTHETIC TEST DATA — NOT EVIDENCE",

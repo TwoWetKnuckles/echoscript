@@ -1,0 +1,31 @@
+{
+  "schema": "org.echoscript.historical-release-archive/1",
+  "date": "2026-11-13",
+  "timezone": "America/Los_Angeles",
+  "backupScope": "All five earlier releases; 41 original assets verified against published byte sizes and SHA-256 digests before removal. Installer APKs match standalone assets where present. Bulky validation archives are preserved separately; duplicate standalone APKs remain inside their original installer ZIPs.",
+  "ownerDelivery": "Private backup files delivered in chat; private links are intentionally excluded from source.",
+  "backups": [
+    {
+      "file": "EchoScript-Historical-App-Backups-2026-11-13.zip",
+      "bytes": 430765739,
+      "sha256": "d6fcec268ca35fed773d4f2613b4125f7abc7f6c7d7bfa47dd4087a8bb9f244c"
+    },
+    {
+      "file": "EchoScript-Historical-Validation-Archives-2026-11-13.zip",
+      "bytes": 244162860,
+      "sha256": "37c4ed41cecc4c62c0bf6b5f7c1b358ac88c9fb3195ff0e52b06fd863227b39f"
+    }
+  ],
+  "removedReleaseTags": [
+    "android-preview-0.3.1",
+    "android-preview-0.4.0",
+    "android-preview-0.5.0",
+    "android-preview-0.5.1"
+  ],
+  "retainedPublishedReleaseTags": [
+    "android10-offline-test-candidate-0.6.0-dev.20261113",
+    "android-preview-0.6.0-dev.20261113"
+  ],
+  "sourceTagsAndHistory": "Retained",
+  "betaGate": "NOT PASSED"
+}

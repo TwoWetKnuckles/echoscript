@@ -1,0 +1,65 @@
+EchoScript Android 10 Offline Test Candidate 0.6
+==============================================
+Development evaluation package. BETA GATE: NOT PASSED.
+Use synthetic/licensed non-sensitive samples until your deployment is accepted.
+
+Compatibility and identity
+--------------------------
+Android 10/API 29 or later. App label: EchoScript 0.6 Candidate.
+Application ID: org.echoscript.app.candidate06.
+This separate package preserves the installed older test apps and their vaults.
+Its vault starts empty. To move a case, explicitly export a protected package
+from the old app and import/verify it here using its passphrase and, when
+available, independently recorded package hash and trusted signer fingerprint.
+Do not uninstall/reset an app before retaining and verifying its protected
+exports. Development signing does not establish production upgrade continuity.
+
+Install
+-------
+1. Compare the APK SHA-256 with this build's SHA256SUMS.txt and BUILD.txt.
+2. Allow installation from the app opening the APK, if Android requests it.
+3. Install EchoScript-Android10-Offline-Test-Candidate-0.6.apk.
+4. In Cases, load the included synthetic speech sample to test the workflow.
+
+Speech workflow
+---------------
+Vosk is selected by default and works on the phone without a server or key.
+ClearVoice is optional and also runs on the phone. Enable it in Analyze,
+choose Before effects or After effects, adjust the rack, then Render enhanced
+revision or Render & transcribe. It creates a separate mono 16 kHz revision.
+The model is included; no first-run model download or enhancement upload is
+needed. Compare original and processed audio. AI can alter/suppress speech.
+Cancel is checked between neural windows; keep the app open for long work.
+
+Choose Whisper API before starting if you want the alternative transcription
+route. In Settings, enter the HTTPS companion origin and its separate session
+token. The OpenAI key stays configured on that server; never place it in an APK.
+The development server binds to loopback. A local device tunnel can use
+adb reverse tcp:8787 tcp:8787 and http://127.0.0.1:8787. Remote HTTP is refused.
+The token remains only in app memory and must be re-entered after process exit.
+
+Whisper prepares and hashes exact audio chunks in the encrypted case before
+showing the destination, provider/model, duration, bytes and submission-manifest
+hash. Approve only after reviewing that disclosure. Cancel sends nothing.
+OpenAI charges and the configured project's data policy apply. Network errors
+never silently select another provider. Earlier committed raw chunks can be
+reused on an approved retry. This is a single-operator companion; it is not a
+hosted/team authentication service.
+
+Review and exports
+------------------
+All implemented tools are available. Actual storage/memory/parser/provider
+limits still apply. Verify all returned words, uncertainty and timestamps;
+Whisper does not provide speaker identities, confidence or N-best here.
+Only explicit examiner review marks a segment verified. Notes are separate
+from speech. Keep originals and every render/transcript revision.
+
+Protected case exports are encrypted; individual WAV/documents and legacy ZIPs
+are plaintext. Keep the passphrase and independent package hash separately.
+A local actor label or embedded checkpoint key does not prove examiner identity.
+
+Acceptance
+----------
+See docs/qa/REQUEST-RECONCILIATION.md, docs/qa/STATUS.md and the exact build record.
+Emulator/model checks do not replace physical Galaxy S22+, accessibility,
+resource/recovery, owner signing, trust-policy or complete-workflow acceptance.

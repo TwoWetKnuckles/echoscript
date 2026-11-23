@@ -6,3 +6,8 @@ No certification, legal admissibility or organizational compliance is implied.
 Warranty and liability terms are in LICENSE, especially sections 7-9.
 End-user and deployment responsibilities are explained in DISCLAIMER.md.
 This NOTICE is informational and does not modify the license.
+
+The optional bundled ClearVoice FRCRN_SE_16K inference model is by Alibaba Inc.
+and ClearerVoice-Studio contributors, under Apache-2.0. Its exact converted
+model hash, checkpoint revision and notices are in assets/clearvoice/.
+Microsoft ONNX Runtime is under MIT; https://github.com/microsoft/onnxruntime.

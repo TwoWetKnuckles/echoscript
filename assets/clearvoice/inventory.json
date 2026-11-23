@@ -1,0 +1,16 @@
+{
+  "model": "FRCRN_SE_16K",
+  "modelRevision": "3766e6a64b0d8cb58f08d913d617bf129f11ed53",
+  "clearvoice": "0.1.2",
+  "torch": "2.10.0+cpu",
+  "onnxOpset": 17,
+  "inputShape": [
+    1,
+    32000
+  ],
+  "sampleRate": 16000,
+  "channels": 1,
+  "bytes": 57212596,
+  "sha256": "5fedce707fd607dc5280e8c52182057b24fc5565a2e4215f3dccb6e77ab067c2",
+  "syntheticExportMaxAbsoluteError": 2.2875611e-07
+}

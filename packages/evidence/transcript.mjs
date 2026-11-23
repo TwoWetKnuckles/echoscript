@@ -50,6 +50,7 @@ export function validateTranscript(t, duration) {
       !Number.isFinite(s.start) ||
       !Number.isFinite(s.end) ||
       !validText(s.text, 10000) ||
+      (s.examinerNote !== undefined && !validText(s.examinerNote, 4000)) ||
       (s.speaker !== null && !/^SPEAKER_[1-9][0-9]*$/.test(s.speaker)) ||
       !Array.isArray(s.alternatives) ||
       s.alternatives.length > 5 ||
