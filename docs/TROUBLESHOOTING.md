@@ -10,4 +10,10 @@ Choose **Vosk** for bundled English recognition. The **Whisper API** route requi
 
 ## The candidate starts with an empty vault
 
-The 0.6 candidate has its own application ID. Open the earlier app and export a protected case before uninstalling it. Follow the [protected transfer guide](evidence/PROTECTED-TRANSFER.md) to import and verify the snapshot.
+The 0.6 candidate has its own application ID. Leave the earlier installation and its vault in place while you transfer each case.
+
+1. In the earlier app, export a protected case if that version supports it. Retain its passphrase, ciphertext hash and any independently trusted checkpoint fingerprint separately.
+2. Restore the package into the candidate's empty vault. Open the restored case and check that its recordings and revisions are present.
+3. Independently verify the exported snapshot against your retained records before considering uninstall or reset. Keep the original installation if it lacks protected export, the restore fails, verification fails or the old vault contains newer work.
+
+See the [recovery boundary](evidence/PROTECTED-TRANSFER.md#recovery-boundary) for what the export covers.
