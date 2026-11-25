@@ -9,3 +9,7 @@ Only contribute material you have authority to submit. Original project contribu
 Never include real evidence, recordings of uninformed participants, private case details, credentials, downloaded model weights or production data in source, issues, PRs, logs or automated fixtures. Use synthetic or appropriately licensed non-sensitive fixtures and record their provenance. Disclose synthetic/restoration limitations accurately; no fabricated confidence, identity, certification, legal assurance or QA result.
 
 An end-user responsibility notice is not a fix for a security or evidence-integrity defect. Preserve a sanitized reproduction, correct the cause, verify affected behavior and document limitations. Follow the private security reporting process for sensitive findings; do not post exploit details publicly as a normal bug report.
+
+## Documentation changes
+
+Edit canonical Markdown and synchronize the Fumadocs mirrors from `apps/docs`. Follow the [site authoring guide](apps/docs/README.md#edit-content). Give each page a task-based navigation entry and a next step. Keep old headings addressable, and link release claims to a tagged build record. The account starter's version 1.0 reading tokens and checker are vendored in the docs app. Maintainers port newer versions by reviewed pull request and rerun the site checks.

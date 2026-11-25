@@ -1,21 +1,28 @@
 {
   "title": "EchoScript",
   "pages": [
+    "---Start here---",
     "index",
     "downloads",
+    "---Workbench guides---",
     "android",
     "evidence",
-    "releases",
-    "release-candidate",
-    "working-scope",
-    "qa",
+    "troubleshooting",
+    "---Reference---",
     "providers",
-    "research",
     "architecture",
-    "implementation",
-    "file-tree",
     "security",
     "legal",
-    "development"
+    "---Releases and validation---",
+    "releases",
+    "release-candidate",
+    "qa",
+    "working-scope",
+    "---Contributors---",
+    "development",
+    "implementation",
+    "file-tree",
+    "research",
+    "..."
   ]
 }

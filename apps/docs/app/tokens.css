@@ -1,0 +1,10 @@
+/* TwoWetKnuckles documentation standard 1.0. Project palettes are local. */
+:root {
+  --docs-font: system-ui, -apple-system, "Segoe UI", sans-serif;
+  --docs-mono: ui-monospace, Consolas, monospace;
+  --docs-measure: 74ch;
+  --docs-leading: 1.65;
+  --docs-section-gap: 2.5rem;
+  --docs-radius: .65rem;
+  --docs-focus: 3px;
+}

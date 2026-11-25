@@ -2,6 +2,8 @@
 
 Local-first audio evidence development platform, designed to support defensible forensic-audio analysis, transcription, evidence preservation, and chain-of-custody workflows.
 
+[Documentation site (team access)](https://echoscript-docs.vercel.app/docs) · [Read the Android guide](docs/android/OFFLINE.md#install-and-use-the-preview) · [Troubleshooting](docs/TROUBLESHOOTING.md) · [Release status](docs/RELEASE-CANDIDATE.md)
+
 ## Download for Android
 
 **[Download the latest test APK](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.apk)** · **[Download ZIP with instructions](https://github.com/TwoWetKnuckles/echoscript/releases/download/android10-offline-test-candidate-0.6.0-dev.20261113/EchoScript-Android10-Offline-Test-Candidate-0.6.zip)** · [Release and checksums](https://github.com/TwoWetKnuckles/echoscript/releases/tag/android10-offline-test-candidate-0.6.0-dev.20261113) · [Installation guide](downloads/android/INSTALL.txt)
@@ -28,7 +30,7 @@ In **Cases**, choose a recording, confirm its name under **Selected recording**,
 
 The separate [Fumadocs app](apps/docs/README.md) lives in `apps/docs`, with its own Next.js layout, styles, dependencies and deployment. It retains the default `/docs` route, search, Markdown/LLM endpoints and generated social images. Its guides mirror the canonical repository Markdown with frontmatter and link adjustments; the existing Android and browser apps do not import its styles.
 
-From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. The existing protected documentation deployment predates this candidate. Further documentation-site design and deployment changes are paused; the Android workbench uses its palette.
+From `apps/docs`, run `npm ci --ignore-scripts`, `npm run sync:content` and `npm run dev`. Build with `npm run build` and validate the served pages/search/exports with `npm run verify:site`. Pull requests use a separate documentation preview. Open its Vercel deployment check with authorized team access.
 
 ## Product research for review
 

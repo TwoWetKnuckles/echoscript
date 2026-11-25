@@ -26,7 +26,11 @@ export default async function Page(props: PageProps<"/docs/[[...slug]]">) {
     `apps/docs/content/docs/${page.path}`;
 
   return (
-    <DocsPage toc={page.data.toc} full={page.data.full}>
+    <DocsPage
+      breadcrumb={{ includeRoot: true, includeSeparator: true }}
+      toc={page.data.toc}
+      full={page.data.full}
+    >
       <DocsTitle>{page.data.title}</DocsTitle>
       <DocsDescription className="mb-0">
         {page.data.description}

@@ -1,6 +1,7 @@
 @import "tailwindcss";
 @import "fumadocs-ui/css/neutral.css";
 @import "fumadocs-ui/css/preset.css";
+@import "./tokens.css";
 
 @theme {
   --color-fd-primary: #006a76;
@@ -33,4 +34,176 @@ html {
 html > body[data-scroll-locked] {
   margin-right: 0px !important;
   --removed-body-scroll-bar-size: 0px !important;
+}
+
+body {
+  font-family: var(--docs-font);
+}
+:focus-visible {
+  outline: var(--docs-focus) solid var(--color-fd-ring, var(--color-fd-primary));
+  outline-offset: 3px;
+}
+#nd-page {
+  max-width: calc(var(--docs-measure) + 4rem);
+}
+#nd-page .prose {
+  line-height: var(--docs-leading);
+  overflow-wrap: anywhere;
+  min-width: 0;
+}
+#nd-page .prose :is(h2, h3) {
+  scroll-margin-top: 6rem;
+}
+#nd-page .prose h2 {
+  margin-top: var(--docs-section-gap);
+}
+#nd-page .prose :is(pre, code) {
+  font-family: var(--docs-mono);
+  overflow-wrap: normal;
+}
+#nd-page img {
+  max-width: 100%;
+  height: auto;
+}
+#nd-sidebar [data-active="true"] {
+  box-shadow: inset 3px 0 var(--color-fd-primary);
+}
+.docs-home {
+  width: min(76rem, 100%);
+  margin: 0 auto;
+  padding: clamp(1.3rem, 5vw, 5rem);
+}
+.docs-hero {
+  display: grid;
+  grid-template-columns: minmax(0, 1.45fr) minmax(14rem, 0.7fr);
+  gap: clamp(2rem, 6vw, 6rem);
+  align-items: center;
+}
+.docs-kicker {
+  color: var(--color-fd-primary);
+  font-size: 0.85rem;
+  font-weight: 650;
+  margin-bottom: 1rem;
+}
+.docs-hero h1 {
+  font-size: clamp(2.6rem, 5.1vw, 4.75rem);
+  font-weight: 660;
+  letter-spacing: -0.055em;
+  line-height: 1.02;
+  max-width: 16ch;
+}
+.docs-lead {
+  max-width: 51ch;
+  margin-block: 1.4rem;
+  color: var(--color-fd-muted-foreground);
+  line-height: 1.65;
+  font-size: 1.125rem;
+}
+.docs-actions {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+  margin: 1.7rem 0 1.2rem;
+}
+.docs-actions a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  padding: 0.65rem 1rem;
+  gap: 0.6rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: var(--docs-radius);
+  font-weight: 600;
+}
+.docs-primary {
+  background: var(--color-fd-primary);
+  color: var(--color-fd-primary-foreground);
+}
+.docs-status,
+.workbench-preview figcaption {
+  color: var(--color-fd-muted-foreground);
+  font-size: 0.8rem;
+  line-height: 1.5;
+}
+.docs-text-link {
+  font-size: 0.875rem;
+  text-decoration: underline;
+  text-underline-offset: 0.2em;
+}
+.workbench-preview {
+  display: grid;
+  place-items: center;
+  gap: 0.7rem;
+  padding: 1.2rem;
+  background: var(--color-fd-card);
+  border: 1px solid var(--color-fd-border);
+  border-radius: 1rem;
+}
+.workbench-preview img {
+  width: auto;
+  height: 21rem;
+  max-width: 100%;
+  object-fit: contain;
+  border-radius: 0.6rem;
+}
+.docs-tasks {
+  margin-top: clamp(2.2rem, 5vw, 5rem);
+}
+.docs-tasks h2 {
+  font-size: 1.65rem;
+  font-weight: 650;
+  margin-bottom: 1.2rem;
+  letter-spacing: -0.03em;
+}
+.docs-tasks > div {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+.docs-tasks a {
+  padding: 1.15rem;
+  border: 1px solid var(--color-fd-border);
+  border-radius: var(--docs-radius);
+  background: var(--color-fd-card);
+}
+.docs-tasks a:hover,
+.docs-actions a:hover {
+  border-color: var(--color-fd-primary);
+}
+.docs-tasks h3 {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-weight: 650;
+}
+.docs-tasks h3 svg {
+  color: var(--color-fd-primary);
+}
+.docs-tasks p {
+  margin-top: 0.45rem;
+  color: var(--color-fd-muted-foreground);
+  line-height: 1.5;
+}
+@media (max-width: 720px) {
+  .docs-hero,
+  .docs-tasks > div {
+    grid-template-columns: minmax(0, 1fr);
+  }
+  .workbench-preview {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+  }
+  .workbench-preview img {
+    height: 11rem;
+  }
+  .workbench-preview figcaption {
+    max-width: 12ch;
+  }
+}
+
+:root:not(.dark) {
+  --color-fd-muted-foreground: #555e66;
+  --color-fd-ring: #006a76;
 }
