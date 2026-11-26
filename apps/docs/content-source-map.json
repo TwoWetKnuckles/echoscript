@@ -29,7 +29,7 @@
   },
   "implementation.mdx": {
     "source": "docs/IMPLEMENTATION.md",
-    "sha256": "c21c725786ba19374811b27bf4415a6e676eb20f6c0938185c7f61401e45c00a"
+    "sha256": "c65ebc0b08b9c2f244c124fbf70769bd3b8df6fe4588ecd3ea3c80c39dcb0458"
   },
   "legal/licensing.mdx": {
     "source": "docs/legal/LICENSING.md",
@@ -53,11 +53,11 @@
   },
   "qa/request-reconciliation.mdx": {
     "source": "docs/qa/REQUEST-RECONCILIATION.md",
-    "sha256": "15ad8ee056b73483e950313f763c6d06749e0767e2fe3d04c42ed0587dbe01f9"
+    "sha256": "2907e94bae522ce4b3e1a284192b235e209aeb784cc0d2c1a12436687d5cf8c6"
   },
   "qa/status.mdx": {
     "source": "docs/qa/STATUS.md",
-    "sha256": "2454c5e4c9c7370cd41f581e5273ad6efb1cf39c991857ee5d95d758dac74934"
+    "sha256": "c8e5e457501b75c5aab1e6eb43f28058c6081c4276a91203c9e6d88dc2c0b947"
   },
   "release-candidate.mdx": {
     "source": "docs/RELEASE-CANDIDATE.md",
