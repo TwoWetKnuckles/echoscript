@@ -33,3 +33,7 @@ Device-specific quantitative thresholds and speech error thresholds must be appr
 ## Owner input still required
 
 Supply the responsible organization and exact jurisdictions/policies; intended direct APK/MDM distribution and physical device matrix; the approved synchronization field/role policy; measurable resource and speech acceptance thresholds; and the owner-controlled production signing configuration. No provider retention or compliance agreement is presumed. Continue development/testing with synthetic data while these are unresolved.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

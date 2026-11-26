@@ -3,6 +3,7 @@
 @import "fumadocs-ui/css/preset.css";
 
 @theme {
+  --font-sans: Helvetica, Arial, sans-serif;
   --color-fd-primary: #006a76;
   --color-fd-primary-foreground: #ffffff;
 }
@@ -28,6 +29,10 @@
 
 html {
   scrollbar-gutter: stable;
+}
+
+body {
+  font-family: var(--font-sans);
 }
 
 html > body[data-scroll-locked] {

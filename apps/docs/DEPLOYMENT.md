@@ -23,3 +23,7 @@ Keep the default `/docs` route. Use the provider's assigned HTTPS hostname first
 Before publishing, run the app's type, production-build and HTTP checks. Inspect the preview on a phone and desktop, including search, sidebar, theme toggle, Markdown views, download links and social images. Promote only the intended tested commit. The current Vercel connection requires team authorization before project lookup/deployment can proceed; no public docs deployment has yet been verified.
 
 Official references: [Fumadocs deploying](https://fumadocs.dev/docs/next/deploying), [Next.js deployment](https://nextjs.org/docs/app/getting-started/deploying), [Vercel monorepos](https://vercel.com/docs/monorepos).
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

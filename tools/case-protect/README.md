@@ -33,3 +33,7 @@ tools/case-protect/build/install/echoscript-case-protect/bin/echoscript-case-pro
 An interactive console prompts for the passphrase. Without a console, supply the environment variable. Decryption deliberately creates plaintext at the explicitly chosen output destination; use protected storage and independently verify it. Existing destinations are never overwritten, including a racing creator. Conversion uses a same-directory temporary file followed by atomic no-clobber hard-link creation; filesystems without hard-link support fail safely. Partial files are removed on handled failures. This is not a power-loss or secure-erasure guarantee. Password loss is unrecoverable.
 
 See [the exact container/checkpoint specification](../../docs/evidence/PROTECTED-TRANSFER.md) and [release gates](../../docs/RELEASE-CANDIDATE.md).
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

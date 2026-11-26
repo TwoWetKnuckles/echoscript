@@ -42,6 +42,10 @@ await copyFile(
   "apps/web/dist/NotoSans-Regular.ttf",
 );
 await copyFile("apps/web/assets/OFL.txt", "apps/web/dist/OFL.txt");
+await copyFile(
+  "apps/web/assets/buymeacoffee.svg",
+  "apps/web/dist/buymeacoffee.svg",
+);
 await mkdir("apps/web/dist/fixtures", { recursive: true });
 await copyFile(
   "specs/fixtures/synthetic-speech.wav",

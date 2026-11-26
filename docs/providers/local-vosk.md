@@ -44,3 +44,7 @@ For an interactive local API, separately set a random `API_TOKEN` of at least 32
 ## Android in-process adapter
 
 The preview bundles Vosk Android 0.3.75, `vosk-model-small-en-us-0.15` and `vosk-model-spk-0.4`. The builder checks both archive SHA-256 values and the app checks extracted file hashes against the bundled inventory. English words, timings and acoustic speaker groups are draft results for examiner review. The Android adapter uses bounded 45-second recognition windows. Returned word confidence and decoder scores retain their respective meanings. Confirm overlapping or short speech and speaker changes manually. Local transcripts and raw results are saved as encrypted vault artifacts. See [the device limits](../android/OFFLINE.md) and [the executed emulator checks](../qa/STATUS.md).
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

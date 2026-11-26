@@ -31,3 +31,7 @@ The first evidence-control commit `5199617a10a93f52a86de70a85e2359b322a908c` pas
 [Acceptance execution instructions](qa/RC-ACCEPTANCE.md) and the all-unpassed template record define the remaining evidence. `tools/release-gates.mjs` fails closed for missing gates, mismatched source/APK, changed referenced files, incomplete/subset workflows, runs before prerequisite approval, or fewer than seven consecutive complete results. It checks declared records and file consistency, not the truth or legal sufficiency of reviewer declarations. [Owner signing setup](android/OWNER-SIGNING.md) prepares a non-debug evaluation artifact only; owner key provision and upgrade/MDM acceptance remain outstanding.
 
 The remaining acceptance column above continues to apply. No row becomes passed simply because a control or test harness exists. Physical-device measurements, complete native feature parity, team authorization/sync, owner production signing and deployment-specific governance remain mandatory.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

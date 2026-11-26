@@ -37,3 +37,7 @@ A matching SHA-256 establishes consistency with the compared bytes or trusted ch
 EchoScript does not itself make evidence admissible, court-admissible or legally authenticated. No NIST, CJIS, FIPS, FedRAMP, HIPAA or other certification/compliance claim is made for the application or a deployment. Technical controls, organizational procedure, provider qualifications, deployment assessment and legal admissibility are separate questions. Their determination remains with the responsible organizations, qualified professionals and competent authorities under the applicable rules.
 
 See [security reporting](SECURITY.md), [known trust boundaries](docs/security/THREAT_MODEL.md), [operator guidance](docs/security/OPERATIONS.md) and [licensing](docs/legal/LICENSING.md). Disclaimers never substitute for correcting defects or preserving evidence-integrity safeguards.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

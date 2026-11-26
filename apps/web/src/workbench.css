@@ -409,6 +409,16 @@ footer span:first-child {
   color: #dce5e9;
   font-size: 14px;
 }
+footer .support-link {
+  display: inline-flex;
+  align-items: center;
+  min-height: 44px;
+  gap: 6px;
+  color: #dce5e9;
+}
+footer .support-link img {
+  filter: invert(1);
+}
 .error {
   color: #efb5a5;
 }

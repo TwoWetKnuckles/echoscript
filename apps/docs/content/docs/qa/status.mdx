@@ -200,3 +200,11 @@ All five older releases were downloaded before cleanup. All 41 original assets m
 The coexistence harness and instrumentation assertions were updated to use the retained 0.6 rollback ID and pinned APK, replacing their removed 0.5.1 dependency. This harness change requires a fresh Android 16 CI pass; earlier passes are not attributed to it. Application runtime code and the published APK are unchanged.
 
 Evaluation of the published exact-build acceptance record still reports `BETA GATE: NOT PASSED`, zero consecutive complete accepted workflows and all eleven mandatory acceptance rows unpassed. This is not an automated-test failure: it records the remaining engineering, physical-device, owner-signing and deployment acceptance work. No beta promotion or signing-key substitution was performed.
+
+## Support link validation
+
+The documentation site content check, type check, production build and HTTP verification passed locally, including the support link on all 28 documentation routes and the home page. The browser workbench build, hosting tests and JavaScript lint also passed; its support icon is bundled locally. These checks used Node 26 rather than the repository's supported Node 24, and do not establish deployment, visual-device acceptance or beta readiness.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

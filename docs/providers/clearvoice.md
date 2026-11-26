@@ -12,3 +12,7 @@ Workbench renders replay from the recipe's saved base. The recipe retains the Cl
 
 `assets/clearvoice/inventory.json` records the checkpoint and export provenance. The Python environment in `services/api/requirements-clearvoice-export.txt`, `scripts/setup-clearvoice.py` and `scripts/export-clearvoice-onnx.py` reproduce and check the CPU graph. A seeded synthetic test window matched the Python model with maximum absolute sample error `2.2875611e-7`. This is numerical export validation, not a claim about intelligibility, speech detection or all-device equivalence.
 Enhancement can alter or suppress words and create boundary artifacts. It cannot recover uncaptured speech. Use original/processed comparisons and human transcript review. A real synthetic Python model run returned finite, length-preserving audio with zero output samples requiring clipping. This establishes execution, not faint-speech accuracy or physical-phone acceptance.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>
