@@ -45,3 +45,7 @@ Disclaimers never replace integrity/security controls, defect remediation or req
 `specs/release-gates.json` enumerates mandatory acceptance criteria. `node tools/release-gates.mjs RECORD.json SOURCE_COMMIT APK` validates the exact-build declared record and referenced evidence, with nonzero exit for incomplete gates. It cannot establish that human/device/policy declarations are true or legally sufficient. The owner-signing workflow builds an evaluation candidate only; never expose signing secrets in PR workflows, weaken protected environments or equate disposable-key CI with owner enrollment and upgrade acceptance.
 
 Flag source mutation, key exposure/fallback, hidden transmission, destructive history, unbounded untrusted parsing, unsupported verification labels and fabricated QA/legal claims. Prefer a failing behavioral reproduction and the smallest robust correction; preserve the original evidence boundary. Report unresolved mandatory gates explicitly rather than weakening the gate.
+
+## Documentation design
+
+Follow the documentation section of CONTRIBUTING.md and the account documentation standard v1.0. Keep project-specific color and content local, preserve the shared tokens in `apps/docs/app/tokens.css`, synchronize canonical pages, and run the rendered link, anchor and reachability check with the standard site verification. The private starter is available from the owner to maintainers adopting another repository.

@@ -7,7 +7,7 @@ const app = fileURLToPath(new URL("../", import.meta.url));
 const repo = resolve(app, "../..");
 const content = join(app, "content/docs");
 const check = process.argv.includes("--check");
-const branch = "feature/clearvoice-whisper-beta";
+const branch = "main";
 const repository = "https://github.com/TwoWetKnuckles/echoscript";
 const entries = [];
 

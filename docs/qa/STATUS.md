@@ -172,7 +172,9 @@ On `cc19e7a3`, all seven push and PR quality jobs and both CodeQL jobs passed. A
 
 ## Standalone Fumadocs verification
 
-The separate `apps/docs` app passed local content/hash synchronization, route/TypeScript checking, production build and a 24-page HTTP suite including search, LLM/Markdown exports, OG generation and 404 behavior. npm audit reported zero known findings. The official starter dev page also returned HTTP 200. These are build/server checks; the remote browser could not reach workspace loopback, and visual/interaction review of a hosted preview remains open. Vercel returned an authorization error for the connected team; no docs deployment, new access grant or custom domain is claimed. The Android APK is unchanged by this documentation app.
+The initial 24-page smoke test covered build and HTTP behavior. On November 25, the redesigned site retained all 29 previous page URLs, including the homepage, and all 113 existing heading IDs. The added troubleshooting guide brings the total to 30 pages. The production build, content synchronization, TypeScript and [documentation CI](https://github.com/TwoWetKnuckles/echoscript/actions/runs/45723395397) passed on the reviewed revision.
+
+At 1440 × 960 and 390 × 844, browser checks covered installation links, keyboard focus, mobile navigation, search, heading outlines, dark and light themes, and page overflow. The sampled landing page and Android guide passed the automated heading-order and text-contrast checks in both themes. Vercel built a team-protected preview. Use the deployment check on [the documentation pull request](https://github.com/TwoWetKnuckles/echoscript/pull/41) for its current preview. These results cover the documentation site. Physical-device and release acceptance use the separate Android gates.
 
 ## November 13 candidate in progress
 

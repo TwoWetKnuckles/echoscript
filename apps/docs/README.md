@@ -42,4 +42,6 @@ The app builds solely from its committed directory. Synchronization requires a f
 
 Local Node 24 checks passed: content synchronization/verification, route/TypeScript checking, the optimized production build, all 25 documentation page responses, internal navigation targets, examiner-note search, LLM index/full export, Markdown negotiation and suffix routes, OG image generation and a 404 response. `npm audit --audit-level=high` reported zero known findings. The starter dev server also rendered `/docs` with HTTP 200.
 
-The remote browser could not connect to the workspace's loopback server, so these HTTP/build results are not a visual phone/browser acceptance claim. The existing protected Vercel deployment predates this candidate. Further standalone docs design/deployment work is paused; these source changes keep release links and factual content consistent.
+The landing-page screenshot is the synthetic workbench from the linked 0.6 Android release (ui-workbench-timeline.png).
+
+The account documentation standard v1.0 supplies `app/tokens.css` and `scripts/check-docs.py`. Keep version upgrades together in a reviewed pull request. Run `python3 scripts/check-docs.py . --next` after a build to check anchors and reachability from the rendered landing page, including authored pages outside the source map.

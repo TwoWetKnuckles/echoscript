@@ -50,4 +50,5 @@ jobs:
       - run: npm run types:check
       - run: npm run build
       - run: npm run verify:site
+      - run: python3 scripts/check-docs.py . --next
       - run: npm audit --audit-level=high
