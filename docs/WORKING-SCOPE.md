@@ -54,3 +54,7 @@ Original bytes, encrypted local storage, complete provenance/audit linkage and e
 Feature confirmation does not establish provider credits or an approved hosted deployment, organization roles and metadata field allowlist, trusted timestamp authority, owner signing material, physical device access, quantitative accuracy/resource thresholds or policy acceptance. Build and test the concrete implementation first; request only the necessary missing deployment decisions when their dependent integration is ready for review. No external processing or evidence sync is authorized merely by enabling a provider option.
 
 Galaxy S22+ / Android 16 is the user-reported physical device. Emulator results must be labeled separately. IDs 29/30 require evidence against the exact final APK/source, followed by owner acceptance; they cannot be silently marked passed or waived. See specs/release-gates.json and docs/qa/RC-ACCEPTANCE.md.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

@@ -53,3 +53,7 @@ Saved renders are read from the encrypted vault; undo is not an in-memory audio 
 A detail view computes consecutive Hann or Hamming windows over a selected short interval, with selectable FFT size, hop, frequency scale and display floor. It retains a bounded number of windows and may require a shorter selection. Display bands aggregate strongest channel/bin magnitude, not speech probability or power spectral density; log display cannot add FFT resolution, and the final partial hop is not padded. Time/frequency dragging enables the separate band-isolation effect in the draft; other effects still operate over the whole selected time interval. The optional full-file scan is coarser and uses a separate fixed recipe. Synthetic signal and emulator UI checks passed; physical-device validation remains pending.
 
 The window/hop terminology follows the [SciPy ShortTimeFFT documentation](https://docs.scipy.org/doc/scipy/reference/generated/scipy.signal.ShortTimeFFT.html). EchoScript records its own parameters and display scaling; it does not use SciPy at runtime.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

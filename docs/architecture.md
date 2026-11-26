@@ -15,3 +15,7 @@ EchoScript is designed to support defensible forensic-audio analysis, transcript
 Unsigned chains/checksums can be rewritten together by an attacker with full package access. Preserve package SHA-256 and signer fingerprints independently. Device checkpoints authenticate only their exact historical prefix; embedded keys and actor labels do not establish trusted identity. Enrollment, revocation, trusted timestamps, complete recovery and organizational custody procedures remain release work. Protected export recovery covers the exported snapshot, not later local changes or raw Keystore-key recovery.
 
 No evidence is synchronized to Supabase by this implementation. The prior non-sensitive reference catalog remains separate. Multi-user identity, permitted-field preference sync and assignment portability are outstanding. Cloud speech adapters remain disabled until exact deployment, retention, credentials and costs are qualified.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

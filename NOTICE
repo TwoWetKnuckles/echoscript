@@ -11,3 +11,6 @@ The optional bundled ClearVoice FRCRN_SE_16K inference model is by Alibaba Inc.
 and ClearerVoice-Studio contributors, under Apache-2.0. Its exact converted
 model hash, checkpoint revision and notices are in assets/clearvoice/.
 Microsoft ONNX Runtime is under MIT; https://github.com/microsoft/onnxruntime.
+The Buy Me a Coffee icon is from Simple Icons, CC0 1.0:
+https://github.com/simple-icons/simple-icons/blob/801eaab5b70f4933137069397ebbd2ce5f9ad56e/icons/buymeacoffee.svg
+Brand names and marks remain subject to their owners' rights.

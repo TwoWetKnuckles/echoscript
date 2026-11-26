@@ -30,3 +30,7 @@ Development release blockers include physical-device validation, advanced proces
 Native review form text stays in ViewModel memory during navigation and configuration changes. Explicit saves create encrypted immutable transcript artifacts. Activity saved-instance state and preferences exclude transcript draft text. Process death can discard unsaved form edits, so save a revision before relying on it.
 
 Acquisition titles and case search terms also remain in ViewModel memory rather than saved-instance bundles. These inputs survive configuration changes while the app process remains alive; process termination clears them.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

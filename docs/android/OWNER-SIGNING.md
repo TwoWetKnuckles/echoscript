@@ -31,3 +31,7 @@ cd apps/android
 Supplying only part of the configuration fails. Supplying none produces an unsigned development release for compilation checks. Independently verify the signed output using Android `apksigner` and the expected certificate. Keep production signing material and Gradle state outside evidence/source repositories.
 
 The final exact owner-signed APK must undergo the [full release acceptance matrix](../qa/RC-ACCEPTANCE.md), including upgrade/device/MDM and seven complete workflows. Existing debug/emulator runs do not transfer to a different signed APK. Until then: **BETA GATE: NOT PASSED**.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

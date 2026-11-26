@@ -39,3 +39,7 @@ No new stack migration, theme implementation, refactoring or beta rollout is aut
 | Competitor-inspired additions                                                                        | Research only             | Select idea IDs, acceptance criteria and owner scope decision |
 
 When promoting an item, create a focused implementation issue or PR, cite its E-ID and record the owner decision. Check an item only after linked evidence supports completion. Keep this research list separate from required release-gate records.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

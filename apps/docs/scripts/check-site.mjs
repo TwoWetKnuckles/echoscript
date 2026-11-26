@@ -76,6 +76,11 @@ try {
       html.includes("BETA GATE: NOT PASSED"),
       `${path}: missing development status`,
     );
+    assert(
+      html.includes('href="https://buymeacoffee.com/HughMann87"') &&
+        html.includes("https://www.buymeacoffee.com/favicon.ico"),
+      `${path}: missing Buy Me a Coffee button`,
+    );
     for (const match of html.matchAll(/href="(\/docs[^"?#]*)[^"\n]*"/g))
       internal.add(match[1]);
   }

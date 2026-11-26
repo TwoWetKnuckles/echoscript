@@ -95,8 +95,26 @@ export default function HomePage() {
           Emulator results do not replace physical-device acceptance. Preserve
           verified case exports before changing installed previews.
         </p>
-        <p className="mt-2">All implemented workbench tools are available. External provider charges and technical resource limits still apply.</p>
+        <p className="mt-2">
+          All implemented workbench tools are available. External provider
+          charges and technical resource limits still apply.
+        </p>
       </aside>
+      <footer className="mt-12 border-t border-fd-border pt-6">
+        <h2 className="mb-3 font-semibold">Buy me a coffee</h2>
+        <a
+          href="https://buymeacoffee.com/HughMann87"
+          className="inline-flex min-h-11 items-center gap-2 rounded-lg border border-fd-border bg-fd-card px-4 font-medium hover:bg-fd-accent focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-fd-ring"
+        >
+          <img
+            src="https://www.buymeacoffee.com/favicon.ico"
+            alt=""
+            width={20}
+            height={20}
+          />
+          Buy me a coffee
+        </a>
+      </footer>
     </main>
   );
 }

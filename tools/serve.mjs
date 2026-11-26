@@ -10,6 +10,7 @@ const types = new Map([
   [".mjs", "text/javascript; charset=utf-8"],
   [".js", "text/javascript; charset=utf-8"],
   [".css", "text/css; charset=utf-8"],
+  [".svg", "image/svg+xml"],
   [".json", "application/json; charset=utf-8"],
   [".ttf", "font/ttf"],
   [".txt", "text/plain; charset=utf-8"],

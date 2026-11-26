@@ -50,3 +50,7 @@ Android cloud backup/device transfer remain excluded. Device reset, uninstall or
 Before real evidence use, approve and exercise the protected-export schedule, offline custody, access control, passphrase recovery responsibility, clean-device restore and destruction/legal-hold process. Repository documentation is not organizational approval or an executed agreement.
 
 Primary references: [Tink Streaming AEAD](https://developers.google.com/tink/streaming-aead), [Android Keystore](https://developer.android.com/privacy-and-security/keystore), [RFC 8785](https://www.rfc-editor.org/rfc/rfc8785), [OWASP PBKDF2 guidance](https://cheatsheetseries.owasp.org/cheatsheets/Password_Storage_Cheat_Sheet.html). Algorithm selection or an iteration count is not a FIPS or other certification claim.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>

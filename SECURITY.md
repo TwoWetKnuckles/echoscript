@@ -38,3 +38,7 @@ Stop affected processing, transmission and reliance. Preserve originals, trusted
 Maintainer triage should reproduce with synthetic material, assess affected versions and evidence impact, add a meaningful regression test, and document the fix and remaining limits. Publication/disclosure coordination must avoid case data and premature exposure of exploit details. An integrity-affecting fix requires revalidation of affected workflows; changing a disclaimer is not a remediation.
 
 The [threat model](docs/security/THREAT_MODEL.md) and [operator guide](docs/security/OPERATIONS.md) describe the current boundaries and organizational duties. Apache [LICENSE](LICENSE) governs the software's warranty/liability terms; non-waivable legal rights and obligations remain applicable.
+
+## Buy me a coffee
+
+<a href="https://buymeacoffee.com/HughMann87"><img src="https://www.buymeacoffee.com/favicon.ico" width="20" height="20" alt="" /> Buy me a coffee</a>
